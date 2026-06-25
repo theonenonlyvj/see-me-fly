@@ -1,0 +1,10 @@
+{
+  "_README": "Per-flight manual corrections for Flighty exports. Keyed by a stable signature 'Date|From|To|GateDepartureScheduled' because Flight Flighty ID is blank on ~45/1800 rows. Each override may set: durationMinOverride, distanceMiOverride, from, to, exclude (bool), note. Applied during enrich, after automatic enrichment, before aggregation. Survives new exports as long as the signature recurs. See spec §3.6.",
+  "overrides": [
+    {
+      "signature": "2013-08-18|RPJ|RPJ|2013-08-18T12:00",
+      "note": "Skydiving jump flight — DHC-6 Twin Otter (N901ST) takes off and lands at Rochelle Municipal, IL (RPJ). Flighty exports it as a same-airport, zero-mile flight; this is a REAL ~20min local flight, not a data error. Handled generally by the local-flight rule (spec §4.4) + gate-to-gate duration fallback (§4.2), which yields ~20min from the 12:00->12:30 scheduled gate times. This entry documents the recurring Flighty quirk so future exports stay correct; durationMinOverride left unset so the data-derived value is used. Set it explicitly if a future export drops the gate times.",
+      "durationMinOverride": null
+    }
+  ]
+}
