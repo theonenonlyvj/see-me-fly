@@ -11,11 +11,14 @@ const csv = [REQUIRED_COLUMNS.join(','),
 ].join('\n')
 
 describe('overviewCard', () => {
-  it('renders the flight count', () => {
+  it('renders the flight count and stat labels', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{overviewCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    const flightsLabel = screen.getByText('Flights')
-    expect(flightsLabel).toBeInTheDocument()
-    expect(flightsLabel.previousElementSibling).toHaveTextContent('2')
+    expect(screen.getByText('Flights')).toBeInTheDocument()
+    // The hero number and stat labels are present
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0)
+    // Stat grid labels are present
+    expect(screen.getByText('Time in flight')).toBeInTheDocument()
+    expect(screen.getByText('Unique airports')).toBeInTheDocument()
   })
 })

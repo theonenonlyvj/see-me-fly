@@ -1,18 +1,67 @@
 :root {
-  --bg: #0b0e14;
-  --bg-elev: #141925;
-  --bg-card: #161c28;
-  --border: #232b3a;
-  --text: #e6e9ef;
-  --text-dim: #97a0b3;
-  --accent: #5aa6ff;
-  --accent-2: #36d399;
-  --warn: #f5a524;
-  --bar-track: #1c2433;
-  --radius: 12px;
-  --radius-sm: 8px;
-  --gap: 16px;
-  --pad: 16px;
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* ── Surfaces — warm paper foundation ── */
+  --paper:    #f7f3ec;
+  --card:     #ffffff;
+  --ink:      #14141c;
+  --ink-2:    #6a6f7d;
+  --hair:     #ece6db;
+  --hair-2:   #f3eee4;
+  --shadow:   0 18px 42px -22px #1f2a3724, 0 4px 14px -8px #1f2a3716;
+  --shadow-hi:0 30px 70px -26px #1f2a3736, 0 8px 22px -12px #1f2a371c;
+
+  /* ── Pop accent hues ── */
+  --coral:    #ff3d57;
+  --tangerine:#ff7a14;
+  --lime:     #12c08a;
+  --sky:      #1aa9ff;
+  --indigo:   #6a3cff;
+  --magenta:  #ff2fa8;
+
+  /* soft washes for tracks / icon chips */
+  --coral-soft:    #ffe8ec;
+  --tangerine-soft:#ffeedd;
+  --lime-soft:     #ddf7ee;
+  --sky-soft:      #e0f2ff;
+  --indigo-soft:   #ebe4ff;
+  --magenta-soft:  #ffe3f3;
+
+  /* accent slots used by CardFrame (overridden per-card) */
+  --accent-1: var(--coral);
+  --accent-2: var(--tangerine);
+  --accent-3: var(--lime);
+  --accent-4: var(--sky);
+  --accent-5: var(--indigo);
+  --accent-6: var(--magenta);
+
+  /* hero gradient */
+  --grad-hero: linear-gradient(120deg, #ff3d57 0%, #ff7a14 28%, #ff2fa8 60%, #6a3cff 100%);
+
+  /* ── Layout tokens ── */
+  --radius:   28px;
+  --radius-sm:12px;
+  --gap:      24px;
+  --pad:      28px;
+
+  /* ── Typography ── */
+  --font-display: 'Fraunces Variable', serif;
+  --font:         'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* legacy dark-mode tokens (kept for engine/non-themed code that references them) */
+  --bg:       var(--paper);
+  --bg-elev:  rgba(247,243,236,0.72);
+  --bg-card:  var(--card);
+  --border:   var(--hair);
+  --text:     var(--ink);
+  --text-dim: var(--ink-2);
+  --bar-track:var(--hair-2);
+
+  /* ── Gradient mesh wash applied to body ── */
+  --mesh:
+    radial-gradient(940px 540px at 92% -8%,  rgba(255,47,168,0.20)  0%, rgba(255,47,168,0)  56%),
+    radial-gradient(880px 500px at 2%  -4%,  rgba(106,60,255,0.18)  0%, rgba(106,60,255,0)  54%),
+    radial-gradient(820px 560px at 100% 36%, rgba(26,169,255,0.15)  0%, rgba(26,169,255,0)  54%),
+    radial-gradient(960px 660px at -4% 78%,  rgba(18,192,138,0.16)  0%, rgba(18,192,138,0)  56%),
+    radial-gradient(820px 540px at 70% 108%, rgba(255,122,20,0.16)  0%, rgba(255,122,20,0)  56%),
+    radial-gradient(760px 520px at 36% 50%,  rgba(255,61,87,0.10)   0%, rgba(255,61,87,0)   60%),
+    var(--paper);
 }

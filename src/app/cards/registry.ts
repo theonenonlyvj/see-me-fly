@@ -3,7 +3,14 @@ import type { Model } from '../state/useModel'
 import type { Settings } from '../../engine'
 
 export interface CardContext { model: Model; settings: Settings }
-export interface CardDef { id: string; title: string; group: 'core' | 'creative'; render: (ctx: CardContext) => ReactNode }
+export interface CardDef {
+  id: string
+  title: string
+  group: 'core' | 'creative'
+  accent: string
+  icon: string
+  render: (ctx: CardContext) => ReactNode
+}
 
 import { overviewCard } from './OverviewCard'
 import { distanceCard } from './DistanceCard'

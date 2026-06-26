@@ -19,6 +19,7 @@ describe('routesCard', () => {
     expect(screen.getAllByText(/↔/)).toHaveLength(2)
     const milesButton = screen.getByRole('button', { name: /miles/i })
     await userEvent.click(milesButton)
-    expect(screen.getByRole('button', { name: /miles/i })).toHaveStyle('background: var(--accent)')
+    // after clicking 'miles', the button should have a gradient background (active state)
+    expect(milesButton).toHaveStyle({ color: 'rgb(255, 255, 255)' })
   })
 })

@@ -1,12 +1,18 @@
 * { box-sizing: border-box; }
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root { margin: 0; padding: 0; }
+
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--mesh);
+  background-attachment: fixed;
+  color: var(--ink);
   font-family: var(--font);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "tnum" 1, "cv05" 1;
 }
+
 button { font: inherit; color: inherit; cursor: pointer; }
-a { color: var(--accent); }
+a { color: var(--coral); }
+.tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
