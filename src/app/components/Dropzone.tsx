@@ -12,7 +12,7 @@ export default function Dropzone({ onLoaded }: { onLoaded: (text: string, fileNa
     const text = await readFileText(file)
     const { ok, missingColumns } = validateCsv(text)
     if (!ok) {
-      setError(`"${file.name}" doesn't look like a Flighty export — missing columns: ${missingColumns.join(', ') || 'unknown'}.`)
+      setError(`"${file.name}" doesn't look like a flight logs CSV — missing columns: ${missingColumns.join(', ') || 'unknown'}.`)
       return
     }
     onLoaded(text, file.name)
@@ -32,7 +32,7 @@ export default function Dropzone({ onLoaded }: { onLoaded: (text: string, fileNa
       <div>
         <h1 style={{ marginBottom: 8 }}>✈️ Flight Visualizer</h1>
         <p style={{ color: 'var(--text-dim)', maxWidth: 420, margin: '0 auto 20px' }}>
-          Drop your Flighty export here (the <code>FlightyExport-*.csv</code> file), or pick it. Everything stays on your machine.
+          Drop your flight logs CSV here (any export with the expected flight columns), or pick it. Everything stays on your machine.
         </p>
         <button
           onClick={() => inputRef.current?.click()}

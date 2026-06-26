@@ -13,7 +13,7 @@ const bad = new File(['foo,bar\n1,2'], 'nope.csv', { type: 'text/csv' })
 describe('Dropzone', () => {
   it('shows the welcome prompt', () => {
     render(<Dropzone onLoaded={() => {}} />)
-    expect(screen.getByText(/drop your flighty export/i)).toBeInTheDocument()
+    expect(screen.getByText(/drop your flight logs csv/i)).toBeInTheDocument()
   })
 
   it('calls onLoaded for a valid Flighty CSV', async () => {
@@ -30,6 +30,6 @@ describe('Dropzone', () => {
     render(<Dropzone onLoaded={onLoaded} />)
     await userEvent.upload(screen.getByTestId('file-input'), bad)
     expect(onLoaded).not.toHaveBeenCalled()
-    expect(await screen.findByText(/doesn't look like a Flighty export/i)).toBeInTheDocument()
+    expect(await screen.findByText(/doesn't look like a flight logs csv/i)).toBeInTheDocument()
   })
 })
