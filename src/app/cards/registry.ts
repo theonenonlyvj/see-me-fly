@@ -17,4 +17,12 @@ import { distanceCard } from './DistanceCard'
 import { airportsCard } from './AirportsCard'
 import { airlinesCard } from './AirlinesCard'
 import { routesCard } from './RoutesCard'
-export const CARDS: CardDef[] = [overviewCard, distanceCard, airportsCard, airlinesCard, routesCard]
+import { countriesCard } from './CountriesCard'
+import { superDomesticCard } from './SuperDomesticCard'
+import { intercontinentalCard } from './IntercontinentalCard'
+import { aircraftCard } from './AircraftCard'
+import { delaysCard } from './DelaysCard'
+export const CARDS: CardDef[] = [
+  overviewCard, distanceCard, airportsCard, airlinesCard, routesCard,
+  countriesCard, superDomesticCard, intercontinentalCard, aircraftCard, delaysCard,
+]
