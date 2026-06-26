@@ -79,18 +79,76 @@ flight_visualizer/
 **Interfaces:**
 - Produces: the entire shared type vocabulary used by every later task (see code below), and `DEFAULT_DURATION_CONSTANTS`, `EARTH_RADIUS_MI`.
 
-- [ ] **Step 1: Scaffold Vite + React + TS and add deps**
+> **Toolchain note (read first):** plain `npm` resolves to Homebrew **npm 11.x** (Node 26). Do **not** run `npm create vite` — it interactively prompts on a non-empty directory and will hang a non-interactive subagent. Hand-write the three config files below instead. Preserve the existing `docs/`, `reference/`, `.claude/`, `.git/`, `.gitignore`.
 
-Run:
-```bash
-npm --prefix /Users/vijayram/Cursor/flight_visualizer create vite@latest . -- --template react-ts
-npm --prefix /Users/vijayram/Cursor/flight_visualizer install
-npm --prefix /Users/vijayram/Cursor/flight_visualizer install papaparse luxon
-npm --prefix /Users/vijayram/Cursor/flight_visualizer install -D vitest @types/papaparse @types/luxon @types/node tsx tz-lookup
+- [ ] **Step 1: Write `package.json`**
+
+```json
+{
+  "name": "flight-visualizer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pp:airports": "tsx scripts/preprocess/build-airports.ts",
+    "pp:airlines": "tsx scripts/preprocess/build-airlines.ts",
+    "pp:regions": "tsx scripts/preprocess/build-regions.ts",
+    "pp:size": "tsx scripts/preprocess/size-check.ts",
+    "preprocess": "npm run pp:airports && npm run pp:airlines && npm run pp:regions && npm run pp:size"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "papaparse": "^5.4.1",
+    "luxon": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.10.0",
+    "@types/papaparse": "^5.3.15",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "tz-lookup": "^6.1.25",
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.1.0",
+    "vitest": "^2.1.0"
+  }
+}
 ```
-Expected: `package.json`, `src/`, `node_modules/` created; no errors. (If `create vite` refuses because the dir is non-empty, run it in a temp dir and copy the generated `package.json`/`tsconfig.json`/`vite.config.ts`/`index.html`/`src/main.tsx` in, preserving our `docs/`, `reference/`, `.claude/`, `.git/`.)
 
-- [ ] **Step 2: Configure Vitest in `vite.config.ts`**
+- [ ] **Step 2: Write `tsconfig.json`** (single config; `resolveJsonModule` lets the engine `import` reference JSON as ES modules)
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src", "scripts"]
+}
+```
+
+- [ ] **Step 3: Write `vite.config.ts`**
 
 ```ts
 /// <reference types="vitest/config" />
@@ -107,32 +165,10 @@ export default defineConfig({
 })
 ```
 
-- [ ] **Step 2b: Ensure JSON imports + Node types in tsconfig**
+- [ ] **Step 3b: Install dependencies**
 
-In `tsconfig.app.json` (the Vite react-ts template's app config) confirm/add under `compilerOptions`:
-```json
-{
-  "resolveJsonModule": true,
-  "esModuleInterop": true,
-  "types": ["node", "vitest/globals"]
-}
-```
-Reason: the engine and tests `import` reference JSON as ES modules; without `resolveJsonModule` `tsc` fails. (Vitest itself transpiles JSON fine, but the `npm run build` typecheck would break later.)
-
-- [ ] **Step 3: Add npm scripts to `package.json`**
-
-Merge into the `"scripts"` block:
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "preprocess": "tsx scripts/preprocess/build-airports.ts && tsx scripts/preprocess/build-airlines.ts && tsx scripts/preprocess/build-regions.ts && tsx scripts/preprocess/size-check.ts"
-  }
-}
-```
+Run: `npm --prefix /Users/vijayram/Cursor/flight_visualizer install`
+Expected: `node_modules/` + `package-lock.json` created; no errors. (`npm --version` should report 11.x — the modern Homebrew npm.)
 
 - [ ] **Step 4: Write `src/engine/types.ts`**
 
@@ -371,7 +407,7 @@ main().catch((e) => { console.error(e); process.exit(1) })
 
 - [ ] **Step 3: Run the preprocess for airports**
 
-Run: `npx --prefix /Users/vijayram/Cursor/flight_visualizer tsx /Users/vijayram/Cursor/flight_visualizer/scripts/preprocess/build-airports.ts`
+Run: `npm --prefix /Users/vijayram/Cursor/flight_visualizer run pp:airports`
 Expected: prints `airports.json: <N> kept, <M> skipped` with N in the ~9k–25k range; `src/reference/airports.json` written.
 
 - [ ] **Step 4: Write the failing data test `src/test/engine/airports-data.test.ts`**
@@ -499,7 +535,7 @@ main().catch((e) => { console.error(e); process.exit(1) })
 
 - [ ] **Step 3: Run the preprocess for airlines**
 
-Run: `npx --prefix /Users/vijayram/Cursor/flight_visualizer tsx /Users/vijayram/Cursor/flight_visualizer/scripts/preprocess/build-airlines.ts`
+Run: `npm --prefix /Users/vijayram/Cursor/flight_visualizer run pp:airlines`
 Expected: prints count + collisions; `airlines.json` written.
 
 - [ ] **Step 4: Write the failing test `src/test/engine/airlines-data.test.ts`**
@@ -587,7 +623,7 @@ main().catch((e) => { console.error(e); process.exit(1) })
 
 - [ ] **Step 2: Run the preprocess for regions**
 
-Run: `npx --prefix /Users/vijayram/Cursor/flight_visualizer tsx /Users/vijayram/Cursor/flight_visualizer/scripts/preprocess/build-regions.ts`
+Run: `npm --prefix /Users/vijayram/Cursor/flight_visualizer run pp:regions`
 Expected: prints region + country counts; `regions.json` written.
 
 - [ ] **Step 3: Write the failing test `src/test/engine/regions-data.test.ts`**
@@ -762,7 +798,7 @@ if (total > BUDGET_BYTES) {
 
 - [ ] **Step 5: Run the size check**
 
-Run: `npx --prefix /Users/vijayram/Cursor/flight_visualizer tsx /Users/vijayram/Cursor/flight_visualizer/scripts/preprocess/size-check.ts`
+Run: `npm --prefix /Users/vijayram/Cursor/flight_visualizer run pp:size`
 Expected: per-file sizes + total under 4 MB (exit 0). If it fails, narrow `KEEP_TYPES` in Task 2 to `large_airport`+`medium_airport` plus small_airports only in `iso_country == 'US'`, and re-run Task 2.
 
 - [ ] **Step 6: Write the failing test `src/test/engine/curated-data.test.ts`**
