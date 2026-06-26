@@ -655,6 +655,12 @@ describe('commonLayovers', () => {
     expect(commonLayovers([a, b], S({ groupAirports: false, layoverMaxHours: 5 }))).toHaveLength(0)
   })
 
+  it('skips a pair when either absolute instant is missing', () => {
+    const a = FL({ rawIndex: 0, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 10 * HR, arrUtcMs: null })
+    const b = FL({ rawIndex: 1, fromCode: 'DFW', toCode: 'LAX', depUtcMs: BASE + 13 * HR, arrUtcMs: BASE + 15 * HR })
+    expect(commonLayovers([a, b], S({ groupAirports: false, layoverMaxHours: 5 }))).toHaveLength(0)
+  })
+
   it('aggregates under the metro group name when grouping is on', () => {
     const a = FL({ rawIndex: 0, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 10 * HR, arrUtcMs: BASE + 11 * HR })
     const b = FL({ rawIndex: 1, fromCode: 'DFW', toCode: 'LAX', depUtcMs: BASE + 13 * HR, arrUtcMs: BASE + 15 * HR })

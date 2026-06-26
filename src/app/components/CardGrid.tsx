@@ -49,6 +49,13 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
   const ids = useMemo(() => rest.map((c) => c.id), [rest])
 
   const wrapRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  // Stable per-id ref setters, so a card's ref isn't detached/reattached on every render.
+  const refSetters = useRef(new Map<string, (el: HTMLDivElement | null) => void>())
+  const getSetter = (id: string) => {
+    let s = refSetters.current.get(id)
+    if (!s) { s = (el) => { wrapRefs.current[id] = el }; refSetters.current.set(id, s) }
+    return s
+  }
   const [columns, setColumns] = useState<string[][]>(() => roundRobin(ids, cols))
 
   // Recompute the greedy packing only when the column count changes (viewport) — NOT when a
@@ -69,7 +76,7 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
               const c = byId[id]
               if (!c) return null
               return (
-                <div key={id} ref={(el) => { wrapRefs.current[id] = el }}>
+                <div key={id} ref={getSetter(id)}>
                   {c.render({ model, settings, overlay })}
                 </div>
               )

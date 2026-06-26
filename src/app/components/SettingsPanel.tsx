@@ -44,6 +44,12 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
     if (gName) { const g = activeGroups.find((x) => x.name === gName); if (g) return firstPresent(g) }
     return h
   })()
+  // If the saved home isn't represented by any active group / solo option (e.g. a new CSV has no
+  // flights through it), surface it as its own option so the select still reflects the real value.
+  const homeRepresented = homeSelectValue === '' ||
+    activeGroups.some((g) => firstPresent(g) === homeSelectValue) ||
+    soloAirports.includes(homeSelectValue)
+  const orphanHome = homeRepresented ? null : homeSelectValue
 
   const fieldStyle = { background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px' } as const
 
@@ -64,6 +70,7 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
         Home base
         <select value={homeSelectValue} onChange={(e) => update({ home: e.target.value || null })} style={fieldStyle}>
           <option value="">None</option>
+          {orphanHome && <option value={orphanHome}>{lookupAirport(orphanHome)?.municipality ? `${lookupAirport(orphanHome)!.municipality} (${orphanHome})` : orphanHome}</option>}
           {activeGroups.map((g) => <option key={g.name} value={firstPresent(g)}>{g.name}</option>)}
           {soloAirports.map((c) => {
             const ap = lookupAirport(c)

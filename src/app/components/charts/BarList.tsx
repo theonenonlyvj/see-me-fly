@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export interface BarRow {
   label: string
@@ -63,7 +63,7 @@ function Row({ r, peak, acc, grad, soft, formatValue, onClick }: {
       {hasSub && open && (
         <div style={{ margin: '8px 0 2px 14px', paddingLeft: 12, borderLeft: `2px solid ${soft}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {r.subRows!.map((s) => (
-            <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12.5, color: 'var(--ink-2)' }}>
+            <div key={`${r.label}:${s.label}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12.5, color: 'var(--ink-2)' }}>
               <span style={{ fontWeight: 600 }}>{s.label}</span>
               <span style={{ fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{formatValue(s.value)}</span>
             </div>
@@ -100,6 +100,9 @@ export default function BarList({ rows, max = 10, formatValue = (n: number) => n
   onRowClick?: (row: BarRow) => void
 }) {
   const [visible, setVisible] = useState(max)
+  // Reset expansion when the underlying data set changes (e.g. switching year scope),
+  // so a stale "Show less" can't linger after the row count shrinks below it.
+  useEffect(() => { setVisible(max) }, [rows.length, max])
   if (rows.length === 0) return <p style={{ color: 'var(--ink-2)' }}>No data for this view.</p>
 
   const peak = Math.max(...rows.map((r) => r.value), 1)

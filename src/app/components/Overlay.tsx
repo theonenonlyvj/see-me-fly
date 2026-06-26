@@ -108,12 +108,13 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const pop = useCallback(() => setStack((s) => s.slice(0, -1)), [])
   const closeAll = useCallback(() => setStack([]), [])
 
+  const hasOverlay = stack.length > 0
   useEffect(() => {
-    if (stack.length === 0) return
+    if (!hasOverlay) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') pop() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [stack.length, pop])
+  }, [hasOverlay, pop])
 
   const top = stack[stack.length - 1]
 
