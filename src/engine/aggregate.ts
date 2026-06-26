@@ -54,7 +54,7 @@ export function distanceBuckets(flights: EnrichedFlight[]): { label: string; cou
   const counts = BUCKETS.map((b) => ({ label: b.label, count: 0 }))
   for (const f of flights) {
     if (f.distanceMi === null || f.distanceMi <= 0) continue
-    const i = BUCKETS.findIndex((b) => f.distanceMi! < b.max)
+    const i = BUCKETS.findIndex((b) => f.distanceMi! < b.max) // strict <: a value exactly on a boundary (e.g. 300) falls into the higher band
     if (i >= 0) counts[i].count += 1
   }
   return counts
@@ -66,7 +66,7 @@ export function byYear(flights: EnrichedFlight[]): { year: number; count: number
 }
 
 function depTs(f: EnrichedFlight): number {
-  const iso = f.date // good enough as a coarse key; rawIndex breaks ties
+  const iso = f.date // Day-granularity sort key: EnrichedFlight carries no sub-day departure timestamp, so same-day flights tie-break by rawIndex (deterministic). TODO(Plan 2): carry gateDepSched onto EnrichedFlight for sub-day milestone precision when the Records card is built.
   const t = Date.parse(iso)
   return Number.isFinite(t) ? t : 0
 }

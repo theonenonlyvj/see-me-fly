@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { applyFilters } from '../../engine/filter'
-import { byAirport, byRoute, byAirline, distanceBuckets, milestones, totals } from '../../engine/aggregate'
+import { byAirport, byRoute, byAirline, distanceBuckets, byYear, milestones, totals } from '../../engine/aggregate'
 import { enrichFlight } from '../../engine/enrich'
 import { parseFlightyCsv, REQUIRED_COLUMNS } from '../../engine/parse'
 import { DEFAULT_DURATION_CONSTANTS as C } from '../../engine/constants'
@@ -56,6 +56,11 @@ describe('aggregate', () => {
     const t = totals([route('DFW', 'SFO'), route('SFO', 'DFW')], S({ explicitlyUnique: true }))
     expect(t.uniqueRoutes).toBe(1) // overview ignores direction
     expect(t.count).toBe(2)
+  })
+  it('byYear counts flights per year, descending', () => {
+    const res = byYear([route('DFW', 'AUS', '2018-01-01'), route('DFW', 'ORD', '2018-06-01'), route('DFW', 'LAX', '2020-01-01')])
+    expect(res[0]).toEqual({ year: 2020, count: 1 })
+    expect(res.find((y) => y.year === 2018)!.count).toBe(2)
   })
 })
 
