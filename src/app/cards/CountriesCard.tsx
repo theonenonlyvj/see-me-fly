@@ -11,12 +11,14 @@ const ACCENT_SOFT = '#e5f6ff'
 function buildRows(ctx: CardContext): BarRow[] {
   const entries = byCountry(ctx.model!.scoped, ctx.settings)
   return entries.slice(0, 10).map((c) => {
-    let label = `${c.flag} ${c.name}`.trim()
+    const label = `${c.flag} ${c.name}`.trim()
     let sub: string | undefined
+    let subRows: BarRow['subRows']
     if (c.regions && c.regions.length > 0) {
       sub = `(${c.regions.length} state${c.regions.length === 1 ? '' : 's'})`
+      subRows = c.regions.map((r) => ({ label: r.name, value: r.count }))
     }
-    return { label, value: c.count, sub }
+    return { label, value: c.count, sub, subRows }
   })
 }
 

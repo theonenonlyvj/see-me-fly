@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { countriesCard } from '../../app/cards/CountriesCard'
+
+afterEach(cleanup)
 import { buildModel, DEFAULT_SETTINGS } from '../../engine'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
 
@@ -20,6 +23,14 @@ describe('countriesCard', () => {
     expect(screen.getByText(/United States/)).toBeInTheDocument()
     // US has regions — should show a "(N state)" sub-label (not the card title)
     expect(screen.getByText(/\(\d+ state/i)).toBeInTheDocument()
+  })
+
+  it('expands the US row to reveal the state breakdown (Texas)', async () => {
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    render(<>{countriesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
+    expect(screen.queryByText('Texas')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /\(\d+ state/i }))
+    expect(screen.getByText('Texas')).toBeInTheDocument()
   })
 
   it('shows United Kingdom', () => {
