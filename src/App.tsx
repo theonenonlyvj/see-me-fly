@@ -1,11 +1,16 @@
+import { useState } from 'react'
 import './app/styles/tokens.css'
 import './app/styles/base.css'
+import Dropzone from './app/components/Dropzone'
 
 export default function App() {
+  const [csv, setCsv] = useState<{ text: string; name: string } | null>(null)
+
+  if (!csv) return <Dropzone onLoaded={(text, name) => setCsv({ text, name })} />
+
   return (
     <div style={{ padding: 'var(--pad)' }}>
-      <h1>Flight Visualizer</h1>
-      <p style={{ color: 'var(--text-dim)' }}>Drop a Flighty CSV export to begin.</p>
+      <p style={{ color: 'var(--text-dim)' }}>Loaded {csv.name}. Dashboard coming online…</p>
     </div>
   )
 }

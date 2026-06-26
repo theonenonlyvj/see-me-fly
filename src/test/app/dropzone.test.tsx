@@ -1,0 +1,34 @@
+// @vitest-environment jsdom
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+
+afterEach(cleanup)
+import { REQUIRED_COLUMNS } from '../../engine/parse'
+import Dropzone from '../../app/components/Dropzone'
+
+const good = new File([[REQUIRED_COLUMNS.join(','), '2018-01-01,AAL,1,DFW,AUS,,,,,false,,2018-01-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,'].join('\n')], 'flighty.csv', { type: 'text/csv' })
+const bad = new File(['foo,bar\n1,2'], 'nope.csv', { type: 'text/csv' })
+
+describe('Dropzone', () => {
+  it('shows the welcome prompt', () => {
+    render(<Dropzone onLoaded={() => {}} />)
+    expect(screen.getByText(/drop your flighty export/i)).toBeInTheDocument()
+  })
+
+  it('calls onLoaded for a valid Flighty CSV', async () => {
+    const onLoaded = vi.fn()
+    render(<Dropzone onLoaded={onLoaded} />)
+    await userEvent.upload(screen.getByTestId('file-input'), good)
+    expect(onLoaded).toHaveBeenCalledTimes(1)
+    expect(onLoaded.mock.calls[0][1]).toBe('flighty.csv')
+  })
+
+  it('shows a named error for a non-Flighty CSV', async () => {
+    const onLoaded = vi.fn()
+    render(<Dropzone onLoaded={onLoaded} />)
+    await userEvent.upload(screen.getByTestId('file-input'), bad)
+    expect(onLoaded).not.toHaveBeenCalled()
+    expect(await screen.findByText(/doesn't look like a Flighty export/i)).toBeInTheDocument()
+  })
+})
