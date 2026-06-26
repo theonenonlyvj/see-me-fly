@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 
 afterEach(cleanup)
@@ -20,7 +20,8 @@ describe('Dropzone', () => {
     const onLoaded = vi.fn()
     render(<Dropzone onLoaded={onLoaded} />)
     await userEvent.upload(screen.getByTestId('file-input'), good)
-    expect(onLoaded).toHaveBeenCalledTimes(1)
+    // readFileText uses the async FileReader API, so wait for the callback to fire
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1))
     expect(onLoaded.mock.calls[0][1]).toBe('flighty.csv')
   })
 
