@@ -1,5 +1,6 @@
 import CardFrame from '../components/CardFrame'
 import { monogram } from '../lib/format'
+import { flightsByAirline } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 import { useState } from 'react'
 
@@ -7,7 +8,7 @@ const ACCENT      = '#1aa9ff'
 const ACCENT_GRAD = 'linear-gradient(90deg, #1aa9ff, #5ad0ff)'
 const ACCENT_SOFT = '#e0f2ff'
 
-function AirlinesList({ model }: CardContext) {
+function AirlinesList({ model, overlay }: CardContext) {
   const [expanded, setExpanded] = useState(false)
   const rows = model!.byAirline
   const max = 10
@@ -21,7 +22,10 @@ function AirlinesList({ model }: CardContext) {
           const { initials, color } = monogram(r.name)
           const pct = (r.count / peak) * 100
           return (
-            <div key={r.name} style={{ display: 'grid', gridTemplateColumns: '40px 1fr auto', gap: 13, alignItems: 'center' }}>
+            <div key={r.name}
+              onClick={() => overlay?.openFlights(r.name, flightsByAirline(model!.scoped, r.name))}
+              role={overlay ? 'button' : undefined}
+              style={{ display: 'grid', gridTemplateColumns: '40px 1fr auto', gap: 13, alignItems: 'center', cursor: overlay ? 'pointer' : undefined }}>
               {/* monogram circle */}
               <div style={{
                 width: 40, height: 40, borderRadius: '50%',

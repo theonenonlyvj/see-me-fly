@@ -3,6 +3,7 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { commonLayovers } from '../../engine/stats'
 import { displayEndpoint } from '../lib/places'
+import { flightsByAirportCode } from '../lib/flight-filters'
 import { fmtDuration } from '../lib/format'
 import type { CardContext, CardDef } from './registry'
 
@@ -22,6 +23,7 @@ export const layoversCard: CardDef = {
       label: displayEndpoint(e.key),
       value: e.count,
       sub: `~${fmtDuration(e.avgGapMin)} typical`,
+      id: e.airportCode,
     }))
     return (
       <CardFrame
@@ -32,7 +34,8 @@ export const layoversCard: CardDef = {
         accentSoft={ACCENT_SOFT}
         icon="🔁"
       >
-        <BarList rows={rows} max={10} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} />
+        <BarList rows={rows} max={10} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
+          onRowClick={(row) => row.id && ctx.overlay?.openFlights(`Flights via ${row.label}`, flightsByAirportCode(ctx.model!.scoped, row.id))} />
       </CardFrame>
     )
   },

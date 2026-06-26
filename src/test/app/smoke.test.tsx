@@ -7,6 +7,6 @@ describe('App', () => {
   it('renders the welcome prompt', () => {
     render(<App />)
     expect(screen.getByText(/Flight Visualizer/i)).toBeInTheDocument()
-    expect(screen.getByText(/drop your flighty export/i)).toBeInTheDocument()
+    expect(screen.getByText(/drop your flight logs csv/i)).toBeInTheDocument()
   })
 })

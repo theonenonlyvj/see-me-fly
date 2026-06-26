@@ -3,6 +3,7 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { flagEmoji } from '../lib/format'
 import { groups, lookupAirport } from '../../engine/reference'
+import { flightsByAirportKey } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#12c08a'
@@ -29,6 +30,7 @@ function buildRows(model: NonNullable<CardContext['model']>, groupAirports: bool
           label: `${flag} ${key}`,
           value: a.count,
           sub: codesStr,
+          id: key,
         }
       }
     }
@@ -37,7 +39,7 @@ function buildRows(model: NonNullable<CardContext['model']>, groupAirports: bool
     const airport = lookupAirport(key)
     const flag = airport?.country ? flagEmoji(airport.country) : ''
     const label = airport ? `${flag} ${airport.municipality || key}` : `${flag} ${key}`
-    return { label: label.trim(), value: a.count }
+    return { label: label.trim(), value: a.count, id: key }
   })
 }
 
@@ -47,11 +49,12 @@ export const airportsCard: CardDef = {
   group: 'core',
   accent: ACCENT,
   icon: '📍',
-  render: ({ model, settings }: CardContext) => {
+  render: ({ model, settings, overlay }: CardContext) => {
     const rows = buildRows(model!, settings.groupAirports)
     return (
       <CardFrame title="Most-visited airports" eyebrow="Where you land" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="📍">
-        <BarList rows={rows} max={10} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} />
+        <BarList rows={rows} max={10} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
+          onRowClick={(row) => row.id && overlay?.openFlights(`Flights via ${row.label}`, flightsByAirportKey(model!.scoped, row.id, settings))} />
       </CardFrame>
     )
   },

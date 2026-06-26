@@ -46,7 +46,10 @@ function LongestFlights(ctx: CardContext) {
           {flights.map((f) => {
             const val = metric === 'distance' ? fmtMiles(f.distanceMi ?? 0) : fmtDuration(f.durationMin)
             return (
-              <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 13, color: 'var(--ink)' }}>
+              <div key={f.id}
+                onClick={() => ctx.overlay?.openFlight(f)}
+                role={ctx.overlay ? 'button' : undefined}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 13, color: 'var(--ink)', cursor: ctx.overlay ? 'pointer' : undefined }}>
                 <span style={{ fontWeight: 600 }}>
                   {f.date} · {f.fromCode}→{f.toCode}
                 </span>

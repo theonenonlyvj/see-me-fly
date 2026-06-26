@@ -58,9 +58,12 @@ export const delaysCard: CardDef = {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {mostDelayed.slice(0, 5).map((f) => (
-                <div key={f.id} style={{
+                <div key={f.id}
+                  onClick={() => ctx.overlay?.openFlight(f)}
+                  role={ctx.overlay ? 'button' : undefined}
+                  style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
-                  fontSize: 13, color: 'var(--ink)',
+                  fontSize: 13, color: 'var(--ink)', cursor: ctx.overlay ? 'pointer' : undefined,
                 }}>
                   <span style={{ fontWeight: 600 }}>
                     {f.date} · {f.fromCode} → {f.toCode}

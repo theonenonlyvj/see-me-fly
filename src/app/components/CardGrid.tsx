@@ -1,8 +1,10 @@
 import { CARDS } from '../cards/registry'
 import type { Model } from '../state/useModel'
 import type { Settings } from '../../engine'
+import { useOverlay } from './Overlay'
 
 export default function CardGrid({ model, settings }: { model: Model; settings: Settings }) {
+  const overlay = useOverlay()
   return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '14px 28px 80px' }}>
       <div
@@ -15,7 +17,7 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
       >
         {CARDS.map((c) => (
           <div key={c.id} style={c.id === 'map' ? { columnSpan: 'all' } : { breakInside: 'avoid' }}>
-            {c.render({ model, settings })}
+            {c.render({ model, settings, overlay })}
           </div>
         ))}
       </div>

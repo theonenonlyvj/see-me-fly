@@ -29,7 +29,8 @@ describe('countriesCard', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{countriesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
     expect(screen.queryByText('Texas')).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: /\(\d+ state/i }))
+    // the state-breakdown disclosure is the only button carrying aria-expanded
+    await userEvent.click(screen.getByRole('button', { expanded: false }))
     expect(screen.getByText('Texas')).toBeInTheDocument()
   })
 

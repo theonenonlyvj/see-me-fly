@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import CardFrame from '../components/CardFrame'
 import { fmtInt, fmtMiles } from '../lib/format'
-import { displayRoute } from '../lib/places'
+import { displayRoute, displayRouteString } from '../lib/places'
+import { flightsByRouteKey } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#6a3cff'
 const ACCENT_GRAD = 'linear-gradient(90deg, #6a3cff, #9a6bff)'
 const ACCENT_SOFT = '#ebe4ff'
 
-function Routes({ model, settings }: CardContext) {
+function Routes({ model, settings, overlay }: CardContext) {
   const [metric, setMetric] = useState<'count' | 'miles'>('count')
   const peak = Math.max(...model!.byRoute.map((r) => metric === 'count' ? r.count : r.miles), 1)
 
@@ -50,7 +51,10 @@ function Routes({ model, settings }: CardContext) {
             : `${r.count} flights`
 
           return (
-            <div key={r.key} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 14px', alignItems: 'baseline' }}>
+            <div key={r.key}
+              onClick={() => overlay?.openFlights(displayRouteString(r.key, settings), flightsByRouteKey(model!.scoped, r.key, settings))}
+              role={overlay ? 'button' : undefined}
+              style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '6px 14px', alignItems: 'baseline', cursor: overlay ? 'pointer' : undefined }}>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 7 }}>
                 {parts ? (
                   <>

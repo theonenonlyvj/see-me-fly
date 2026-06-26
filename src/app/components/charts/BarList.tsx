@@ -4,31 +4,38 @@ export interface BarRow {
   label: string
   value: number
   sub?: string
+  /** Stable identifier (country code, route key, …) passed back to onRowClick. */
+  id?: string
   /** Optional nested breakdown; when present the row's `sub` text becomes an expand toggle. */
   subRows?: { label: string; value: number }[]
 }
 
 const STEP = 10
 
-function Row({ r, peak, acc, grad, soft, formatValue }: {
+function Row({ r, peak, acc, grad, soft, formatValue, onClick }: {
   r: BarRow
   peak: number
   acc: string
   grad: string
   soft: string
   formatValue: (n: number) => string
+  onClick?: () => void
 }) {
   const [open, setOpen] = useState(false)
   const hasSub = !!(r.subRows && r.subRows.length > 0)
 
   return (
     <div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '7px 14px', alignItems: 'baseline' }}>
+      <div
+        onClick={onClick}
+        role={onClick ? 'button' : undefined}
+        style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '7px 14px', alignItems: 'baseline', cursor: onClick ? 'pointer' : undefined }}
+      >
         <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
           {r.label}
           {r.sub && (hasSub ? (
             <button
-              onClick={() => setOpen((v) => !v)}
+              onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}
               aria-expanded={open}
               style={{ color: acc, fontWeight: 700, fontSize: 12, background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}
             >
@@ -83,13 +90,14 @@ function MoreButton({ label, grad, onClick }: { label: string; grad: string; onC
   )
 }
 
-export default function BarList({ rows, max = 10, formatValue = (n: number) => n.toLocaleString('en-US'), accent, accentGrad, accentSoft }: {
+export default function BarList({ rows, max = 10, formatValue = (n: number) => n.toLocaleString('en-US'), accent, accentGrad, accentSoft, onRowClick }: {
   rows: BarRow[]
   max?: number
   formatValue?: (n: number) => string
   accent?: string
   accentGrad?: string
   accentSoft?: string
+  onRowClick?: (row: BarRow) => void
 }) {
   const [visible, setVisible] = useState(max)
   if (rows.length === 0) return <p style={{ color: 'var(--ink-2)' }}>No data for this view.</p>
@@ -106,7 +114,8 @@ export default function BarList({ rows, max = 10, formatValue = (n: number) => n
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
         {shown.map((r) => (
-          <Row key={r.label} r={r} peak={peak} acc={acc} grad={grad} soft={soft} formatValue={formatValue} />
+          <Row key={r.label} r={r} peak={peak} acc={acc} grad={grad} soft={soft} formatValue={formatValue}
+            onClick={onRowClick ? () => onRowClick(r) : undefined} />
         ))}
       </div>
       {(remaining > 0 || visible > max) && (

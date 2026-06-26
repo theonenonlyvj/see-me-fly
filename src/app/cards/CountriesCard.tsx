@@ -2,6 +2,7 @@ import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { byCountry } from '../../engine/stats'
+import { flightsByCountry } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#1aa9ff'
@@ -18,7 +19,7 @@ function buildRows(ctx: CardContext): BarRow[] {
       sub = `(${c.regions.length} state${c.regions.length === 1 ? '' : 's'})`
       subRows = c.regions.map((r) => ({ label: r.name, value: r.count }))
     }
-    return { label, value: c.count, sub, subRows }
+    return { label, value: c.count, sub, subRows, id: c.code }
   })
 }
 
@@ -46,6 +47,7 @@ export const countriesCard: CardDef = {
           accent={ACCENT}
           accentGrad={ACCENT_GRAD}
           accentSoft={ACCENT_SOFT}
+          onRowClick={(row) => row.id && ctx.overlay?.openFlights(`Flights touching ${row.label}`, flightsByCountry(ctx.model!.scoped, row.id))}
         />
       </CardFrame>
     )

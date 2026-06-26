@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
 import type { Model } from '../state/useModel'
 import type { Settings } from '../../engine'
+import type { OverlayApi } from '../components/Overlay'
 
-export interface CardContext { model: Model; settings: Settings }
+export interface CardContext { model: Model; settings: Settings; overlay?: OverlayApi }
 export interface CardDef {
   id: string
   title: string
