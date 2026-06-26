@@ -15,7 +15,7 @@ _(Copied verbatim from the spec; every task implicitly includes these.)_
 - **Local-only, no runtime network, no `fetch` at runtime.** Reference data is `import`ed (baked into the bundle). Network is allowed only in dev-time preprocess scripts.
 - **No web workers** anywhere (PapaParse must use `worker: false`). Engine runs synchronously.
 - **Never emit a negative duration** (clamp + flag).
-- **Bundle budget:** the eventual single `index.html` must stay **< 4 MB**; reference JSON is trimmed accordingly. Phase 0 adds a size log for `src/reference/*.json`.
+- **Bundle budget:** the eventual single `index.html` must stay **< 8 MB** (raised from 4 MB — it's a local double-click file with no network download, so size is non-critical; this is just a sanity ceiling). `airports.json` alone is ~6.3 MB raw with full OurAirports coverage. Phase 0 adds a size log for `src/reference/*.json`.
 - **Timestamps are local wall-clock with no offset**, in two formats: `YYYY-MM-DDTHH:mm` and `YYYY-MM-DDTHH:mm:ss`.
 - **Airport resolution order:** IATA → FAA `local_code` → ICAO `ident` (ident tried as-is and with a leading `K`/`C` stripped).
 - **`Flight Flighty ID` is unreliable** (blank on ~45/1800 rows) — never use it as a key or sole sort tiebreak.
@@ -780,7 +780,7 @@ import { dirname, resolve, join } from 'node:path'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const DIR = resolve(here, '../../src/reference')
-const BUDGET_BYTES = 4 * 1024 * 1024
+const BUDGET_BYTES = 8 * 1024 * 1024
 
 let total = 0
 for (const f of readdirSync(DIR)) {
@@ -799,7 +799,7 @@ if (total > BUDGET_BYTES) {
 - [ ] **Step 5: Run the size check**
 
 Run: `npm --prefix /Users/vijayram/Cursor/flight_visualizer run pp:size`
-Expected: per-file sizes + total under 4 MB (exit 0). If it fails, narrow `KEEP_TYPES` in Task 2 to `large_airport`+`medium_airport` plus small_airports only in `iso_country == 'US'`, and re-run Task 2.
+Expected: per-file sizes + total under 8 MB (exit 0). `airports.json` is ~6.3 MB; total should be ~6.5 MB. If it somehow exceeds 8 MB, narrow `KEEP_TYPES` in Task 2 to `large_airport`+`medium_airport` plus small_airports only in `iso_country == 'US'`, and re-run Task 2.
 
 - [ ] **Step 6: Write the failing test `src/test/engine/curated-data.test.ts`**
 
@@ -2216,7 +2216,7 @@ git -C /Users/vijayram/Cursor/flight_visualizer commit -m "feat: buildModel publ
 
 ## Phase 0 Acceptance
 
-- [ ] `npm --prefix /Users/vijayram/Cursor/flight_visualizer run preprocess` regenerates all reference JSON and passes the size check (< 4 MB total).
+- [ ] `npm --prefix /Users/vijayram/Cursor/flight_visualizer run preprocess` regenerates all reference JSON and passes the size check (< 8 MB total).
 - [ ] `npm --prefix /Users/vijayram/Cursor/flight_visualizer test` is green across all engine modules.
 - [ ] The real export loads via `buildModel` with near-zero unresolved airports, RPJ resolving to a ~20-min local flight, no negative durations, and Dallas as the top group.
 - [ ] No runtime network, no web workers, all reference data imported as ES modules.
