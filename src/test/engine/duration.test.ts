@@ -44,6 +44,14 @@ describe('timezone-aware duration', () => {
     expect(min).toBe(20) // 30min gate - 10min gateTaxi
   })
 
+  it('zero-distance local flight with NO timestamps falls back to the local default', () => {
+    const rpj = lookupAirport('RPJ')!
+    const raw = blankRaw({}) // no takeoff/landing/gate times at all
+    const { min, source } = computeDuration({ from: rpj, to: rpj, raw, distanceMi: 0, constants: C })
+    expect(source).toBe('localDefault')
+    expect(min).toBe(C.localFlightDefaultMin) // 20
+  })
+
   it('never returns a negative duration', () => {
     const from = lookupAirport('HND')!
     const to = lookupAirport('DFW')!

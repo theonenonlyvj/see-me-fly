@@ -43,8 +43,7 @@ export function computeDuration(args: {
   if (gateDep && gateArr && fromTz && toTz) {
     const m = pairMinutes(gateDep, fromTz, gateArr, toTz)
     if (m !== null) {
-      const air = clampNonNeg(m - c.gateTaxiMin)
-      return { min: Math.round(Math.max(c.localFlightMinMin, air)), source: 'gate' }
+      return { min: Math.round(Math.max(c.localFlightMinMin, m - c.gateTaxiMin)), source: 'gate' }
     }
   }
   // 4a. zero-distance local flight with no usable times -> default
