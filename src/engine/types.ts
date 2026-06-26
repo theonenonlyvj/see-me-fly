@@ -73,6 +73,8 @@ export interface EnrichedFlight {
   delayMin: number | null
   depHourLocal: number | null  // 0-23 from raw local takeoff/gate-dep, no tz shift
   arrHourLocal: number | null
+  depUtcMs: number | null      // absolute departure instant (UTC ms), tz-resolved; null if no usable time/tz
+  arrUtcMs: number | null      // absolute arrival instant (UTC ms), tz-resolved; null if no usable time/tz
   canceled: boolean
   diverted: boolean
   flown: boolean
@@ -92,5 +94,7 @@ export interface Settings {
   explicitlyUnique: boolean
   includeCanceled: boolean
   excludeBeforeDate: string | null  // "YYYY-MM-DD" or null
+  home: string | null               // home airport CODE (e.g. "DFW"); compared via airportKey() so it matches grouped/ungrouped tokens
+  layoverMaxHours: number           // a connection counts as a layover when the gap is <= this many hours
   duration: DurationConstants
 }

@@ -43,6 +43,21 @@ describe('enrichFlight', () => {
     expect(f.distanceMi).toBeNull()
   })
 
+  it('computes absolute UTC instants from local times + airport tz (arr after dep)', () => {
+    const raw = one('2022-05-01,AAL,100,DFW,ORD,,,,,false,,2022-05-01T08:00:00,,2022-05-01T08:20:00,2022-05-01T08:25:00,2022-05-01T10:00:00,2022-05-01T09:55:00,2022-05-01T10:10:00,2022-05-01T10:20:00,Boeing 777,,,,,,,,id,,,,,')
+    const f = enrichFlight(raw, TODAY, C)
+    expect(typeof f.depUtcMs).toBe('number')
+    expect(typeof f.arrUtcMs).toBe('number')
+    expect(f.arrUtcMs!).toBeGreaterThan(f.depUtcMs!)
+  })
+
+  it('leaves UTC instants null when the row has no usable times', () => {
+    const raw = one('2026-08-22,AAL,2,DFW,LAX,,,,,false,,,,,,,,,,Airbus A321,,,,,,,,,,,')
+    const f = enrichFlight(raw, TODAY, C)
+    expect(f.depUtcMs).toBeNull()
+    expect(f.arrUtcMs).toBeNull()
+  })
+
   it('marks a future-dated row as not flown', () => {
     const raw = one('2026-08-22,AAL,2,DFW,LAX,,,,,false,,,,,,,,,,Airbus A321,,,,,,,,,,,')
     const f = enrichFlight(raw, TODAY, C)

@@ -10,6 +10,8 @@ export const DEFAULT_SETTINGS: Settings = {
   explicitlyUnique: false,
   includeCanceled: false,
   excludeBeforeDate: null,
+  home: 'DFW',
+  layoverMaxHours: 5,
   duration: DEFAULT_DURATION_CONSTANTS,
 }
 

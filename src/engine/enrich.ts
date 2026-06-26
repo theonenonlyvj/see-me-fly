@@ -1,7 +1,7 @@
 import type { EnrichedFlight, RawFlight, DurationConstants } from './types'
 import { lookupAirport, lookupAirline, classifyAircraft } from './reference'
 import { haversineMi } from './distance'
-import { computeDuration } from './duration'
+import { computeDuration, localToUtcMs } from './duration'
 import { overrideFor, type FlightOverride } from './overrides'
 
 function hourOf(localIso: string): number | null {
@@ -56,6 +56,15 @@ export function enrichFlight(
 
   const airlineName = lookupAirline(raw.airlineCode) ?? (raw.airlineCode || 'Unknown airline')
 
+  // Absolute instants: resolve local wall-clock against the endpoint's IANA tz.
+  // Source preference mirrors depHourLocal/arrHourLocal. Null when no usable string or no tz.
+  const depUtcMs = from
+    ? localToUtcMs(raw.takeoffActual || raw.gateDepActual || raw.takeoffSched || raw.gateDepSched, from.tz)
+    : null
+  const arrUtcMs = to
+    ? localToUtcMs(raw.landingActual || raw.gateArrActual || raw.landingSched || raw.gateArrSched, to.tz)
+    : null
+
   return {
     id: raw.flightyId || `row:${raw.rawIndex}`,
     rawIndex: raw.rawIndex,
@@ -76,6 +85,8 @@ export function enrichFlight(
     delayMin,
     depHourLocal: hourOf(raw.takeoffActual || raw.gateDepActual || raw.takeoffSched || raw.gateDepSched),
     arrHourLocal: hourOf(raw.landingActual || raw.gateArrActual || raw.landingSched || raw.gateArrSched),
+    depUtcMs,
+    arrUtcMs,
     canceled: raw.canceled,
     diverted,
     flown,
