@@ -11,3 +11,25 @@ afterEach(async () => {
     cleanup()
   }
 })
+
+// Node 26 defines `globalThis.localStorage` as a getter returning `undefined`,
+// which prevents vitest's jsdom environment from installing jsdom's localStorage.
+// Re-install from the jsdom instance (set by vitest as `globalThis.jsdom`) so
+// tests can use `localStorage` directly. Guarded so node-env files are unaffected.
+if (typeof document !== 'undefined') {
+  const jsdomInstance = (globalThis as Record<string, unknown>).jsdom as { window?: { localStorage?: Storage; sessionStorage?: Storage } } | undefined
+  if (jsdomInstance?.window?.localStorage) {
+    Object.defineProperty(globalThis, 'localStorage', {
+      value: jsdomInstance.window.localStorage,
+      writable: true,
+      configurable: true,
+    })
+  }
+  if (jsdomInstance?.window?.sessionStorage) {
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: jsdomInstance.window.sessionStorage,
+      writable: true,
+      configurable: true,
+    })
+  }
+}
