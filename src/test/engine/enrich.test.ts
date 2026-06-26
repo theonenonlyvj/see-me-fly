@@ -1,8 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { enrichFlight } from '../../engine/enrich'
 import { DEFAULT_DURATION_CONSTANTS as C } from '../../engine/constants'
-import { parseFlightyCsv } from '../../engine/parse'
-import { REQUIRED_COLUMNS } from '../../engine/parse'
+import { parseFlightyCsv, REQUIRED_COLUMNS } from '../../engine/parse'
 
 const H = REQUIRED_COLUMNS.join(',')
 const one = (line: string) => parseFlightyCsv([H, line].join('\n')).rows[0]
@@ -63,5 +62,24 @@ describe('enrichFlight', () => {
     const f = enrichFlight(raw, TODAY, C)
     expect(f.excluded).toBe(false)
     expect(f.durationMin).toBe(20)
+  })
+
+  it('a durationMinOverride wins over the computed duration', () => {
+    const raw = one('2018-01-01,AAL,1,DFW,ORD,,,,,false,,2018-01-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,')
+    const f = enrichFlight(raw, TODAY, C, () => ({ signature: 'x', durationMinOverride: 99 }))
+    expect(f.durationMin).toBe(99)
+    expect(f.durationSource).toBe('override')
+  })
+
+  it('a distanceMiOverride wins over the computed distance', () => {
+    const raw = one('2018-01-01,AAL,1,DFW,ORD,,,,,false,,2018-01-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,')
+    const f = enrichFlight(raw, TODAY, C, () => ({ signature: 'x', distanceMiOverride: 123 }))
+    expect(f.distanceMi).toBe(123)
+  })
+
+  it('an exclude override marks the flight excluded', () => {
+    const raw = one('2018-01-01,AAL,1,DFW,ORD,,,,,false,,2018-01-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,')
+    const f = enrichFlight(raw, TODAY, C, () => ({ signature: 'x', exclude: true }))
+    expect(f.excluded).toBe(true)
   })
 })

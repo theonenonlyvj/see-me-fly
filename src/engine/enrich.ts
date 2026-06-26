@@ -2,17 +2,22 @@ import type { EnrichedFlight, RawFlight, DurationConstants } from './types'
 import { lookupAirport, lookupAirline, classifyAircraft } from './reference'
 import { haversineMi } from './distance'
 import { computeDuration } from './duration'
-import { overrideFor } from './overrides'
+import { overrideFor, type FlightOverride } from './overrides'
 
 function hourOf(localIso: string): number | null {
   const m = /T(\d{2}):/.exec(localIso)
   return m ? Number(m[1]) : null
 }
 
-export function enrichFlight(raw: RawFlight, today: string, constants: DurationConstants): EnrichedFlight {
-  const ov = overrideFor(raw)
+export function enrichFlight(
+  raw: RawFlight,
+  today: string,
+  constants: DurationConstants,
+  lookupOverride: (r: RawFlight) => FlightOverride | null = overrideFor,
+): EnrichedFlight {
+  const ov = lookupOverride(raw)
   const fromCode = (ov?.from ?? raw.fromCode).toUpperCase()
-  const diverted = raw.divertedToCode !== ''
+  const diverted = !!raw.divertedToCode
   const effectiveToRaw = ov?.to ?? (diverted ? raw.divertedToCode : raw.toCode)
   const toCode = effectiveToRaw.toUpperCase()
   const intendedToCode = diverted ? raw.toCode.toUpperCase() : null
