@@ -3,7 +3,9 @@ import {
   byCountry, superDomestic, intercontinental,
   extremeFlights, byMonth, byYearMonthMatrix, hourHistogram,
   byAircraft, byTail, delayStats, geoExtremes, odometer, records,
+  commonLayovers,
 } from '../../engine/stats'
+import type { EnrichedFlight } from '../../engine/types'
 import { enrichFlight } from '../../engine/enrich'
 import { parseFlightyCsv, REQUIRED_COLUMNS } from '../../engine/parse'
 import { DEFAULT_DURATION_CONSTANTS as C } from '../../engine/constants'
@@ -620,5 +622,43 @@ describe('records', () => {
   it('milestones returns empty when none of [100,500,1000] <= flight count', () => {
     const result = records([fA, fB], TODAY2)
     expect(result.milestones).toEqual([])
+  })
+})
+
+describe('commonLayovers', () => {
+  const HR = 3_600_000
+  const BASE = Date.parse('2020-01-01T00:00:00Z')
+  // hand-build minimal flights — commonLayovers only reads resolved/isLocalFlight/from-toCode/utc instants/rawIndex/date
+  const FL = (o: Partial<EnrichedFlight>): EnrichedFlight => ({
+    resolved: true, isLocalFlight: false, rawIndex: 0, date: '2020-01-01',
+    fromCode: 'AAA', toCode: 'BBB', arrUtcMs: null, depUtcMs: null,
+    ...o,
+  } as EnrichedFlight)
+
+  it('detects a connection within the threshold (2h layover at DFW)', () => {
+    const a = FL({ rawIndex: 0, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 10 * HR, arrUtcMs: BASE + 11 * HR })
+    const b = FL({ rawIndex: 1, fromCode: 'DFW', toCode: 'LAX', depUtcMs: BASE + 13 * HR, arrUtcMs: BASE + 15 * HR })
+    const res = commonLayovers([a, b], S({ groupAirports: false, layoverMaxHours: 5 }))
+    expect(res).toHaveLength(1)
+    expect(res[0]).toMatchObject({ key: 'DFW', airportCode: 'DFW', count: 1, avgGapMin: 120 })
+  })
+
+  it('ignores a gap longer than the threshold', () => {
+    const a = FL({ rawIndex: 0, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 10 * HR, arrUtcMs: BASE + 11 * HR })
+    const b = FL({ rawIndex: 1, fromCode: 'DFW', toCode: 'LAX', depUtcMs: BASE + 20 * HR, arrUtcMs: BASE + 22 * HR })
+    expect(commonLayovers([a, b], S({ groupAirports: false, layoverMaxHours: 5 }))).toHaveLength(0)
+  })
+
+  it('does not count when you do not re-depart the same airport', () => {
+    const a = FL({ rawIndex: 0, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 10 * HR, arrUtcMs: BASE + 11 * HR })
+    const b = FL({ rawIndex: 1, fromCode: 'ORD', toCode: 'LAX', depUtcMs: BASE + 13 * HR, arrUtcMs: BASE + 15 * HR })
+    expect(commonLayovers([a, b], S({ groupAirports: false, layoverMaxHours: 5 }))).toHaveLength(0)
+  })
+
+  it('aggregates under the metro group name when grouping is on', () => {
+    const a = FL({ rawIndex: 0, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 10 * HR, arrUtcMs: BASE + 11 * HR })
+    const b = FL({ rawIndex: 1, fromCode: 'DFW', toCode: 'LAX', depUtcMs: BASE + 13 * HR, arrUtcMs: BASE + 15 * HR })
+    const res = commonLayovers([a, b], S({ groupAirports: true, layoverMaxHours: 5 }))
+    expect(res[0].key).toBe('Dallas')
   })
 })

@@ -17,6 +17,7 @@ import { distanceCard } from './DistanceCard'
 import { airportsCard } from './AirportsCard'
 import { airlinesCard } from './AirlinesCard'
 import { routesCard } from './RoutesCard'
+import { layoversCard } from './LayoversCard'
 import { countriesCard } from './CountriesCard'
 import { superDomesticCard } from './SuperDomesticCard'
 import { intercontinentalCard } from './IntercontinentalCard'
@@ -34,7 +35,7 @@ import { mapCard } from './MapCard'
 export const CARDS: CardDef[] = [
   mapCard,
   overviewCard, odometerCard,
-  airportsCard, routesCard, airlinesCard, distanceCard,
+  airportsCard, routesCard, layoversCard, airlinesCard, distanceCard,
   countriesCard, superDomesticCard, intercontinentalCard, geoExtremesCard,
   whenYouFlyCard, intensityCard,
   aircraftCard, sameMetalCard,

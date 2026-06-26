@@ -1,6 +1,6 @@
 import type { EnrichedFlight, Airport, Settings } from './types'
 import { classifyRoute } from './classify'
-import { routeKey } from './normalize'
+import { routeKey, airportKey } from './normalize'
 import { countryName, regionName } from './reference'
 import { haversineMi } from './distance'
 import { milestones } from './aggregate'
@@ -93,6 +93,62 @@ export function byCountry(flights: EnrichedFlight[], _settings: Settings): Count
   }
 
   return result.sort((a, b) => b.count - a.count)
+}
+
+export interface LayoverEntry {
+  key: string          // display key (metro group name when grouping, else airport code)
+  airportCode: string  // the actual connecting airport code
+  count: number        // number of connections through here
+  avgGapMin: number    // mean layover length in minutes
+}
+
+/**
+ * Common layover (connection) airports. A layover is a consecutive pair of flights
+ * where you land at airport X and depart X again within `settings.layoverMaxHours`.
+ * Flights are ordered chronologically by absolute departure instant (falling back to
+ * date when an instant is missing). A pair counts when both legs are resolved,
+ * non-local, A.toCode === B.fromCode, both instants are known, and
+ * 0 < (B.depUtcMs − A.arrUtcMs) ≤ threshold. Aggregated by display key, sorted desc by count.
+ */
+export function commonLayovers(flights: EnrichedFlight[], settings: Settings): LayoverEntry[] {
+  const maxGapMs = settings.layoverMaxHours * 3_600_000
+  const sortMs = (f: EnrichedFlight) => {
+    if (f.depUtcMs != null) return f.depUtcMs
+    const t = Date.parse(f.date)
+    return Number.isFinite(t) ? t : 0
+  }
+  const ordered = [...flights].sort((a, b) => sortMs(a) - sortMs(b) || a.rawIndex - b.rawIndex)
+
+  // per connecting airport CODE
+  const perCode = new Map<string, { count: number; totalGap: number }>()
+  for (let i = 0; i + 1 < ordered.length; i++) {
+    const A = ordered[i]
+    const B = ordered[i + 1]
+    if (!A.resolved || !B.resolved) continue
+    if (A.isLocalFlight || B.isLocalFlight) continue
+    if (A.toCode !== B.fromCode) continue
+    if (A.arrUtcMs == null || B.depUtcMs == null) continue
+    const gap = B.depUtcMs - A.arrUtcMs
+    if (gap <= 0 || gap > maxGapMs) continue
+    const cur = perCode.get(A.toCode) ?? { count: 0, totalGap: 0 }
+    cur.count += 1
+    cur.totalGap += gap
+    perCode.set(A.toCode, cur)
+  }
+
+  // collapse to display key (metro group when grouping)
+  const byKey = new Map<string, { count: number; totalGap: number; code: string }>()
+  for (const [code, v] of perCode) {
+    const dispKey = airportKey(code, settings.groupAirports)
+    const cur = byKey.get(dispKey) ?? { count: 0, totalGap: 0, code }
+    cur.count += v.count
+    cur.totalGap += v.totalGap
+    byKey.set(dispKey, cur)
+  }
+
+  return [...byKey.entries()]
+    .map(([key, v]) => ({ key, airportCode: v.code, count: v.count, avgGapMin: Math.round(v.totalGap / v.count / 60000) }))
+    .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
 }
 
 /** The 3 sub-intercontinental route tiers, in display order */

@@ -82,6 +82,14 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
           style={{ background: 'var(--bg-card)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px' }} />
       </label>
 
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        Count a connection as a layover when under
+        <input type="number" min={1} step={1} value={settings.layoverMaxHours}
+          onChange={(e) => update({ layoverMaxHours: Math.max(1, Number(e.target.value) || 1) })}
+          style={{ ...fieldStyle, width: 56 }} />
+        hours
+      </label>
+
       <button onClick={() => setShowAdvanced((v) => !v)} style={{ justifySelf: 'start', background: 'transparent', border: 'none', color: 'var(--text-dim)', padding: 0, textDecoration: 'underline' }}>
         {showAdvanced ? 'Hide advanced' : 'Advanced (duration estimate)'}
       </button>
