@@ -2087,7 +2087,7 @@ Date,Airline,Flight,From,To,Dep Terminal,Dep Gate,Arr Terminal,Arr Gate,Canceled
 2018-02-01,UAL,400,DFW,SFO,,,,,false,,2018-02-01T07:00,,,,,,,,Boeing 737,N6,,,,,,,g6,,,,,
 2018-02-02,UAL,401,OAK,DAL,,,,,false,,2018-02-02T07:00,,,,,,,,Boeing 737,N7,,,,,,,g7,,,,,
 2018-02-03,UAL,402,SFO,DFW,,,,,false,,2018-02-03T07:00,,,,,,,,Boeing 737,N8,,,,,,,g8,,,,,
-2013-08-18,,,RPJ,RPJ,,,,,false,,2013-08-18T12:00,,,,,,2013-08-18T12:30,,DHC-6 Twin Otter,N901ST,,,,,,,,,,,
+2013-08-18,,,RPJ,RPJ,,,,,false,,2013-08-18T12:00,,,,,,2013-08-18T12:30,,DHC-6 Twin Otter,N901ST,,,,,,,,,,,,
 2019-09-01,HAL,500,HNL,DFW,,,,,false,,2019-09-01T08:00,,,,,,,,Airbus A330,N9,,,,,,,g10,,,,,
 2020-01-01,AAL,600,ZZZ,DFW,,,,,false,,2020-01-01T09:00,,,,,,,,Boeing 737,N10,,,,,,,g11,,,,,
 2026-08-22,AAL,700,DFW,LAX,,,,,false,,2026-08-22T09:00,,,,,,,,Airbus A321,N11,,,,,,,g12,,,,,
