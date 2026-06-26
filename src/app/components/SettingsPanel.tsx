@@ -81,6 +81,25 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
       </label>
 
       <Toggle label="Treat A→B and B→A as different routes (explicitly unique)" checked={settings.explicitlyUnique} onChange={(v) => update({ explicitlyUnique: v })} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+        <span>Split into states:</span>
+        {([['US', 'USA'], ['MX', 'Mexico'], ['IN', 'India']] as const).map(([code, label]) => (
+          <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={(settings.splitCountriesByState ?? []).includes(code)}
+              onChange={(e) => {
+                const cur = new Set(settings.splitCountriesByState ?? [])
+                if (e.target.checked) cur.add(code); else cur.delete(code)
+                update({ splitCountriesByState: [...cur] })
+              }}
+            />
+            {label}
+          </label>
+        ))}
+        <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>(states rank inline, e.g. "Texas (USA)")</span>
+      </div>
+
       <Toggle label="Include canceled flights" checked={settings.includeCanceled} onChange={(v) => update({ includeCanceled: v })} />
       <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input type="checkbox" checked={settings.excludeBeforeDate !== null} onChange={(e) => update({ excludeBeforeDate: e.target.checked ? '2001-01-01' : null })} />

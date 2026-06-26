@@ -25,6 +25,11 @@ export function flightsByAirportCode(flights: EnrichedFlight[], code: string): E
   return flights.filter((f) => f.resolved && (f.fromCode === code || (!f.isLocalFlight && f.toCode === code)))
 }
 
+/** Flights touching an ISO region (state/province) code, e.g. "US-TX". */
+export function flightsByRegion(flights: EnrichedFlight[], region: string): EnrichedFlight[] {
+  return flights.filter((f) => f.resolved && (f.from?.region === region || (!f.isLocalFlight && f.to?.region === region)))
+}
+
 /** Flights on a given airline (by resolved name). */
 export function flightsByAirline(flights: EnrichedFlight[], name: string): EnrichedFlight[] {
   return flights.filter((f) => f.airlineName === name)

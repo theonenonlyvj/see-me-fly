@@ -96,5 +96,6 @@ export interface Settings {
   excludeBeforeDate: string | null  // "YYYY-MM-DD" or null
   home: string | null               // home airport CODE (e.g. "DFW"); compared via airportKey() so it matches grouped/ungrouped tokens
   layoverMaxHours: number           // a connection counts as a layover when the gap is <= this many hours
+  splitCountriesByState: string[]   // country codes (subset of US/MX/IN) whose states rank inline as their own rows
   duration: DurationConstants
 }

@@ -12,7 +12,7 @@ const mk = (line: string) => enrichFlight(parseFlightyCsv([H, line].join('\n')).
 const route = (from: string, to: string, date = '2018-01-01') =>
   mk(`${date},AAL,1,${from},${to},,,,,false,,${date}T09:00,,,,,,,,Boeing 737,,,,,,,,,,,`)
 const S = (over: Partial<Settings> = {}): Settings => ({
-  groupAirports: false, explicitlyUnique: true, includeCanceled: false, excludeBeforeDate: null, home: null, layoverMaxHours: 5, duration: C, ...over,
+  groupAirports: false, explicitlyUnique: true, includeCanceled: false, excludeBeforeDate: null, home: null, layoverMaxHours: 5, splitCountriesByState: [], duration: C, ...over,
 })
 
 describe('filter', () => {
