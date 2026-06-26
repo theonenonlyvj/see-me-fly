@@ -22,7 +22,14 @@ import { superDomesticCard } from './SuperDomesticCard'
 import { intercontinentalCard } from './IntercontinentalCard'
 import { aircraftCard } from './AircraftCard'
 import { delaysCard } from './DelaysCard'
+import { sameMetalCard } from './SameMetalCard'
+import { shortestCard } from './ShortestCard'
+import { longestCard } from './LongestCard'
+import { odometerCard } from './OdometerCard'
+import { recordsCard } from './RecordsCard'
+import { geoExtremesCard } from './GeoExtremesCard'
 export const CARDS: CardDef[] = [
   overviewCard, distanceCard, airportsCard, airlinesCard, routesCard,
   countriesCard, superDomesticCard, intercontinentalCard, aircraftCard, delaysCard,
+  sameMetalCard, shortestCard, longestCard, odometerCard, recordsCard, geoExtremesCard,
 ]
