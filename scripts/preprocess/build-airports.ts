@@ -40,7 +40,7 @@ async function main() {
       country: (r.iso_country || '').trim(),
       region: (r.iso_region || '').trim(),
       continent: (r.continent || '').trim(),
-      tz,
+      tz, // '' = tz unresolved -> engine falls back to the distance-based duration estimate (spec §4.2)
     })
   }
   writeFileSync(OUT, JSON.stringify(out))

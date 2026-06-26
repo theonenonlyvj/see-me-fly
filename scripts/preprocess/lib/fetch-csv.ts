@@ -9,5 +9,9 @@ export async function fetchCsv(url: string): Promise<Record<string, string>[]> {
     skipEmptyLines: true,
     worker: false,
   })
+  if (parsed.errors.length) {
+    const sample = parsed.errors.slice(0, 3).map((e) => e.message).join('; ')
+    console.warn(`CSV parse warnings (${parsed.errors.length}): ${sample}`)
+  }
   return parsed.data
 }

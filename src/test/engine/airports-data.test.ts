@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import airports from '../../reference/airports.json'
 
-type Rec = { iata: string | null; localCode: string | null; ident: string; lat: number; lon: number; country: string; region: string; continent: string; tz: string }
+type Rec = { iata: string | null; localCode: string | null; ident: string; name: string; municipality: string; lat: number; lon: number; country: string; region: string; continent: string; tz: string }
 
 const byIata = (code: string) => (airports as Rec[]).find((a) => a.iata === code)
 const byLocal = (code: string) => (airports as Rec[]).find((a) => a.localCode === code)
@@ -15,6 +15,7 @@ describe('airports.json', () => {
     expect(dfw.region).toBe('US-TX')
     expect(dfw.continent).toBe('NA')
     expect(dfw.tz).toBe('America/Chicago')
+    expect(dfw.name).toMatch(/Dallas/i)
   })
   it('includes HNL on continent OC (Hawaii)', () => {
     expect(byIata('HNL')!.continent).toBe('OC')
@@ -24,6 +25,7 @@ describe('airports.json', () => {
     expect(rpj).toBeTruthy()
     expect(rpj.iata).toBeNull()
     expect(rpj.region).toBe('US-IL')
+    expect(rpj.continent).toBe('NA')
   })
   it('includes MEX with a Mexico City region code', () => {
     expect(byIata('MEX')!.region).toMatch(/^MX-/)
