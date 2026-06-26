@@ -4,3 +4,4 @@ dist/
 *.local
 .superpowers/
 src/test/fixtures/real-sample.csv
+design-mockups/
