@@ -374,7 +374,7 @@ export function odometer(flights: EnrichedFlight[]): {
  */
 export function records(
   flights: EnrichedFlight[],
-  today: string,
+  _today: string,
 ): {
   mostInDay: { date: string; count: number }
   busiestMonth: { ym: string; count: number }

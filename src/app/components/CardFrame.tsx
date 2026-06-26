@@ -14,7 +14,7 @@ const cardStyle: CSSProperties = {
 }
 
 export default function CardFrame({
-  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow,
+  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth,
 }: {
   title: string
   children: ReactNode
@@ -24,13 +24,18 @@ export default function CardFrame({
   accentSoft?: string
   icon?: string
   eyebrow?: string
+  fullWidth?: boolean
 }) {
   const grad = accentGrad ?? `linear-gradient(90deg, ${accent ?? 'var(--coral)'}, ${accent ?? 'var(--coral)'})`
   const soft = accentSoft ?? 'var(--hair-2)'
   const acc  = accent ?? 'var(--coral)'
 
+  const sectionStyle: CSSProperties = fullWidth
+    ? { ...cardStyle, columnSpan: 'all', breakInside: 'auto' }
+    : cardStyle
+
   return (
-    <section style={cardStyle}>
+    <section style={sectionStyle}>
       {/* top accent strip */}
       <div style={{
         position: 'absolute', left: 0, right: 0, top: 0, height: 6,

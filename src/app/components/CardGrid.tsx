@@ -14,7 +14,7 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
         className="masonry-grid"
       >
         {CARDS.map((c) => (
-          <div key={c.id} style={{ breakInside: 'avoid' }}>
+          <div key={c.id} style={c.id === 'map' ? { columnSpan: 'all' } : { breakInside: 'avoid' }}>
             {c.render({ model, settings })}
           </div>
         ))}
