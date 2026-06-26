@@ -3,3 +3,4 @@ dist/
 .DS_Store
 *.local
 .superpowers/
+src/test/fixtures/real-sample.csv

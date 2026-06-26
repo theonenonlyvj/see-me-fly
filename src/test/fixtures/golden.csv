@@ -1,0 +1,13 @@
+Date,Airline,Flight,From,To,Dep Terminal,Dep Gate,Arr Terminal,Arr Gate,Canceled,Diverted To,Gate Departure (Scheduled),Gate Departure (Actual),Take off (Scheduled),Take off (Actual),Landing (Scheduled),Landing (Actual),Gate Arrival (Scheduled),Gate Arrival (Actual),Aircraft Type Name,Tail Number,PNR,Seat,Seat Type,Cabin Class,Flight Reason,Notes,Flight Flighty ID,Airline Flighty ID,Departure Airport Flighty ID,Arrival Airport Flighty ID,Diverted To Airport Flighty ID,Aircraft Type Flighty ID
+2015-01-05,AAL,66,DFW,ORD,,,,,false,,2015-01-05T13:00,2015-01-05T13:05,2015-01-05T13:20,2015-01-05T13:25,2015-01-05T15:00,2015-01-05T14:55,2015-01-05T15:10,2015-01-05T15:08,Boeing 777,N1,,,,,,,g1,,,,,
+2015-01-10,JAL,1,HND,DFW,,,,,false,,2015-01-10T16:45,,2015-01-10T17:00,2015-01-10T17:00,2015-01-10T14:45,2015-01-10T15:00,2015-01-10T15:10,,Boeing 787,N2,,,,,,,g2,,,,,
+2016-03-01,AAL,200,AUS,DEN,,,,,false,,2016-03-01T09:00,,,,,,,,Airbus A320,N3,,,,,,,g3,,,,,
+2017-06-01,AAL,300,DFW,AUS,,,,,true,,2017-06-01T09:00,,,,,,,,Airbus A321,N4,,,,,,,g4,,,,,
+2017-06-02,AAL,301,DFW,LBB,,,,,false,SPS,2017-06-02T18:00,2017-06-02T18:10,,,,,,,Boeing 737-800,N5,,,,,,,g5,,,,,
+2018-02-01,UAL,400,DFW,SFO,,,,,false,,2018-02-01T07:00,,,,,,,,Boeing 737,N6,,,,,,,g6,,,,,
+2018-02-02,UAL,401,OAK,DAL,,,,,false,,2018-02-02T07:00,,,,,,,,Boeing 737,N7,,,,,,,g7,,,,,
+2018-02-03,UAL,402,SFO,DFW,,,,,false,,2018-02-03T07:00,,,,,,,,Boeing 737,N8,,,,,,,g8,,,,,
+2013-08-18,,,RPJ,RPJ,,,,,false,,2013-08-18T12:00,,,,,,2013-08-18T12:30,,DHC-6 Twin Otter,N901ST,,,,,,,,,,,,
+2019-09-01,HAL,500,HNL,DFW,,,,,false,,2019-09-01T08:00,,,,,,,,Airbus A330,N9,,,,,,,g10,,,,,
+2020-01-01,AAL,600,ZZZ,DFW,,,,,false,,2020-01-01T09:00,,,,,,,,Boeing 737,N10,,,,,,,g11,,,,,
+2026-08-22,AAL,700,DFW,LAX,,,,,false,,2026-08-22T09:00,,,,,,,,Airbus A321,N11,,,,,,,g12,,,,,
