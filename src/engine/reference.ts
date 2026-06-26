@@ -14,7 +14,7 @@ for (const a of records) {
   for (const k of keys) {
     if (!k) continue
     const key = k.toUpperCase()
-    if (!airportIndex.has(key)) airportIndex.set(key, a) // IATA wins (inserted first via order below)
+    if (!airportIndex.has(key)) airportIndex.set(key, a) // first-wins for non-IATA keys; IATA precedence enforced by the second pass below
   }
 }
 // Ensure IATA takes precedence: re-insert IATA keys last-wins by overwriting.
