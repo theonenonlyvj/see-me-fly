@@ -1,0 +1,42 @@
+{
+  "name": "flight-visualizer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pp:airports": "tsx scripts/preprocess/build-airports.ts",
+    "pp:airlines": "tsx scripts/preprocess/build-airlines.ts",
+    "pp:regions": "tsx scripts/preprocess/build-regions.ts",
+    "pp:size": "tsx scripts/preprocess/size-check.ts",
+    "preprocess": "npm run pp:airports && npm run pp:airlines && npm run pp:regions && npm run pp:size"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "papaparse": "^5.4.1",
+    "luxon": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.10.0",
+    "@types/papaparse": "^5.3.15",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "tz-lookup": "^6.1.25",
+    "vite": "^6.0.0",
+    "vite-plugin-singlefile": "^2.1.0",
+    "vitest": "^2.1.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.21.5": true,
+    "esbuild@0.25.12": true
+  }
+}
