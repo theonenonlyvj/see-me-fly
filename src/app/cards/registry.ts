@@ -33,8 +33,11 @@ import { intensityCard } from './IntensityCard'
 import { mapCard } from './MapCard'
 export const CARDS: CardDef[] = [
   mapCard,
-  overviewCard, distanceCard, airportsCard, airlinesCard, routesCard,
-  countriesCard, superDomesticCard, intercontinentalCard, aircraftCard, delaysCard,
-  sameMetalCard, shortestCard, longestCard, odometerCard, recordsCard, geoExtremesCard,
+  overviewCard, odometerCard,
+  airportsCard, routesCard, airlinesCard, distanceCard,
+  countriesCard, superDomesticCard, intercontinentalCard, geoExtremesCard,
   whenYouFlyCard, intensityCard,
+  aircraftCard, sameMetalCard,
+  recordsCard, delaysCard,
+  shortestCard, longestCard,
 ]
