@@ -14,7 +14,7 @@ describe('reference lookups', () => {
   it('resolves airline names with override fallthrough', () => {
     expect(lookupAirline('AAL')).toMatch(/American/i)
     expect(lookupAirline('NOZ')).toBe('Norse Atlantic Airways')
-    expect(lookupAirline('ZZZ')).toBeNull()
+    expect(lookupAirline('QZX')).toBeNull()
   })
   it('maps DFW and DAL to the Dallas group', () => {
     expect(airportToGroup.get('DFW')).toBe('Dallas')
