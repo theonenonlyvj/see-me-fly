@@ -2,6 +2,8 @@ import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { superDomestic } from '../../engine/stats'
+import { displayRouteString } from '../lib/places'
+import type { Settings } from '../../engine'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#ff7a14'
@@ -14,8 +16,8 @@ const TIER_LABELS: Record<string, string> = {
   'intra-continent': 'Intra-continent',
 }
 
-function TierSection({ tier, routes }: { tier: string; routes: { key: string; count: number }[] }) {
-  const rows: BarRow[] = routes.slice(0, 6).map((r) => ({ label: r.key, value: r.count }))
+function TierSection({ tier, routes, settings }: { tier: string; routes: { key: string; count: number }[]; settings: Settings }) {
+  const rows: BarRow[] = routes.slice(0, 6).map((r) => ({ label: displayRouteString(r.key, settings), value: r.count }))
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{
@@ -57,7 +59,7 @@ export const superDomesticCard: CardDef = {
           <p style={{ color: 'var(--ink-2)' }}>No domestic routes found.</p>
         ) : (
           tiers.map((t) => (
-            <TierSection key={t.tier} tier={t.tier} routes={t.routes} />
+            <TierSection key={t.tier} tier={t.tier} routes={t.routes} settings={ctx.settings} />
           ))
         )}
       </CardFrame>

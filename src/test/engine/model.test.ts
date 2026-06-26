@@ -34,7 +34,7 @@ describe('golden model', () => {
   })
   it('§5.2: group on + unique off collapses the 3 Bay/Dallas legs to 1 route', () => {
     const m = buildModel(csv, S({ groupAirports: true, explicitlyUnique: false }), TODAY)
-    const r = m.byRoute.filter((x) => x.key.includes('Dallas') && x.key.includes('SF Bay'))
+    const r = m.byRoute.filter((x) => x.key.includes('Dallas') && x.key.includes('Bay Area'))
     expect(r).toHaveLength(1)
     expect(r[0].count).toBe(3)
   })

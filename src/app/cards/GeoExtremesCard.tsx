@@ -1,6 +1,7 @@
 import CardFrame from '../components/CardFrame'
 import { fmtMiles } from '../lib/format'
 import { geoExtremes } from '../../engine/stats'
+import { lookupAirport } from '../../engine/reference'
 import type { Airport } from '../../engine'
 import type { CardContext, CardDef } from './registry'
 
@@ -39,7 +40,8 @@ export const geoExtremesCard: CardDef = {
   accent: ACCENT,
   icon: '🧭',
   render: (ctx: CardContext) => {
-    const result = geoExtremes(ctx.model!.scoped)
+    const homeAp = ctx.settings.home ? lookupAirport(ctx.settings.home) : null
+    const result = geoExtremes(ctx.model!.scoped, homeAp ? { lat: homeAp.lat, lon: homeAp.lon } : undefined)
 
     return (
       <CardFrame

@@ -1,34 +1,14 @@
 import { useState } from 'react'
 import CardFrame from '../components/CardFrame'
 import { fmtInt, fmtMiles } from '../lib/format'
+import { displayRoute } from '../lib/places'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#6a3cff'
 const ACCENT_GRAD = 'linear-gradient(90deg, #6a3cff, #9a6bff)'
 const ACCENT_SOFT = '#ebe4ff'
 
-/** Split a route key like "A ↔ B" or "A → B" into two endpoints. */
-function splitRoute(key: string): [string, string] | null {
-  const sep = key.includes('↔') ? '↔' : key.includes('→') ? '→' : null
-  if (!sep) return null
-  const parts = key.split(sep).map((s) => s.trim())
-  if (parts.length !== 2) return null
-  return [parts[0], parts[1]]
-}
-
-/** Return the route label with Dallas leading if present; original key otherwise. */
-function routeLabel(key: string): { left: string; right: string; sep: string } | null {
-  const m = splitRoute(key)
-  if (!m) return null
-  const [a, b] = m
-  const sep = key.includes('↔') ? '↔' : '→'
-  const aDallas = a.toLowerCase().includes('dallas')
-  const bDallas = b.toLowerCase().includes('dallas')
-  if (bDallas && !aDallas) return { left: b, right: a, sep }
-  return { left: a, right: b, sep }
-}
-
-function Routes({ model }: CardContext) {
+function Routes({ model, settings }: CardContext) {
   const [metric, setMetric] = useState<'count' | 'miles'>('count')
   const peak = Math.max(...model!.byRoute.map((r) => metric === 'count' ? r.count : r.miles), 1)
 
@@ -60,7 +40,7 @@ function Routes({ model }: CardContext) {
       {toggle}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
         {shown.map((r) => {
-          const parts = routeLabel(r.key)
+          const parts = displayRoute(r.key, settings)
           const value = metric === 'count' ? r.count : Math.round(r.miles)
           const pct = (value / peak) * 100
           // parenthetical: in #flights view show avg miles; in miles view show count

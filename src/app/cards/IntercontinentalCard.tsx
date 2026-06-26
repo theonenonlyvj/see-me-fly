@@ -2,6 +2,7 @@ import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { intercontinental } from '../../engine/stats'
+import { displayRouteString } from '../lib/places'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#6a3cff'
@@ -16,7 +17,7 @@ export const intercontinentalCard: CardDef = {
   icon: '🌐',
   render: (ctx: CardContext) => {
     const routes = intercontinental(ctx.model!.scoped, ctx.settings)
-    const rows: BarRow[] = routes.slice(0, 10).map((r) => ({ label: r.key, value: r.count }))
+    const rows: BarRow[] = routes.slice(0, 10).map((r) => ({ label: displayRouteString(r.key, ctx.settings), value: r.count }))
     return (
       <CardFrame
         title="Intercontinental"

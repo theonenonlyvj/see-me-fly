@@ -308,15 +308,15 @@ export function delayStats(flights: EnrichedFlight[]): {
   return { onTimePct, counted, mostDelayed, canceled, diverted }
 }
 
-const HOME = { lat: 32.8968, lon: -97.0380 } // DFW
+const HOME = { lat: 32.8968, lon: -97.0380 } // DFW (default home)
 
 /**
  * Geographic extremes over the distinct RESOLVED airports touched by all flights.
  * north=max lat, south=min lat, east=max lon, west=min lon.
- * farthest = airport with max haversineMi(HOME, airport).
+ * farthest = airport with max haversineMi(home, airport); `home` defaults to DFW.
  * Returns null if no resolved airports found.
  */
-export function geoExtremes(flights: EnrichedFlight[]): {
+export function geoExtremes(flights: EnrichedFlight[], home: { lat: number; lon: number } = HOME): {
   north: Airport
   south: Airport
   east: Airport
@@ -336,14 +336,14 @@ export function geoExtremes(flights: EnrichedFlight[]): {
   let east = airports[0]
   let west = airports[0]
   let farthestAirport = airports[0]
-  let farthestMiles = haversineMi(HOME.lat, HOME.lon, airports[0].lat, airports[0].lon)
+  let farthestMiles = haversineMi(home.lat, home.lon, airports[0].lat, airports[0].lon)
 
   for (const ap of airports.slice(1)) {
     if (ap.lat > north.lat) north = ap
     if (ap.lat < south.lat) south = ap
     if (ap.lon > east.lon) east = ap
     if (ap.lon < west.lon) west = ap
-    const d = haversineMi(HOME.lat, HOME.lon, ap.lat, ap.lon)
+    const d = haversineMi(home.lat, home.lon, ap.lat, ap.lon)
     if (d > farthestMiles) {
       farthestMiles = d
       farthestAirport = ap

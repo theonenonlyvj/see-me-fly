@@ -4,7 +4,7 @@
   { "name": "New York", "airports": ["JFK", "LGA", "EWR", "HPN", "ISP"] },
   { "name": "Washington DC", "airports": ["IAD", "DCA", "BWI"] },
   { "name": "Chicago", "airports": ["ORD", "MDW"] },
-  { "name": "SF Bay", "airports": ["SFO", "OAK", "SJC"] },
+  { "name": "Bay Area", "airports": ["SFO", "OAK", "SJC"] },
   { "name": "Los Angeles", "airports": ["LAX", "BUR", "SNA", "ONT", "LGB"] },
   { "name": "South Florida", "airports": ["MIA", "FLL", "PBI"] },
   { "name": "London", "airports": ["LHR", "LGW", "STN", "LTN", "LCY", "SEN"] },
