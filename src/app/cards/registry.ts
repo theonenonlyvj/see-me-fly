@@ -28,8 +28,11 @@ import { longestCard } from './LongestCard'
 import { odometerCard } from './OdometerCard'
 import { recordsCard } from './RecordsCard'
 import { geoExtremesCard } from './GeoExtremesCard'
+import { whenYouFlyCard } from './WhenYouFlyCard'
+import { intensityCard } from './IntensityCard'
 export const CARDS: CardDef[] = [
   overviewCard, distanceCard, airportsCard, airlinesCard, routesCard,
   countriesCard, superDomesticCard, intercontinentalCard, aircraftCard, delaysCard,
   sameMetalCard, shortestCard, longestCard, odometerCard, recordsCard, geoExtremesCard,
+  whenYouFlyCard, intensityCard,
 ]
