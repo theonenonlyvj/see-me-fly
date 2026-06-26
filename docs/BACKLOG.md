@@ -22,6 +22,10 @@ It's **self-imposed, not a real constraint.** I set a 4 MB "sanity ceiling" in t
 7. **Drag-to-reorder cards + persist layout preference** (to localStorage settings). "Moving cards around dynamically could be nice."
 8. Real airline LOGOS bundled (currently monogram circles + country-flag emoji).
 
+## FUTURE DIRECTION (website + generic branding)
+9. **May become a hosted website.** When deployed as a site (network available), we can **fetch airport/airline reference data from a LIVE source/API** instead of bundling the ~6.3 MB `airports.json` → much smaller payload + always-current data. Keep the **bundled** path for the offline double-click single-file; add a **live-data mode** for the website build (e.g. a small `reference-source` adapter: bundled vs fetched). The engine's `lookupAirport`/`lookupAirline` would call the adapter. (Live IATA/airport DB options: OurAirports hosted CSV, or an airports API.)
+10. **Generic branding — stop saying "Flighty export."** Call it a **"flight logs CSV"** (or "flight history CSV") in all USER-FACING copy: the Dropzone prompt ("Drop your flight logs CSV"), the validation error ("doesn't look like a flight logs CSV…"), wordmark/help text. It accepts any CSV matching the expected columns — not Flighty-specific. (Engine `REQUIRED_COLUMNS` still matches the Flighty schema internally; just don't brand it Flighty to the user.) App name stays "Flight Visualizer" (or TBD).
+
 ## Carry-forwards from build (also in gitignored ledgers)
 - Milestones order at day-granularity; carry `gateDepSched` onto `EnrichedFlight` for sub-day precision (spec §6.2).
 - Per-card aggregations recompute on render (fine at 1,758 flights; memoize ctx if perf matters).
