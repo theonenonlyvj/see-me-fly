@@ -15,7 +15,7 @@ export const aircraftCard: CardDef = {
   accent: ACCENT,
   icon: '✈️',
   render: (ctx: CardContext) => {
-    const { byClass, byType } = byAircraft(ctx.model!.scoped)
+    const { byClass, byType } = byAircraft(ctx.model!.scoped, ctx.settings.groupAircraftFamilies)
 
     const classRows: BarRow[] = byClass.map((c) => ({ label: c.cls, value: c.count }))
     const topTypes: BarRow[] = byType.slice(0, 5).map((t) => ({ label: t.type, value: t.count }))

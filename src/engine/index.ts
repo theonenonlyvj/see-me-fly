@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: Settings = {
   home: 'DFW',
   layoverMaxHours: 5,
   splitCountriesByState: [],
+  groupAircraftFamilies: false,
   duration: DEFAULT_DURATION_CONSTANTS,
 }
 

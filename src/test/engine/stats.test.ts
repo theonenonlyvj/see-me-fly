@@ -18,7 +18,7 @@ const route = (from: string, to: string, date = '2018-01-01') =>
   mk(`${date},AAL,1,${from},${to},,,,,false,,${date}T09:00,,,,,,,,Boeing 737,,,,,,,,,,,`)
 
 const S = (over: Partial<Settings> = {}): Settings => ({
-  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: null, layoverMaxHours: 5, splitCountriesByState: [], duration: C, ...over,
+  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: null, layoverMaxHours: 5, splitCountriesByState: [], groupAircraftFamilies: false, duration: C, ...over,
 })
 
 // 3-flight fixture:
@@ -622,6 +622,23 @@ describe('records', () => {
   it('milestones returns empty when none of [100,500,1000] <= flight count', () => {
     const result = records([fA, fB], TODAY2)
     expect(result.milestones).toEqual([])
+  })
+})
+
+describe('byAircraft family grouping', () => {
+  const af = (type: string): EnrichedFlight => ({ aircraftType: type, aircraftClass: 'narrow' } as EnrichedFlight)
+  it('collapses same-model sub-variants when grouping is on, keeping different models apart', () => {
+    const fs = [af('Boeing 737-800'), af('Boeing 737-700'), af('Boeing 777-300 ER'), af('Airbus A320neo'), af('Airbus A320')]
+    const g = byAircraft(fs, true)
+    expect(g.byType.find((t) => t.type === 'Boeing 737')?.count).toBe(2)
+    expect(g.byType.find((t) => t.type === 'Boeing 777')?.count).toBe(1)
+    expect(g.byType.find((t) => t.type === 'Airbus A320')?.count).toBe(2)
+  })
+  it('keeps raw variant strings when grouping is off', () => {
+    const fs = [af('Boeing 737-800'), af('Boeing 737-700')]
+    const u = byAircraft(fs, false)
+    expect(u.byType.find((t) => t.type === 'Boeing 737-800')?.count).toBe(1)
+    expect(u.byType.find((t) => t.type === 'Boeing 737-700')?.count).toBe(1)
   })
 })
 

@@ -30,6 +30,11 @@ export function flightsByRegion(flights: EnrichedFlight[], region: string): Enri
   return flights.filter((f) => f.resolved && (f.from?.region === region || (!f.isLocalFlight && f.to?.region === region)))
 }
 
+/** Flights flown by a specific tail number (same physical aircraft). */
+export function flightsByTail(flights: EnrichedFlight[], tail: string): EnrichedFlight[] {
+  return flights.filter((f) => f.tail === tail)
+}
+
 /** Flights on a given airline (by resolved name). */
 export function flightsByAirline(flights: EnrichedFlight[], name: string): EnrichedFlight[] {
   return flights.filter((f) => f.airlineName === name)

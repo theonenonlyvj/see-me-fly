@@ -100,6 +100,8 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
         <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>(states rank inline, e.g. "Texas (USA)")</span>
       </div>
 
+      <Toggle label="Group aircraft variants (e.g. 737-700 + 737-800 → 737, A320 + A320neo → A320)" checked={settings.groupAircraftFamilies} onChange={(v) => update({ groupAircraftFamilies: v })} />
+
       <Toggle label="Include canceled flights" checked={settings.includeCanceled} onChange={(v) => update({ includeCanceled: v })} />
       <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <input type="checkbox" checked={settings.excludeBeforeDate !== null} onChange={(e) => update({ excludeBeforeDate: e.target.checked ? '2001-01-01' : null })} />

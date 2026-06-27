@@ -52,6 +52,16 @@ describe('timezone-aware duration', () => {
     expect(min).toBe(C.localFlightDefaultMin) // 20
   })
 
+  it('a degenerate "actual" (takeoff == landing) is rejected and falls through to the estimate', () => {
+    const from = lookupAirport('DAL')!
+    const to = lookupAirport('OKC')!
+    // both actual timestamps identical -> 0 air time -> must NOT be reported as a 0-min "actual"
+    const raw = blankRaw({ takeoffActual: '2014-01-07T13:00', landingActual: '2014-01-07T13:00' })
+    const { min, source } = computeDuration({ from, to, raw, distanceMi: 175, constants: C })
+    expect(source).toBe('estimate')
+    expect(min).toBeGreaterThan(0)
+  })
+
   it('never returns a negative duration', () => {
     const from = lookupAirport('HND')!
     const to = lookupAirport('DFW')!

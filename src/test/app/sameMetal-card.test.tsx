@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { sameMetalCard } from '../../app/cards/SameMetalCard'
+import { OverlayProvider, useOverlay } from '../../app/components/Overlay'
 import { buildModel, DEFAULT_SETTINGS } from '../../engine'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
 
@@ -45,5 +47,16 @@ describe('sameMetalCard', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{sameMetalCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
     expect(screen.queryByText('N55555')).not.toBeInTheDocument()
+  })
+
+  it('clicking a tail opens its flight list', async () => {
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    function Harness() {
+      const overlay = useOverlay()
+      return <>{sameMetalCard.render({ model, settings: DEFAULT_SETTINGS, overlay })}</>
+    }
+    render(<OverlayProvider><Harness /></OverlayProvider>)
+    await userEvent.click(screen.getByText('N12345'))
+    expect(await screen.findByText(/Flights on/)).toBeInTheDocument()
   })
 })

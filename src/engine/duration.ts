@@ -14,7 +14,9 @@ function pairMinutes(aIso: string, aTz: string, bIso: string, bTz: string): numb
   return (b - a) / 60000
 }
 
-const clampNonNeg = (n: number) => Math.max(0, n)
+// Faster than any airliner's ground speed (incl. strong tailwinds, ~600-650mph real). A time-based
+// air time implying more than this for the route's distance is bad data, not a real short flight.
+const MAX_GROUND_MPH = 700
 
 export function computeDuration(args: {
   from: Airport | null
@@ -27,22 +29,34 @@ export function computeDuration(args: {
   const fromTz = from?.tz ?? ''
   const toTz = to?.tz ?? ''
 
+  // A time-based tier is accepted only if it yields a POSITIVE, physically-plausible duration.
+  // Degenerate pairs (takeoff == landing, or near-equal/date-only timestamps common in older Flighty
+  // exports) compute to <= 0 or an impossibly small air time for the distance; rather than report a
+  // 0/1/3-minute "actual", we fall through to the next-best source so the flight still gets a
+  // realistic estimate. (Fixed ~29% of one real export whose 0-minute actuals polluted totals,
+  // averages, and the shortest-flights view.)
+  const plausible = (m: number | null): m is number => {
+    if (m === null || m <= 0) return false
+    if (distanceMi !== null && distanceMi > 0 && m < (distanceMi / MAX_GROUND_MPH) * 60) return false
+    return true
+  }
+
   // 1. actual air time
   if (raw.takeoffActual && raw.landingActual && fromTz && toTz) {
     const m = pairMinutes(raw.takeoffActual, fromTz, raw.landingActual, toTz)
-    if (m !== null) return { min: Math.round(clampNonNeg(m)), source: 'actual' }
+    if (plausible(m)) return { min: Math.round(m), source: 'actual' }
   }
   // 2. scheduled air time
   if (raw.takeoffSched && raw.landingSched && fromTz && toTz) {
     const m = pairMinutes(raw.takeoffSched, fromTz, raw.landingSched, toTz)
-    if (m !== null) return { min: Math.round(clampNonNeg(m)), source: 'scheduled' }
+    if (plausible(m)) return { min: Math.round(m), source: 'scheduled' }
   }
   // 3. gate-to-gate (actual then scheduled) minus taxi allowance
   const gateDep = raw.gateDepActual || raw.gateDepSched
   const gateArr = raw.gateArrActual || raw.gateArrSched
   if (gateDep && gateArr && fromTz && toTz) {
     const m = pairMinutes(gateDep, fromTz, gateArr, toTz)
-    if (m !== null) {
+    if (m !== null && m > 0) {
       return { min: Math.round(Math.max(c.localFlightMinMin, m - c.gateTaxiMin)), source: 'gate' }
     }
   }

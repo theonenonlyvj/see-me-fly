@@ -50,4 +50,20 @@ export function classifyAircraft(typeName: string): AircraftClass {
   return 'unclassified'
 }
 
+/**
+ * Collapse "close enough" aircraft sub-variants of the SAME base model into one family:
+ *   Boeing 737-700 / 737-800 / 737 MAX 8  -> "Boeing 737"   (777 variants -> "Boeing 777", kept SEPARATE)
+ *   Airbus A320 / A320neo                  -> "Airbus A320"  (A319 / A321 kept separate)
+ *   Airbus A330-300 / A330-200             -> "Airbus A330"
+ * Different model NUMBERS stay distinct. Other manufacturers are returned unchanged.
+ */
+export function aircraftFamily(typeName: string): string {
+  if (!typeName) return typeName
+  const boeing = typeName.match(/^(Boeing 7\d7)\b/)
+  if (boeing) return boeing[1]
+  const airbus = typeName.match(/^(Airbus A\d{3})/)
+  if (airbus) return airbus[1]
+  return typeName
+}
+
 export type { Continent }

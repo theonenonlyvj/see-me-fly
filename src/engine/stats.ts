@@ -1,7 +1,7 @@
 import type { EnrichedFlight, Airport, Settings } from './types'
 import { classifyRoute } from './classify'
 import { routeKey, airportKey } from './normalize'
-import { countryName, regionName } from './reference'
+import { countryName, regionName, aircraftFamily } from './reference'
 import { haversineMi } from './distance'
 import { milestones } from './aggregate'
 
@@ -237,6 +237,10 @@ export function extremeFlights(
 ): EnrichedFlight[] {
   const metric = (f: EnrichedFlight) => by === 'distance' ? f.distanceMi : f.durationMin
   let filtered = flights.filter(f => metric(f) !== null)
+  if (dir === 'short') {
+    // a 0-or-negative metric is a data artifact, never a real "shortest" flight
+    filtered = filtered.filter(f => (metric(f) as number) > 0)
+  }
   if (by === 'distance' && dir === 'short') {
     filtered = filtered.filter(f => !f.isLocalFlight)
   }
@@ -299,7 +303,7 @@ export function hourHistogram(flights: EnrichedFlight[], which: 'dep' | 'arr'): 
  * byClass: all non-empty aircraftClass values (including 'unclassified'), sorted desc.
  * byType: excludes blank aircraftType strings, sorted desc.
  */
-export function byAircraft(flights: EnrichedFlight[]): {
+export function byAircraft(flights: EnrichedFlight[], groupFamilies = false): {
   byClass: { cls: string; count: number }[]
   byType: { type: string; count: number }[]
 } {
@@ -310,7 +314,8 @@ export function byAircraft(flights: EnrichedFlight[]): {
       clsMap.set(f.aircraftClass, (clsMap.get(f.aircraftClass) ?? 0) + 1)
     }
     if (f.aircraftType !== '') {
-      typeMap.set(f.aircraftType, (typeMap.get(f.aircraftType) ?? 0) + 1)
+      const key = groupFamilies ? aircraftFamily(f.aircraftType) : f.aircraftType
+      typeMap.set(key, (typeMap.get(key) ?? 0) + 1)
     }
   }
   const byClass = [...clsMap.entries()]

@@ -36,6 +36,7 @@ describe('settings-store', () => {
     expect(loaded.groupAirports).toBe(DEFAULT_SETTINGS.groupAirports) // filled
     expect(loaded.duration).toEqual(DEFAULT_SETTINGS.duration) // nested filled
     expect(loaded.splitCountriesByState).toEqual([]) // new field defaults in for legacy blobs
+    expect(loaded.groupAircraftFamilies).toBe(false) // new field defaults in for legacy blobs
   })
 
   it('ignores a malformed blob and returns defaults', () => {
