@@ -2,6 +2,7 @@ import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { byTail } from '../../engine/stats'
+import { airlineLogos } from '../../engine/reference'
 import { flightsByTail } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
@@ -17,9 +18,14 @@ export const sameMetalCard: CardDef = {
   icon: '🔧',
   render: (ctx: CardContext) => {
     const tails = byTail(ctx.model!.scoped)
-    const shown = tails.slice(0, 10)
-    const rows: BarRow[] = shown.map((t) => ({ label: t.tail, value: t.count, id: t.tail }))
-    const N = shown.reduce((s, t) => s + t.count, 0)
+    const rows: BarRow[] = tails.map((t) => ({
+      label: t.tail,
+      value: t.count,
+      id: t.tail,
+      sub: t.airline ? (t.multipleAirlines ? `${t.airline} (+)` : t.airline) : undefined,
+      iconUrl: airlineLogos[t.airlineCode],
+    }))
+    const N = tails.reduce((s, t) => s + t.count, 0)
     const M = ctx.model!.scoped.length
 
     return (

@@ -1,5 +1,6 @@
 import CardFrame from '../components/CardFrame'
 import { monogram } from '../lib/format'
+import { airlineLogos } from '../../engine/reference'
 import { flightsByAirline } from '../lib/flight-filters'
 import type { Model } from '../state/useModel'
 import type { OverlayApi } from '../components/Overlay'
@@ -10,7 +11,7 @@ const ACCENT_GRAD = 'linear-gradient(90deg, #1aa9ff, #5ad0ff)'
 const ACCENT_SOFT = '#e0f2ff'
 
 function AirlineRows({ rows, peak, model, overlay }: {
-  rows: { name: string; count: number }[]
+  rows: { name: string; count: number; airlineCode: string }[]
   peak: number
   model: Model
   overlay?: OverlayApi
@@ -19,17 +20,24 @@ function AirlineRows({ rows, peak, model, overlay }: {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 17 }}>
       {rows.map((r) => {
         const { initials, color } = monogram(r.name)
+        const logo = airlineLogos[r.airlineCode]
         const pct = (r.count / peak) * 100
         return (
           <div key={r.name}
             onClick={() => overlay?.openFlights(r.name, flightsByAirline(model!.scoped, r.name))}
             role={overlay ? 'button' : undefined}
             style={{ display: 'grid', gridTemplateColumns: '40px 1fr auto', gap: 13, alignItems: 'center', cursor: overlay ? 'pointer' : undefined }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center',
-              fontSize: 12.5, fontWeight: 900, letterSpacing: '0.02em', color: '#fff', background: color,
-              boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.28), 0 6px 14px -5px rgba(0,0,0,0.42)',
-            }}>{initials}</div>
+            {logo ? (
+              <div style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#fff', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08), 0 6px 14px -5px rgba(0,0,0,0.30)' }}>
+                <img src={logo} alt="" width={30} height={30} style={{ objectFit: 'contain' }} />
+              </div>
+            ) : (
+              <div style={{
+                width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center',
+                fontSize: 12.5, fontWeight: 900, letterSpacing: '0.02em', color: '#fff', background: color,
+                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.28), 0 6px 14px -5px rgba(0,0,0,0.42)',
+              }}>{initials}</div>
+            )}
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>{r.name}</div>
               <div style={{ height: 10, borderRadius: 999, background: ACCENT_SOFT, overflow: 'hidden' }}>
@@ -61,7 +69,7 @@ function AirlinesList({ model, overlay }: CardContext) {
         >{`See all (${rows.length}) →`}</button>
       )}
       <div style={{ marginTop: 18, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
-        Monograms are placeholders — real airline logos land here later.
+        Logos for major carriers; a monogram stands in for the rest.
       </div>
     </div>
   )

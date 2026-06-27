@@ -380,15 +380,25 @@ export function byAircraft(flights: EnrichedFlight[], groupFamilies = false): {
  * Count flights per non-blank tail number; keep only tails with count >= minFlights.
  * Sorted desc by count, tiebreak by tail string ascending.
  */
-export function byTail(flights: EnrichedFlight[], minFlights = 2): { tail: string; count: number }[] {
-  const m = new Map<string, number>()
+export interface TailEntry { tail: string; count: number; airline: string; airlineCode: string; multipleAirlines: boolean }
+
+export function byTail(flights: EnrichedFlight[], minFlights = 2): TailEntry[] {
+  const m = new Map<string, { count: number; airlines: Map<string, number>; codes: Map<string, number> }>()
   for (const f of flights) {
     if (!f.tail) continue
-    m.set(f.tail, (m.get(f.tail) ?? 0) + 1)
+    const e = m.get(f.tail) ?? { count: 0, airlines: new Map(), codes: new Map() }
+    e.count += 1
+    if (f.airlineName && f.airlineName !== 'Unknown airline') e.airlines.set(f.airlineName, (e.airlines.get(f.airlineName) ?? 0) + 1)
+    if (f.airlineCode) e.codes.set(f.airlineCode, (e.codes.get(f.airlineCode) ?? 0) + 1)
+    m.set(f.tail, e)
   }
   return [...m.entries()]
-    .filter(([, count]) => count >= minFlights)
-    .map(([tail, count]) => ({ tail, count }))
+    .filter(([, e]) => e.count >= minFlights)
+    .map(([tail, e]) => {
+      const topAirline = [...e.airlines.entries()].sort((a, b) => b[1] - a[1])[0]
+      const topCode = [...e.codes.entries()].sort((a, b) => b[1] - a[1])[0]
+      return { tail, count: e.count, airline: topAirline?.[0] ?? '', airlineCode: topCode?.[0] ?? '', multipleAirlines: e.airlines.size > 1 }
+    })
     .sort((a, b) => b.count - a.count || a.tail.localeCompare(b.tail))
 }
 

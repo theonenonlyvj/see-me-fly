@@ -36,9 +36,19 @@ export function byRoute(flights: EnrichedFlight[], settings: Settings): { key: s
   return [...m].map(([key, v]) => ({ key, ...v })).sort((a, b) => b.count - a.count)
 }
 
-export function byAirline(flights: EnrichedFlight[]): { name: string; count: number }[] {
-  const m = countMap(flights, (f) => (f.airlineName === 'Unknown airline' ? null : f.airlineName))
-  return [...m].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count)
+export function byAirline(flights: EnrichedFlight[]): { name: string; count: number; airlineCode: string }[] {
+  const m = new Map<string, { count: number; codes: Map<string, number> }>()
+  for (const f of flights) {
+    if (f.airlineName === 'Unknown airline') continue
+    const e = m.get(f.airlineName) ?? { count: 0, codes: new Map() }
+    e.count += 1
+    if (f.airlineCode) e.codes.set(f.airlineCode, (e.codes.get(f.airlineCode) ?? 0) + 1)
+    m.set(f.airlineName, e)
+  }
+  return [...m].map(([name, e]) => ({
+    name, count: e.count,
+    airlineCode: [...e.codes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? '',
+  })).sort((a, b) => b.count - a.count)
 }
 
 const BUCKETS: { label: string; max: number }[] = [

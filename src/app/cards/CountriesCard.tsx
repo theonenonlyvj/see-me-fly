@@ -5,6 +5,7 @@ import { byCountry } from '../../engine/stats'
 import { flightsByCountry, flightsByRegion } from '../lib/flight-filters'
 import { displayEndpoint } from '../lib/places'
 import { airportKey } from '../../engine/normalize'
+import { regionFlags } from '../../engine/reference'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#1aa9ff'
@@ -24,7 +25,11 @@ function buildRows(ctx: CardContext): BarRow[] {
       // Promote each state to its own row, ranked inline with whole countries.
       const short = SHORT[c.code] ?? c.name
       for (const r of c.regions) {
-        rows.push({ label: `${c.flag} ${r.name} (${short})`.trim(), value: r.count, id: `r:${r.region}` })
+        const stateFlag = regionFlags[r.region]
+        rows.push({
+          label: stateFlag ? `${r.name} (${short})` : `${c.flag} ${r.name} (${short})`.trim(),
+          value: r.count, id: `r:${r.region}`, iconUrl: stateFlag,
+        })
       }
     } else {
       // Whole-country row; for US/IN/MX keep the expandable state breakdown.

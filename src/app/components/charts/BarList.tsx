@@ -5,6 +5,8 @@ export interface BarRow {
   label: string
   value: number
   sub?: string
+  /** optional small leading icon (flag/logo data-URI) */
+  iconUrl?: string
   /** Stable identifier (country code, route key, …) passed back to onRowClick. */
   id?: string
   /** Optional nested breakdown; when present the row's `sub` text becomes an expand toggle. */
@@ -33,6 +35,7 @@ function Row({ r, peak, acc, grad, soft, formatValue, onClick }: {
         style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '7px 14px', alignItems: 'baseline', cursor: onClick ? 'pointer' : undefined }}
       >
         <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          {r.iconUrl && <img src={r.iconUrl} alt="" width={16} height={16} style={{ borderRadius: 3, flexShrink: 0 }} />}
           {r.label}
           {r.sub && (hasSub ? (
             <button
