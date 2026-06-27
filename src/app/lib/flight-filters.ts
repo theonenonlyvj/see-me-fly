@@ -1,5 +1,6 @@
 import type { EnrichedFlight, Settings } from '../../engine'
 import { airportKey, routeKey } from '../../engine/normalize'
+import { domesticTierOf } from '../../engine/stats'
 
 /** Most-recent-first ordering for flight lists. */
 export function sortRecent(flights: EnrichedFlight[]): EnrichedFlight[] {
@@ -48,6 +49,16 @@ export function flightsByAirline(flights: EnrichedFlight[], name: string): Enric
 /** Flights on a given route key (respects grouping + directionality settings). */
 export function flightsByRouteKey(flights: EnrichedFlight[], key: string, settings: Settings): EnrichedFlight[] {
   return flights.filter((f) => routeKey(f, settings) === key)
+}
+
+/** All flights in a super-domestic tier (intra-state / intra-country / intra-continent). */
+export function flightsByDomesticTier(flights: EnrichedFlight[], tier: 'intra-state' | 'intra-country' | 'intra-continent', settings: Settings): EnrichedFlight[] {
+  return flights.filter((f) => domesticTierOf(f, settings) === tier)
+}
+
+/** Flights whose distance falls in [loMi, hiMi) — matches the distance-band aggregation. */
+export function flightsByDistanceBand(flights: EnrichedFlight[], loMi: number, hiMi: number): EnrichedFlight[] {
+  return flights.filter((f) => f.distanceMi != null && f.distanceMi > 0 && f.distanceMi >= loMi && f.distanceMi < hiMi)
 }
 
 /** Intercontinental flights crossing a given (unordered) continent pair, e.g. "EU|NA". */

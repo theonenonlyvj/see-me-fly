@@ -163,18 +163,27 @@ const DOMESTIC_TIERS: Array<'intra-state' | 'intra-country' | 'intra-continent'>
  * Within each tier, counts occurrences by routeKey. Tiers with no routes are omitted.
  * Returned in order: intra-state, intra-country, intra-continent.
  */
+/**
+ * Which super-domestic tier a flight belongs to (or null if intercontinental/unclassifiable).
+ * intra-state is scoped to the HOME state: a same-state route in another state is just same-country.
+ */
+export function domesticTierOf(f: EnrichedFlight, settings: Settings): 'intra-state' | 'intra-country' | 'intra-continent' | null {
+  let cls = classifyRoute(f)
+  if (!cls || cls === 'intercontinental') return null
+  const homeRegion = settings.home ? (lookupAirport(settings.home)?.region ?? null) : null
+  if (cls === 'intra-state' && homeRegion && f.from && f.from.region !== homeRegion) cls = 'intra-country'
+  return cls
+}
+
 export function superDomestic(
   flights: EnrichedFlight[],
   settings: Settings,
 ): { tier: 'intra-state' | 'intra-country' | 'intra-continent'; routes: { key: string; count: number }[] }[] {
-  // intra-state is scoped to the HOME state: a same-state route in another state is just same-country.
-  const homeRegion = settings.home ? (lookupAirport(settings.home)?.region ?? null) : null
   const tierRoutes = new Map<string, Map<string, number>>()
 
   for (const f of flights) {
-    let cls = classifyRoute(f)
-    if (!cls || cls === 'intercontinental') continue
-    if (cls === 'intra-state' && homeRegion && f.from && f.from.region !== homeRegion) cls = 'intra-country'
+    const cls = domesticTierOf(f, settings)
+    if (!cls) continue
 
     const key = routeKey(f, settings)
     if (key === null) continue

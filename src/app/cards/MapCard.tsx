@@ -26,7 +26,7 @@ function MapView(ctx: CardContext) {
           </button>
         ))}
       </div>
-      <WorldMap flights={ctx.model!.scoped} accent="var(--accent-4)" mode={mode} />
+      <WorldMap flights={ctx.model!.scoped} accent="var(--accent-4)" mode={mode} groupAirports={ctx.settings.groupAirports} />
       <p style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
         {mode === 'routes' ? 'Great-circle routes; thicker = flown more often.' : 'Bubble size & color = how often you visit each airport.'}
       </p>
