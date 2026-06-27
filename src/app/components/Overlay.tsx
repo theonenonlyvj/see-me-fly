@@ -4,6 +4,7 @@ import type { EnrichedFlight } from '../../engine'
 import { fmtDuration, fmtMiles } from '../lib/format'
 import { sortRecent } from '../lib/flight-filters'
 import FlightDetail from './FlightDetail'
+import { WorldMap } from './charts/WorldMap'
 
 export interface OverlayApi {
   openFlights: (title: string, flights: EnrichedFlight[], subtitle?: string) => void
@@ -31,8 +32,14 @@ function FlightsBody({ flights, onOpenFlight }: { flights: EnrichedFlight[]; onO
   if (flights.length === 0) return <p style={{ color: 'var(--ink-2)' }}>No flights match this selection.</p>
   const sorted = sortRecent(flights)
   const shown = sorted.slice(0, LIST_CAP)
+  const hasRoutes = flights.some((f) => f.resolved && !f.isLocalFlight && f.from && f.to)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {hasRoutes && (
+        <div style={{ marginBottom: 14, borderRadius: 12, overflow: 'hidden' }}>
+          <WorldMap flights={flights} accent="var(--accent-4)" />
+        </div>
+      )}
       {shown.map((f) => (
         <button
           key={f.id}

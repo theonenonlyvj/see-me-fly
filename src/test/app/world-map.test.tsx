@@ -45,4 +45,11 @@ describe('WorldMap', () => {
     const arcs = c.querySelectorAll('path[data-arc]')
     expect(arcs.length).toBeGreaterThanOrEqual(1)
   })
+
+  it('heat mode draws bubbles, not arcs', () => {
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    const { container: c } = render(<WorldMap flights={model.scoped} accent="#1aa9ff" mode="heat" />)
+    expect(c.querySelectorAll('path[data-arc]').length).toBe(0)
+    expect(c.querySelectorAll('circle').length).toBeGreaterThan(0)
+  })
 })
