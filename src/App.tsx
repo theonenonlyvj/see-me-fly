@@ -8,9 +8,10 @@ import CardGrid from './app/components/CardGrid'
 import { OverlayProvider } from './app/components/Overlay'
 import { useSettings } from './app/state/useSettings'
 import { useModel } from './app/state/useModel'
+import { loadCsv, saveCsv, clearCsv } from './app/state/csv-store'
 
 export default function App() {
-  const [csv, setCsv] = useState<{ text: string; name: string } | null>(null)
+  const [csv, setCsv] = useState<{ text: string; name: string } | null>(() => loadCsv())
   const [scope, setScope] = useState<number | undefined>(undefined)
   const [showSettings, setShowSettings] = useState(false)
   const [settings, update, reset] = useSettings()
@@ -19,7 +20,10 @@ export default function App() {
   const model = useModel(csv?.text ?? null, settings, today, scope)
 
   if (!csv || !model) {
-    return <Dropzone onLoaded={(text, name) => { setCsv({ text, name }); setScope(undefined) }} />
+    return <Dropzone onLoaded={(text, name, remember) => {
+      if (remember) saveCsv(name, text); else clearCsv()
+      setCsv({ text, name }); setScope(undefined)
+    }} />
   }
 
   return (
@@ -28,7 +32,7 @@ export default function App() {
       {showSettings && (
         <div style={{ padding: 'var(--pad)' }}>
           <SettingsPanel settings={settings} update={update} reset={reset} flown={model.flown}
-            onReplace={() => { setCsv(null); setScope(undefined); setShowSettings(false) }} />
+            onReplace={() => { clearCsv(); setCsv(null); setScope(undefined); setShowSettings(false) }} />
         </div>
       )}
       <CardGrid model={model} settings={settings} />

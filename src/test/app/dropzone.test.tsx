@@ -32,4 +32,21 @@ describe('Dropzone', () => {
     expect(onLoaded).not.toHaveBeenCalled()
     expect(await screen.findByText(/doesn't look like a flight logs csv/i)).toBeInTheDocument()
   })
+
+  it('passes remember=true by default', async () => {
+    const onLoaded = vi.fn()
+    render(<Dropzone onLoaded={onLoaded} />)
+    await userEvent.upload(screen.getByTestId('file-input'), good)
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1))
+    expect(onLoaded.mock.calls[0][2]).toBe(true)
+  })
+
+  it('passes remember=false when the checkbox is unchecked', async () => {
+    const onLoaded = vi.fn()
+    render(<Dropzone onLoaded={onLoaded} />)
+    await userEvent.click(screen.getByRole('checkbox'))
+    await userEvent.upload(screen.getByTestId('file-input'), good)
+    await waitFor(() => expect(onLoaded).toHaveBeenCalledTimes(1))
+    expect(onLoaded.mock.calls[0][2]).toBe(false)
+  })
 })
