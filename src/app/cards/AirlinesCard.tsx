@@ -26,25 +26,26 @@ function AirlineRows({ rows, peak, model, overlay }: {
           <div key={r.name}
             onClick={() => overlay?.openFlights(r.name, flightsByAirline(model!.scoped, r.name))}
             role={overlay ? 'button' : undefined}
-            style={{ display: 'grid', gridTemplateColumns: '40px 1fr auto', gap: 13, alignItems: 'center', cursor: overlay ? 'pointer' : undefined }}>
-            {logo ? (
-              <div style={{ width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#fff', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08), 0 6px 14px -5px rgba(0,0,0,0.30)' }}>
-                <img src={logo} alt="" width={30} height={30} style={{ objectFit: 'contain' }} />
-              </div>
-            ) : (
-              <div style={{
-                width: 40, height: 40, borderRadius: '50%', display: 'grid', placeItems: 'center',
-                fontSize: 12.5, fontWeight: 900, letterSpacing: '0.02em', color: '#fff', background: color,
-                boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.28), 0 6px 14px -5px rgba(0,0,0,0.42)',
-              }}>{initials}</div>
-            )}
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', marginBottom: 8 }}>{r.name}</div>
-              <div style={{ height: 10, borderRadius: 999, background: ACCENT_SOFT, overflow: 'hidden' }}>
-                <div style={{ height: '100%', borderRadius: 999, width: `${pct}%`, background: ACCENT_GRAD, boxShadow: `0 0 14px -2px color-mix(in srgb, ${ACCENT} 75%, transparent)` }} />
-              </div>
+            style={{ display: 'grid', gridTemplateColumns: '1fr auto', columnGap: 14, rowGap: 9, alignItems: 'center', cursor: overlay ? 'pointer' : undefined }}>
+            {/* real brand wordmark when we have one, else a monogram badge + name */}
+            <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: 10, height: 26 }}>
+              {logo ? (
+                <img src={logo} alt={r.name} title={r.name} style={{ height: 22, width: 'auto', maxWidth: 156, objectFit: 'contain', objectPosition: 'left center' }} />
+              ) : (
+                <>
+                  <span style={{
+                    width: 28, height: 28, flexShrink: 0, borderRadius: 9, display: 'grid', placeItems: 'center',
+                    fontSize: 11, fontWeight: 900, letterSpacing: '0.02em', color: '#fff', background: color,
+                    boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.28), 0 5px 12px -5px rgba(0,0,0,0.42)',
+                  }}>{initials}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                </>
+              )}
             </div>
             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{r.count}</div>
+            <div style={{ gridColumn: '1 / -1', height: 10, borderRadius: 999, background: ACCENT_SOFT, overflow: 'hidden' }}>
+              <div style={{ height: '100%', borderRadius: 999, width: `${pct}%`, background: ACCENT_GRAD, boxShadow: `0 0 14px -2px color-mix(in srgb, ${ACCENT} 75%, transparent)` }} />
+            </div>
           </div>
         )
       })}
