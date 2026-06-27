@@ -23,7 +23,7 @@ const OVERRIDE = {
   'MX-SLP': 'Flag of San Luis Potosi.svg',
 }
 
-const FLAG_PX = 48 // displayed ~16px; 48 is crisp at 3x yet tiny as PNG
+const FLAG_PX = 40 // displayed as a ~14px chip; 40 stays crisp yet keeps the full set inside the bundle budget
 const stripDiacritics = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
 const filePath = (name) => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(name)
 
