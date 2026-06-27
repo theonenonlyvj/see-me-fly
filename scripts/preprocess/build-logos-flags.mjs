@@ -30,14 +30,18 @@ const AIRLINES = [
   ['ACA', 'AC'], ['WJA', 'WS'], ['AMX', 'AM'], ['VOI', 'Y4'], ['LAN', 'LA'], ['TAM', 'JJ'], ['AVA', 'AV'], ['CMP', 'CM'], ['AZU', 'AD'], ['GLO', 'G3'],
   ['RYR', 'FR'], ['EZY', 'U2'], ['WZZ', 'W6'], ['VLG', 'VY'], ['NAX', 'DY'], ['EWG', 'EW'], ['ROU', 'RV'],
   ['JZA', 'QK'], ['SKW', 'OO'], ['RPA', 'YX'], ['ENY', 'MQ'], ['ASH', 'YV'], ['QXE', 'QX'], ['EDV', '9E'], ['PDT', 'PT'], ['JIA', 'OH'], ['GJS', 'G7'],
+  // carriers in Vijay's data + historical/defunct (Kiwi has icons for most of these)
+  ['BEL', 'SN'], ['AFL', 'SU'], ['ALK', 'UL'], ['UZB', 'HY'], ['NOZ', 'Z0'], ['JSX', 'XE'], ['KFR', 'IT'],
+  ['COA', 'CO'], ['AWE', 'US'], ['JAI', '9W'], ['VRD', 'VX'], ['TRS', 'FL'], ['JLL', 'S2'], ['EWG', 'EW'], ['LAN', 'LA'], ['BAW', 'BA'],
 ]
+// Kiwi serves SQUARE airline ICONS (not wordmarks) by IATA. 303 = no logo → skip (monogram fallback).
 const logos = {}
 for (const [icao, iata] of AIRLINES) {
   try {
-    const r = await fetch(`https://pics.avs.io/80/80/${iata}.png`)
-    if (r.ok) {
+    const r = await fetch(`https://images.kiwi.com/airlines/64/${iata}.png`, { redirect: 'manual' })
+    if (r.status === 200) {
       const buf = Buffer.from(await r.arrayBuffer())
-      if (buf.length > 120) logos[icao] = 'data:image/png;base64,' + buf.toString('base64')
+      if (buf.length > 200) logos[icao] = 'data:image/png;base64,' + buf.toString('base64')
     }
   } catch { /* skip */ }
 }
