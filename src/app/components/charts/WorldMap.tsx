@@ -80,13 +80,15 @@ export function WorldMap({ flights, accent, mode = 'routes' }: { flights: Enrich
     }
 
     const maxAirport = Math.max(...Array.from(airportCount.values()), 1)
+    const logMax = Math.log(maxAirport + 1)
     const heatDots: { cx: number; cy: number; r: number; t: number }[] = []
     for (const [key, ap] of airportSet) {
       const p = projection([ap.lon, ap.lat])
       if (!p) continue
       const count = airportCount.get(key) ?? 1
-      const t = count / maxAirport
-      heatDots.push({ cx: p[0], cy: p[1], r: 3 + Math.sqrt(count) * 2.4, t })
+      // LOG scale so a dominant home airport (10×+ everyone else) doesn't swallow the map.
+      const t = logMax > 0 ? Math.log(count + 1) / logMax : 0 // 0..1
+      heatDots.push({ cx: p[0], cy: p[1], r: 3.5 + t * 9, t }) // capped ~3.5..12.5px
     }
     // draw biggest last (on top)
     heatDots.sort((a, b) => a.r - b.r)
@@ -118,8 +120,9 @@ export function WorldMap({ flights, accent, mode = 'routes' }: { flights: Enrich
       ) : (
         heatDots.map((h, i) => (
           <g key={i}>
-            <circle cx={h.cx} cy={h.cy} r={h.r * 2.1} fill="#f97316" opacity={0.10 + 0.16 * h.t} />
-            <circle cx={h.cx} cy={h.cy} r={h.r} fill={heatColor(h.t)} opacity={0.78} stroke="#fff" strokeWidth={0.5} />
+            {/* soft halo (modest, not a continent-sized glow) + crisp core */}
+            <circle cx={h.cx} cy={h.cy} r={h.r + 4} fill={heatColor(h.t)} opacity={0.16} />
+            <circle cx={h.cx} cy={h.cy} r={h.r} fill={heatColor(h.t)} opacity={0.62} stroke="#fff" strokeWidth={0.5} />
           </g>
         ))
       )}
