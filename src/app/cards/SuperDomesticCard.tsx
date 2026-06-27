@@ -7,81 +7,68 @@ import { flightsByRouteKey, flightsByDomesticTier } from '../lib/flight-filters'
 import { lookupAirport, regionName } from '../../engine/reference'
 import type { Settings } from '../../engine'
 import type { CardContext, CardDef } from './registry'
-import type { Model } from '../state/useModel'
-import type { OverlayApi } from '../components/Overlay'
 
-const ACCENT      = '#ff7a14'
-const ACCENT_GRAD = 'linear-gradient(90deg, #ff7a14, #ffb347)'
-const ACCENT_SOFT = '#fff3e6'
+type Tier = 'intra-state' | 'intra-country' | 'intra-continent'
 
-function TierSection({ tier, label, routes, settings, model, overlay }: {
-  tier: 'intra-state' | 'intra-country' | 'intra-continent'
-  label: string
-  routes: { key: string; count: number }[]
-  settings: Settings
-  model: Model
-  overlay?: OverlayApi
-}) {
-  const rows: BarRow[] = routes.map((r) => ({ label: displayRouteString(r.key, settings), value: r.count, id: r.key }))
-  return (
-    <div style={{ marginBottom: 22 }}>
-      <div
-        onClick={() => overlay?.openFlights(label, flightsByDomesticTier(model!.scoped, tier, settings))}
-        role={overlay ? 'button' : undefined}
-        style={{
-          fontSize: 11, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
-          color: ACCENT, marginBottom: 10, cursor: overlay ? 'pointer' : undefined,
-          display: 'flex', alignItems: 'center', gap: 7,
-        }}>
-        {label}
-        {overlay && <span style={{ fontSize: 9.5, opacity: 0.7, letterSpacing: 0 }}>map ↗</span>}
-      </div>
-      <BarList
-        rows={rows}
-        max={5}
-        seeAllTitle={label}
-        formatValue={(n) => `${n}`}
-        accent={ACCENT}
-        accentGrad={ACCENT_GRAD}
-        accentSoft={ACCENT_SOFT}
-        onRowClick={(row) => row.id && overlay?.openFlights(displayRouteString(row.id, settings), flightsByRouteKey(model!.scoped, row.id, settings))}
-      />
-    </div>
-  )
+function labelFor(tier: Tier, settings: Settings): string {
+  if (tier === 'intra-state') {
+    const region = settings.home ? lookupAirport(settings.home)?.region : undefined
+    return region ? `Within ${regionName(region)}` : 'Within your home state'
+  }
+  return tier === 'intra-country' ? 'Within a country' : 'Within a continent'
 }
 
-export const superDomesticCard: CardDef = {
-  id: 'superDomestic',
-  title: 'Super-domestic',
-  group: 'core',
-  accent: ACCENT,
-  icon: '🏠',
-  render: (ctx: CardContext) => {
-    const tiers = superDomestic(ctx.model!.scoped, ctx.settings)
-    const homeRegion = ctx.settings.home ? lookupAirport(ctx.settings.home)?.region : undefined
-    const homeState = homeRegion ? regionName(homeRegion) : null
-    const labelFor = (tier: string): string =>
-      tier === 'intra-state' ? (homeState ? `Within ${homeState}` : 'Within your home state')
-      : tier === 'intra-country' ? 'Within a country'
-      : 'Within a continent'
+function makeTierCard(tier: Tier, opts: { id: string; accent: string; grad: string; soft: string; icon: string; staticTitle: string }): CardDef {
+  return {
+    id: opts.id,
+    title: opts.staticTitle,
+    group: 'core',
+    accent: opts.accent,
+    icon: opts.icon,
+    render: (ctx: CardContext) => {
+      const label = labelFor(tier, ctx.settings)
+      const tierData = superDomestic(ctx.model!.scoped, ctx.settings).find((t) => t.tier === tier)
+      const routes = tierData?.routes ?? []
+      const flights = flightsByDomesticTier(ctx.model!.scoped, tier, ctx.settings)
+      const rows: BarRow[] = routes.map((r) => ({ label: displayRouteString(r.key, ctx.settings), value: r.count, id: r.key }))
 
-    return (
-      <CardFrame
-        title="Super-domestic"
-        eyebrow="Close to home"
-        accent={ACCENT}
-        accentGrad={ACCENT_GRAD}
-        accentSoft={ACCENT_SOFT}
-        icon="🏠"
-      >
-        {tiers.length === 0 ? (
-          <p style={{ color: 'var(--ink-2)' }}>No domestic routes found.</p>
-        ) : (
-          tiers.map((t) => (
-            <TierSection key={t.tier} tier={t.tier} label={labelFor(t.tier)} routes={t.routes} settings={ctx.settings} model={ctx.model} overlay={ctx.overlay} />
-          ))
-        )}
-      </CardFrame>
-    )
-  },
+      return (
+        <CardFrame title={label} eyebrow="Close to home" accent={opts.accent} accentGrad={opts.grad} accentSoft={opts.soft} icon={opts.icon}>
+          {flights.length === 0 ? (
+            <p style={{ color: 'var(--ink-2)' }}>No flights in this tier.</p>
+          ) : (
+            <>
+              <div
+                onClick={() => ctx.overlay?.openFlights(label, flights)}
+                role={ctx.overlay ? 'button' : undefined}
+                style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-2)', marginBottom: 14, cursor: ctx.overlay ? 'pointer' : undefined, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {flights.length} flight{flights.length === 1 ? '' : 's'}
+                {ctx.overlay && <span style={{ color: opts.accent, fontWeight: 800 }}>· on a map ↗</span>}
+              </div>
+              <BarList
+                rows={rows}
+                max={5}
+                seeAllTitle={label}
+                formatValue={(n) => `${n}`}
+                accent={opts.accent}
+                accentGrad={opts.grad}
+                accentSoft={opts.soft}
+                onRowClick={(row) => row.id && ctx.overlay?.openFlights(displayRouteString(row.id, ctx.settings), flightsByRouteKey(ctx.model!.scoped, row.id, ctx.settings))}
+              />
+            </>
+          )}
+        </CardFrame>
+      )
+    },
+  }
 }
+
+export const domesticStateCard = makeTierCard('intra-state', {
+  id: 'domesticState', accent: '#ff7a14', grad: 'linear-gradient(90deg, #ff7a14, #ffb347)', soft: '#fff3e6', icon: '🏠', staticTitle: 'Within your home state',
+})
+export const domesticCountryCard = makeTierCard('intra-country', {
+  id: 'domesticCountry', accent: '#12c08a', grad: 'linear-gradient(90deg, #12c08a, #3ad6c0)', soft: '#ddf7ee', icon: '🏙️', staticTitle: 'Within a country',
+})
+export const domesticContinentCard = makeTierCard('intra-continent', {
+  id: 'domesticContinent', accent: '#1aa9ff', grad: 'linear-gradient(90deg, #1aa9ff, #5ad0ff)', soft: '#e5f6ff', icon: '🗺️', staticTitle: 'Within a continent',
+})
