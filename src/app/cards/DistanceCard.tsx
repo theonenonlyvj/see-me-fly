@@ -19,7 +19,8 @@ export const distanceCard: CardDef = {
   render: ({ model, overlay }: CardContext) => {
     const rows = model!.distanceBuckets.map((b, i) => ({ label: b.label, value: b.count, id: String(i) }))
     return (
-      <CardFrame title="How far" eyebrow="Distance bands" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="📏">
+      <CardFrame title="How far" eyebrow="Distance bands" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="📏"
+        onTitleClick={() => overlay?.openFlights('How far', model!.scoped)}>
         <BarList rows={rows} max={rows.length} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
           onRowClick={(row) => {
             const i = Number(row.id)

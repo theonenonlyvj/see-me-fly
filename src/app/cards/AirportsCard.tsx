@@ -35,7 +35,8 @@ export const airportsCard: CardDef = {
     const rows: BarRow[] = ranked.map((a) => ({ label: `${flagFor(a.key)} ${displayEndpoint(a.key)}`.trim(), value: a.count, id: a.key }))
 
     return (
-      <CardFrame title="Most-visited airports" eyebrow="Where you land" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="📍">
+      <CardFrame title="Most-visited airports" eyebrow="Where you land" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="📍"
+        onTitleClick={() => overlay?.openFlights('Most-visited airports', model!.scoped)}>
         {homeEntry && (
           <div
             onClick={() => overlay?.openFlights(`Flights via ${displayEndpoint(homeEntry.key)}`, flightsByAirportKey(model!.scoped, homeEntry.key, settings))}

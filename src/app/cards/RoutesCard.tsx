@@ -82,7 +82,8 @@ function Routes({ model, settings, overlay }: CardContext) {
   )
 
   return (
-    <CardFrame title="Top routes" eyebrow="Your corridors" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛫">
+    <CardFrame title="Top routes" eyebrow="Your corridors" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛫"
+      onTitleClick={() => overlay?.openFlights('Top routes', model!.scoped)}>
       {toggle}
       <RouteRows routes={sorted.slice(0, 5)} metric={metric} peak={peak} settings={settings} model={model} overlay={overlay} />
       {sorted.length > 5 && (

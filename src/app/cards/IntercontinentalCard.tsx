@@ -3,7 +3,7 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { intercontinentalByPair } from '../../engine/stats'
 import { displayRouteString } from '../lib/places'
-import { flightsByContinentPair } from '../lib/flight-filters'
+import { flightsByContinentPair, flightsIntercontinental } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#6a3cff'
@@ -33,11 +33,11 @@ export const intercontinentalCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🌐"
+        onTitleClick={() => ctx.overlay?.openFlights('Intercontinental flights', flightsIntercontinental(ctx.model!.scoped))}
       >
         <BarList
           rows={rows}
-          max={5}
-          seeAllTitle="Crossing continents"
+          max={rows.length}
           formatValue={(n) => `${n}`}
           accent={ACCENT}
           accentGrad={ACCENT_GRAD}

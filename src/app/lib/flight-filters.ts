@@ -82,3 +82,13 @@ export function flightsByContinentPair(flights: EnrichedFlight[], pair: string):
     f.resolved && f.from && f.to && f.from.continent !== f.to.continent &&
     [f.from.continent, f.to.continent].sort().join('|') === pair)
 }
+
+/** All intercontinental flights (endpoints on different continents). */
+export function flightsIntercontinental(flights: EnrichedFlight[]): EnrichedFlight[] {
+  return flights.filter((f) => f.resolved && f.from && f.to && f.from.continent !== f.to.continent)
+}
+
+/** Flights flown on a given aircraft body class (wide/narrow/regional/prop/unclassified). */
+export function flightsByAircraftClass(flights: EnrichedFlight[], cls: string): EnrichedFlight[] {
+  return flights.filter((f) => f.aircraftClass === cls)
+}

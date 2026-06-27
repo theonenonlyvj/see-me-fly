@@ -14,7 +14,7 @@ const cardStyle: CSSProperties = {
 }
 
 export default function CardFrame({
-  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth,
+  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth, onTitleClick,
 }: {
   title: string
   children: ReactNode
@@ -25,6 +25,8 @@ export default function CardFrame({
   icon?: string
   eyebrow?: string
   fullWidth?: boolean
+  /** makes the header clickable → opens a subset view (with a ↗ affordance) */
+  onTitleClick?: () => void
 }) {
   const grad = accentGrad ?? `linear-gradient(90deg, ${accent ?? 'var(--coral)'}, ${accent ?? 'var(--coral)'})`
   const soft = accentSoft ?? 'var(--hair-2)'
@@ -57,7 +59,10 @@ export default function CardFrame({
       }} />
 
       {/* card header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 22, position: 'relative' }}>
+      <div
+        onClick={onTitleClick}
+        role={onTitleClick ? 'button' : undefined}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 22, position: 'relative', cursor: onTitleClick ? 'pointer' : undefined }}>
         {icon && (
           <div style={{
             width: 42, height: 42, flexShrink: 0,
@@ -93,6 +98,7 @@ export default function CardFrame({
             color: 'var(--ink)',
           }}>{title}</h2>
         </div>
+        {onTitleClick && <span style={{ marginLeft: 'auto', fontSize: 12, color: acc, fontWeight: 800, whiteSpace: 'nowrap' }}>↗ map</span>}
       </div>
 
       {children}

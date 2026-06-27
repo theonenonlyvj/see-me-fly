@@ -2,7 +2,8 @@ import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { byAircraft } from '../../engine/stats'
-import { aircraftBrand, aircraftFamily } from '../../engine/reference'
+import { aircraftBrand, aircraftFamily, classifyAircraft } from '../../engine/reference'
+import { flightsByAircraftClass } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#ff3d57'
@@ -13,7 +14,7 @@ const CLASS_LABEL: Record<string, string> = {
   wide: 'Widebody', narrow: 'Narrowbody', regional: 'Regional jet', prop: 'Propeller', unclassified: 'Unclassified',
 }
 
-// ── Card 1: aircraft class (body type) ───────────────────────────────────────
+// ── Card 1: aircraft class (body type), with type drill-down like the brand card ──────────────
 export const aircraftClassCard: CardDef = {
   id: 'aircraftClass',
   title: 'Aircraft class',
@@ -21,11 +22,28 @@ export const aircraftClassCard: CardDef = {
   accent: ACCENT,
   icon: '🛩️',
   render: (ctx: CardContext) => {
-    const { byClass } = byAircraft(ctx.model!.scoped)
-    const rows: BarRow[] = byClass.map((c) => ({ label: CLASS_LABEL[c.cls] ?? c.cls, value: c.count }))
+    const { byClass, byType } = byAircraft(ctx.model!.scoped)
+    const typesByClass = new Map<string, { type: string; count: number }[]>()
+    for (const t of byType) {
+      const cls = classifyAircraft(t.type)
+      if (!typesByClass.has(cls)) typesByClass.set(cls, [])
+      typesByClass.get(cls)!.push(t)
+    }
+    const rows: BarRow[] = byClass.map((c) => {
+      const types = (typesByClass.get(c.cls) ?? []).sort((a, b) => b.count - a.count)
+      return {
+        label: CLASS_LABEL[c.cls] ?? c.cls,
+        value: c.count,
+        sub: types.length ? `(${types.length} type${types.length === 1 ? '' : 's'})` : undefined,
+        subRows: types.map((t) => ({ label: t.type, value: t.count })),
+        id: c.cls,
+      }
+    })
     return (
-      <CardFrame title="Aircraft class" eyebrow="Body types" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛩️">
-        <BarList rows={rows} max={6} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} />
+      <CardFrame title="Aircraft class" eyebrow="Body types" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛩️"
+        onTitleClick={() => ctx.overlay?.openFlights('All flights by aircraft', ctx.model!.scoped)}>
+        <BarList rows={rows} max={rows.length} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
+          onRowClick={(row) => row.id && ctx.overlay?.openFlights(`${row.label} flights`, flightsByAircraftClass(ctx.model!.scoped, row.id))} />
       </CardFrame>
     )
   },
@@ -44,7 +62,6 @@ export const aircraftCard: CardDef = {
   icon: '✈️',
   render: (ctx: CardContext) => {
     const { byType } = byAircraft(ctx.model!.scoped)
-    // brand → { count, families, exact types }
     type BrandAgg = { count: number; families: Map<string, number>; types: { type: string; count: number }[] }
     const brands = new Map<string, BrandAgg>()
     for (const t of byType) {
@@ -67,11 +84,11 @@ export const aircraftCard: CardDef = {
     }))
 
     return (
-      <CardFrame title="Aircraft" eyebrow="By manufacturer" accent={BACCENT} accentGrad={BACCENT_GRAD} accentSoft={BACCENT_SOFT} icon="✈️">
+      <CardFrame title="Aircraft" eyebrow="By manufacturer" accent={BACCENT} accentGrad={BACCENT_GRAD} accentSoft={BACCENT_SOFT} icon="✈️"
+        onTitleClick={() => ctx.overlay?.openFlights('All flights by aircraft', ctx.model!.scoped)}>
         <BarList
           rows={rows}
-          max={6}
-          seeAllTitle="Aircraft by manufacturer"
+          max={rows.length}
           formatValue={(n) => `${n}`}
           accent={BACCENT}
           accentGrad={BACCENT_GRAD}

@@ -3,6 +3,8 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { byCountry } from '../../engine/stats'
 import { flightsByCountry, flightsByRegion } from '../lib/flight-filters'
+import { displayEndpoint } from '../lib/places'
+import { airportKey } from '../../engine/normalize'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#1aa9ff'
@@ -48,6 +50,8 @@ export const countriesCard: CardDef = {
   icon: '🌍',
   render: (ctx: CardContext) => {
     const rows = buildRows(ctx)
+    const homeExcluded = ctx.settings.excludeHomeFromRankings && ctx.settings.home
+      ? displayEndpoint(airportKey(ctx.settings.home, ctx.settings.groupAirports)) : null
     return (
       <CardFrame
         title="Countries & states"
@@ -56,6 +60,7 @@ export const countriesCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🌍"
+        onTitleClick={() => ctx.overlay?.openFlights("Where you've been", ctx.model!.scoped)}
       >
         <BarList
           rows={rows}
@@ -77,6 +82,11 @@ export const countriesCard: CardDef = {
         {(ctx.settings.splitCountriesByState ?? []).length > 0 && (
           <p style={{ marginTop: 14, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
             Split into states — choose which countries (or group them) in Settings.
+          </p>
+        )}
+        {homeExcluded && (
+          <p style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
+            Home base ({homeExcluded}) excluded from these counts — toggle in Settings.
           </p>
         )}
       </CardFrame>
