@@ -16,4 +16,12 @@ describe('CardGrid', () => {
     expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
     expect(screen.getByText(/Most-visited airports/i)).toBeInTheDocument()
   })
+
+  it('groups cards under storyline section headers', () => {
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    render(<Dashboard model={model} settings={DEFAULT_SETTINGS} />)
+    expect(screen.getByRole('heading', { name: 'The big picture' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: "Where you've been" })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'How far you go' })).toBeInTheDocument()
+  })
 })

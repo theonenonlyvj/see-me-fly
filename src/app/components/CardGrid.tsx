@@ -1,10 +1,21 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { CARDS } from '../cards/registry'
+import type { CardContext, CardDef } from '../cards/registry'
 import type { Model } from '../state/useModel'
 import type { Settings } from '../../engine'
 import { useOverlay } from './Overlay'
 
 const GAP = 24
+
+// The storyline: section title -> ordered card ids. The full-width map is the hero of section 1.
+const SECTIONS: { title: string; ids: string[] }[] = [
+  { title: 'The big picture', ids: ['overview', 'odometer'] },
+  { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes'] },
+  { title: 'How far you go', ids: ['distance', 'shortest', 'longest'] },
+  { title: 'Your routes', ids: ['routes', 'layovers', 'superDomestic', 'intercontinental'] },
+  { title: 'How you fly', ids: ['airlines', 'aircraft', 'sameMetal', 'delays'] },
+  { title: 'When you fly', ids: ['whenYouFly', 'intensity', 'records'] },
+]
 
 /** Responsive column count (3 / 2 / 1). */
 function useColumns(): number {
@@ -23,13 +34,9 @@ function useColumns(): number {
 
 interface Pos { left: number; top: number }
 
-export default function CardGrid({ model, settings }: { model: Model; settings: Settings }) {
-  const overlay = useOverlay()
-  const cols = useColumns()
-
-  const map = useMemo(() => CARDS.find((c) => c.id === 'map'), [])
-  const rest = useMemo(() => CARDS.filter((c) => c.id !== 'map'), [])
-  const ids = useMemo(() => rest.map((c) => c.id), [rest])
+/** Absolute-positioned greedy masonry over a fixed set of cards (cards never remount on reflow). */
+function Masonry({ cards, cols, ctx }: { cards: CardDef[]; cols: number; ctx: CardContext }) {
+  const ids = useMemo(() => cards.map((c) => c.id), [cards])
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const wrapRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -47,10 +54,6 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
   const colWidth = cols > 0 && containerW > 0 ? (containerW - GAP * (cols - 1)) / cols : 0
   const ready = colWidth > 0
 
-  // Greedy height-balanced packing: each card goes into the currently shortest column.
-  // Cards never move in the DOM (single flat list, stable keys) — only their absolute left/top
-  // change — so expanding one card reflows the others into neighboring columns WITHOUT remounting
-  // them (their internal state, e.g. a BarList "Show all", is preserved).
   const relayout = useCallback(() => {
     if (!ready) { setLayout({ pos: {}, height: 0 }); return }
     const colH = new Array(cols).fill(0)
@@ -64,7 +67,6 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
     setLayout({ pos, height: Math.max(0, ...colH) })
   }, [ids, cols, colWidth, ready])
 
-  // Track the container's available width.
   useLayoutEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -76,9 +78,7 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
     return () => ro.disconnect()
   }, [])
 
-  // Track each card's height; re-pack whenever one changes (an expand/collapse).
   useLayoutEffect(() => {
-    // Synchronous measure first so the initial pre-paint layout uses real heights (no flash).
     for (const id of ids) { const el = wrapRefs.current[id]; if (el) heights.current[id] = el.offsetHeight }
     relayout()
     if (typeof ResizeObserver === 'undefined') return
@@ -98,26 +98,62 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
   }, [ids, relayout])
 
   return (
+    <div ref={containerRef} style={{ position: 'relative', height: ready ? layout.height : undefined }}>
+      {cards.map((c) => {
+        const p = layout.pos[c.id]
+        const positioned = ready && p
+        return (
+          <div
+            key={c.id}
+            data-card-id={c.id}
+            ref={getSetter(c.id)}
+            style={positioned
+              ? { position: 'absolute', left: p.left, top: p.top, width: colWidth, transition: 'top .25s ease, left .25s ease' }
+              : { marginBottom: GAP }}
+          >
+            {c.render(ctx)}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, margin: '6px 0 18px' }}>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.01em', color: 'var(--ink)', margin: 0 }}>{title}</h2>
+      <div style={{ flex: 1, height: 1, background: 'var(--hair-2)' }} />
+    </div>
+  )
+}
+
+export default function CardGrid({ model, settings }: { model: Model; settings: Settings }) {
+  const overlay = useOverlay()
+  const cols = useColumns()
+  const ctx: CardContext = { model, settings, overlay }
+
+  const byId = useMemo(() => Object.fromEntries(CARDS.map((c) => [c.id, c])), [])
+  const mapCard = byId['map']
+
+  // Any registered card not placed in a section falls into a trailing "More" section (defensive).
+  const placed = new Set<string>(['map', ...SECTIONS.flatMap((s) => s.ids)])
+  const leftovers = CARDS.filter((c) => !placed.has(c.id))
+  const sections = leftovers.length ? [...SECTIONS, { title: 'More', ids: leftovers.map((c) => c.id) }] : SECTIONS
+
+  return (
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '14px 28px 80px' }}>
-      {map && <div style={{ marginBottom: GAP }}>{map.render({ model, settings, overlay })}</div>}
-      <div ref={containerRef} style={{ position: 'relative', height: ready ? layout.height : undefined }}>
-        {rest.map((c) => {
-          const p = layout.pos[c.id]
-          const positioned = ready && p
-          return (
-            <div
-              key={c.id}
-              data-card-id={c.id}
-              ref={getSetter(c.id)}
-              style={positioned
-                ? { position: 'absolute', left: p.left, top: p.top, width: colWidth, transition: 'top .25s ease, left .25s ease' }
-                : { marginBottom: GAP }}
-            >
-              {c.render({ model, settings, overlay })}
-            </div>
-          )
-        })}
-      </div>
+      {sections.map((section) => {
+        const cards = section.ids.map((id) => byId[id]).filter(Boolean) as CardDef[]
+        const isBigPicture = section.title === 'The big picture'
+        return (
+          <section key={section.title} style={{ marginBottom: 40 }}>
+            <SectionHeader title={section.title} />
+            {isBigPicture && mapCard && <div style={{ marginBottom: GAP }}>{mapCard.render(ctx)}</div>}
+            <Masonry cards={cards} cols={cols} ctx={ctx} />
+          </section>
+        )
+      })}
     </div>
   )
 }
