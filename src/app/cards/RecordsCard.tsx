@@ -1,6 +1,7 @@
 import CardFrame from '../components/CardFrame'
 import { fmtInt } from '../lib/format'
 import { records, groundGaps } from '../../engine/stats'
+import { flightsByDate, flightsByYearMonth, flightsByYear } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#ff7a14'
@@ -78,6 +79,7 @@ export const recordsCard: CardDef = {
               label="Busiest day"
               value={mostInDay.date}
               sub={`${fmtInt(mostInDay.count)} flights`}
+              onClick={() => ctx.overlay?.openFlights(`Flights on ${mostInDay.date}`, flightsByDate(ctx.model!.scoped, mostInDay.date))}
             />
           )}
           {busiestMonth.ym && (
@@ -85,6 +87,7 @@ export const recordsCard: CardDef = {
               label="Busiest month"
               value={busiestMonth.ym}
               sub={`${fmtInt(busiestMonth.count)} flights`}
+              onClick={() => ctx.overlay?.openFlights(`Flights in ${busiestMonth.ym}`, flightsByYearMonth(ctx.model!.scoped, busiestMonth.ym))}
             />
           )}
           {busiestYear.year > 0 && (
@@ -92,6 +95,7 @@ export const recordsCard: CardDef = {
               label="Busiest year"
               value={String(busiestYear.year)}
               sub={`${fmtInt(busiestYear.count)} flights`}
+              onClick={() => ctx.overlay?.openFlights(`Flights in ${busiestYear.year}`, flightsByYear(ctx.model!.scoped, busiestYear.year))}
             />
           )}
           {longestGapDays > 0 && (
@@ -114,7 +118,10 @@ export const recordsCard: CardDef = {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {milestones.map(({ ordinal, flight }) => (
-                <div key={ordinal} style={{
+                <div key={ordinal}
+                  onClick={() => ctx.overlay?.openFlight(flight)}
+                  role={ctx.overlay ? 'button' : undefined}
+                  style={{
                   background: ACCENT_SOFT,
                   border: `1px solid color-mix(in srgb, ${ACCENT} 20%, transparent)`,
                   borderRadius: 12,
@@ -122,6 +129,7 @@ export const recordsCard: CardDef = {
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
+                  cursor: ctx.overlay ? 'pointer' : undefined,
                 }}>
                   <div>
                     <span style={{ fontWeight: 800, color: ACCENT, fontSize: 14 }}>

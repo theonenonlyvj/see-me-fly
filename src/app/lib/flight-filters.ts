@@ -36,6 +36,21 @@ export function flightsByRegion(flights: EnrichedFlight[], region: string): Enri
   return flights.filter((f) => f.resolved && (f.from?.region === region || (!f.isLocalFlight && f.to?.region === region)))
 }
 
+/** Flights on a specific date (YYYY-MM-DD). */
+export function flightsByDate(flights: EnrichedFlight[], date: string): EnrichedFlight[] {
+  return flights.filter((f) => f.date === date)
+}
+
+/** Flights in a calendar month (YYYY-MM). */
+export function flightsByYearMonth(flights: EnrichedFlight[], ym: string): EnrichedFlight[] {
+  return flights.filter((f) => f.date.slice(0, 7) === ym)
+}
+
+/** Flights in a calendar year. */
+export function flightsByYear(flights: EnrichedFlight[], year: number): EnrichedFlight[] {
+  return flights.filter((f) => f.year === year)
+}
+
 /** Flights flown by a specific tail number (same physical aircraft). */
 export function flightsByTail(flights: EnrichedFlight[], tail: string): EnrichedFlight[] {
   return flights.filter((f) => f.tail === tail)
