@@ -46,10 +46,19 @@ describe('WorldMap', () => {
     expect(arcs.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('heat mode draws bubbles, not arcs', () => {
+  it('density mode draws a heat layer, not arcs', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    const { container: c } = render(<WorldMap flights={model.scoped} accent="#1aa9ff" mode="heat" />)
+    const { container: c } = render(<WorldMap flights={model.scoped} accent="#1aa9ff" mode="density" />)
     expect(c.querySelectorAll('path[data-arc]').length).toBe(0)
-    expect(c.querySelectorAll('circle').length).toBeGreaterThan(0)
+    expect(c.querySelector('g[data-heat]')).not.toBeNull()
+    expect(c.querySelectorAll('g[data-heat] circle').length).toBeGreaterThan(0)
+  })
+
+  it('choropleth mode shades countries (no arcs, no heat layer)', () => {
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    const { container: c } = render(<WorldMap flights={model.scoped} accent="#1aa9ff" mode="choropleth" />)
+    expect(c.querySelectorAll('path[data-arc]').length).toBe(0)
+    expect(c.querySelector('g[data-heat]')).toBeNull()
+    expect(c.querySelectorAll('path[data-country]').length).toBeGreaterThan(50)
   })
 })

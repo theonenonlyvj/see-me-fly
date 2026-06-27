@@ -41,10 +41,11 @@ describe('recordsCard', () => {
     expect(screen.getAllByText(/busiest/i).length).toBeGreaterThan(0)
   })
 
-  it('shows most flights in a day', () => {
+  it('shows the busiest day with its flight count', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{recordsCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    expect(screen.getByText(/most.*day|day.*most/i)).toBeInTheDocument()
+    expect(screen.getByText('Busiest day')).toBeInTheDocument()
+    expect(screen.getByText('2018-01-15')).toBeInTheDocument() // the 3-flight day
   })
 
   it('shows 100th flight milestone', () => {

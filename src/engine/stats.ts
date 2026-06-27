@@ -543,3 +543,14 @@ export function records(
     milestones: ms,
   }
 }
+
+/** Top-N longest grounded gaps (days between consecutive flight dates), with the bounding dates. */
+export function groundGaps(flights: EnrichedFlight[], n = 10): { days: number; from: string; to: string }[] {
+  const dates = [...new Set(flights.map((f) => f.date))].sort()
+  const gaps: { days: number; from: string; to: string }[] = []
+  for (let i = 1; i < dates.length; i++) {
+    const days = Math.round((Date.parse(dates[i]) - Date.parse(dates[i - 1])) / 86400000)
+    if (days > 0) gaps.push({ days, from: dates[i - 1], to: dates[i] })
+  }
+  return gaps.sort((a, b) => b.days - a.days).slice(0, n)
+}

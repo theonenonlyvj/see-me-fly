@@ -1,6 +1,6 @@
 import CardFrame from '../components/CardFrame'
 import { fmtInt } from '../lib/format'
-import { records } from '../../engine/stats'
+import { records, groundGaps } from '../../engine/stats'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#ff7a14'
@@ -13,17 +13,21 @@ function ordinalSuffix(n: number): string {
   return n + (s[(v - 20) % 10] ?? s[v] ?? s[0])
 }
 
-function StatRow({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function StatRow({ label, value, sub, onClick }: { label: string; value: string; sub?: string; onClick?: () => void }) {
   return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'baseline',
-      padding: '10px 0',
-      borderBottom: '1px solid var(--hair-2)',
-    }}>
-      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-2)', textTransform: 'capitalize' }}>
-        {label}
+    <div
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'baseline',
+        padding: '10px 0',
+        borderBottom: '1px solid var(--hair-2)',
+        cursor: onClick ? 'pointer' : undefined,
+      }}>
+      <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-2)', textTransform: 'capitalize', display: 'flex', alignItems: 'center', gap: 6 }}>
+        {label}{onClick && <span style={{ fontSize: 10, opacity: 0.7 }}>↗</span>}
       </div>
       <div style={{ textAlign: 'right' }}>
         <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
@@ -31,6 +35,20 @@ function StatRow({ label, value, sub }: { label: string; value: string; sub?: st
         </span>
         {sub && <div style={{ fontSize: 11.5, color: 'var(--ink-2)', fontWeight: 500 }}>{sub}</div>}
       </div>
+    </div>
+  )
+}
+
+function GapList({ gaps }: { gaps: { days: number; from: string; to: string }[] }) {
+  if (gaps.length === 0) return <p style={{ color: 'var(--ink-2)' }}>No grounded gaps.</p>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {gaps.map((g, i) => (
+        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 13, color: 'var(--ink)' }}>
+          <span style={{ color: 'var(--ink-2)' }}>{g.from} → {g.to}</span>
+          <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', marginLeft: 12 }}>{fmtInt(g.days)} days</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -57,9 +75,9 @@ export const recordsCard: CardDef = {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {mostInDay.count > 0 && (
             <StatRow
-              label="Most flights in a day"
-              value={`${fmtInt(mostInDay.count)} flights`}
-              sub={mostInDay.date}
+              label="Busiest day"
+              value={mostInDay.date}
+              sub={`${fmtInt(mostInDay.count)} flights`}
             />
           )}
           {busiestMonth.ym && (
@@ -80,6 +98,7 @@ export const recordsCard: CardDef = {
             <StatRow
               label="Longest grounded gap"
               value={`${fmtInt(longestGapDays)} days`}
+              onClick={() => ctx.overlay?.openList('Longest grounded gaps', <GapList gaps={groundGaps(ctx.model!.scoped, 15)} />)}
             />
           )}
         </div>

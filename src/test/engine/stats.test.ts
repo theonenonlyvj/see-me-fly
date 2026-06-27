@@ -3,7 +3,7 @@ import {
   byCountry, superDomestic, intercontinental,
   extremeFlights, byMonth, byYearMonthMatrix, hourHistogram,
   byAircraft, byTail, delayStats, geoExtremes, odometer, records,
-  commonLayovers, intercontinentalByPair,
+  commonLayovers, intercontinentalByPair, groundGaps,
 } from '../../engine/stats'
 import type { EnrichedFlight } from '../../engine/types'
 import { enrichFlight } from '../../engine/enrich'
@@ -660,6 +660,15 @@ describe('byAircraft family grouping', () => {
     const u = byAircraft(fs, false)
     expect(u.byType.find((t) => t.type === 'Boeing 737-800')?.count).toBe(1)
     expect(u.byType.find((t) => t.type === 'Boeing 737-700')?.count).toBe(1)
+  })
+})
+
+describe('groundGaps', () => {
+  it('returns the longest grounded gaps with bounding dates, sorted desc', () => {
+    const fs = [route('DFW', 'AUS', '2018-01-01'), route('DFW', 'AUS', '2018-01-10'), route('DFW', 'AUS', '2018-02-10')]
+    const gaps = groundGaps(fs, 5)
+    expect(gaps[0]).toMatchObject({ days: 31, from: '2018-01-10', to: '2018-02-10' })
+    expect(gaps[1]).toMatchObject({ days: 9, from: '2018-01-01', to: '2018-01-10' })
   })
 })
 
