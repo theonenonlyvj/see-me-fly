@@ -117,6 +117,7 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
           style={{ ...fieldStyle, width: 56 }} />
         hours
       </label>
+      <Toggle label="Exclude day-trip turnarounds from layovers (fly out & back)" checked={settings.excludeDayTrips} onChange={(v) => update({ excludeDayTrips: v })} />
 
       <button onClick={() => setShowAdvanced((v) => !v)} style={{ justifySelf: 'start', background: 'transparent', border: 'none', color: 'var(--text-dim)', padding: 0, textDecoration: 'underline' }}>
         {showAdvanced ? 'Hide advanced' : 'Advanced (duration estimate)'}

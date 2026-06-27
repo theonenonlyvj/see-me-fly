@@ -96,6 +96,7 @@ export interface Settings {
   excludeBeforeDate: string | null  // "YYYY-MM-DD" or null
   home: string | null               // home airport CODE (e.g. "DFW"); compared via airportKey() so it matches grouped/ungrouped tokens
   layoverMaxHours: number           // a connection counts as a layover when the gap is <= this many hours
+  excludeDayTrips: boolean          // when true, a turnaround (land at X then fly back to where you came from) is NOT a layover
   splitCountriesByState: string[]   // country codes (subset of US/MX/IN) whose states rank inline as their own rows
   groupAircraftFamilies: boolean    // collapse "close enough" variants (737-700+737-800 -> 737, A320+A320neo -> A320)
   duration: DurationConstants

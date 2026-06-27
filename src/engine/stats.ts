@@ -127,6 +127,8 @@ export function commonLayovers(flights: EnrichedFlight[], settings: Settings): L
     if (!A.resolved || !B.resolved) continue
     if (A.isLocalFlight || B.isLocalFlight) continue
     if (A.toCode !== B.fromCode) continue
+    // day-trip turnaround: landed at X then flew back to where we came from → not a layover
+    if (settings.excludeDayTrips && airportKey(A.fromCode, settings.groupAirports) === airportKey(B.toCode, settings.groupAirports)) continue
     if (A.arrUtcMs == null || B.depUtcMs == null) continue
     const gap = B.depUtcMs - A.arrUtcMs
     if (gap <= 0 || gap > maxGapMs) continue

@@ -18,7 +18,7 @@ const route = (from: string, to: string, date = '2018-01-01') =>
   mk(`${date},AAL,1,${from},${to},,,,,false,,${date}T09:00,,,,,,,,Boeing 737,,,,,,,,,,,`)
 
 const S = (over: Partial<Settings> = {}): Settings => ({
-  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: null, layoverMaxHours: 5, splitCountriesByState: [], groupAircraftFamilies: false, duration: C, ...over,
+  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: null, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], groupAircraftFamilies: false, duration: C, ...over,
 })
 
 // 3-flight fixture:
@@ -697,6 +697,14 @@ describe('commonLayovers', () => {
     const a = FL({ rawIndex: 0, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 10 * HR, arrUtcMs: null })
     const b = FL({ rawIndex: 1, fromCode: 'DFW', toCode: 'LAX', depUtcMs: BASE + 13 * HR, arrUtcMs: BASE + 15 * HR })
     expect(commonLayovers([a, b], S({ groupAirports: false, layoverMaxHours: 5 }))).toHaveLength(0)
+  })
+
+  it('excludes a day-trip turnaround (out and back) when excludeDayTrips is on, counts it when off', () => {
+    // DFW->AUS then AUS->DFW: at AUS you flew back to where you came from = day trip, not a layover
+    const a = FL({ rawIndex: 0, fromCode: 'DFW', toCode: 'AUS', depUtcMs: BASE + 10 * HR, arrUtcMs: BASE + 11 * HR })
+    const b = FL({ rawIndex: 1, fromCode: 'AUS', toCode: 'DFW', depUtcMs: BASE + 13 * HR, arrUtcMs: BASE + 14 * HR })
+    expect(commonLayovers([a, b], S({ groupAirports: false, excludeDayTrips: true }))).toHaveLength(0)
+    expect(commonLayovers([a, b], S({ groupAirports: false, excludeDayTrips: false }))).toHaveLength(1)
   })
 
   it('aggregates under the metro group name when grouping is on', () => {
