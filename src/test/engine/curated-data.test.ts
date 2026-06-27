@@ -8,6 +8,20 @@ describe('curated reference files', () => {
     const dallas = (groups as { name: string; airports: string[] }[]).find((g) => g.name === 'Dallas')!
     expect(dallas.airports).toEqual(expect.arrayContaining(['DFW', 'DAL']))
   })
+  it('has no airport code assigned to two different metros', () => {
+    const seen = new Map<string, string>()
+    for (const g of groups as { name: string; airports: string[] }[]) {
+      for (const code of g.airports) {
+        const prev = seen.get(code)
+        expect(prev, `${code} is in both "${prev}" and "${g.name}"`).toBeUndefined()
+        seen.set(code, g.name)
+      }
+    }
+  })
+  it('includes the worldwide metros (e.g. Dubai, Tokyo, Sao Paulo)', () => {
+    const names = (groups as { name: string }[]).map((g) => g.name)
+    expect(names).toEqual(expect.arrayContaining(['Dubai', 'Tokyo', 'Sao Paulo', 'Frankfurt', 'Melbourne']))
+  })
   it('classifies the Twin Otter / Helio as prop', () => {
     const list = classes as { pattern: string; class: string }[]
     const match = (name: string) => list.find((r) => name.toLowerCase().includes(r.pattern.toLowerCase()))?.class
