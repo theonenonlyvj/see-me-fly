@@ -2,7 +2,7 @@ import type { Settings } from './types'
 import { parseFlightyCsv } from './parse'
 import { enrichFlight } from './enrich'
 import { applyFilters } from './filter'
-import { byAirport, byRoute, byAirline, distanceBuckets, byYear, totals } from './aggregate'
+import { byAirport, byRoute, byAirline, distanceBuckets, DEFAULT_DISTANCE_EDGES, byYear, totals } from './aggregate'
 import { DEFAULT_DURATION_CONSTANTS } from './constants'
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: Settings = {
   layoverMaxHours: 5,
   excludeDayTrips: true,
   splitCountriesByState: ['US', 'IN', 'MX'],
+  distanceEdges: [...DEFAULT_DISTANCE_EDGES],
   duration: DEFAULT_DURATION_CONSTANTS,
 }
 

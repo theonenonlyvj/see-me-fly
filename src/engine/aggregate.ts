@@ -51,23 +51,38 @@ export function byAirline(flights: EnrichedFlight[]): { name: string; count: num
   })).sort((a, b) => b.count - a.count)
 }
 
-const BUCKETS: { label: string; max: number }[] = [
-  { label: '<300 mi', max: 300 },
-  { label: '300–700 mi', max: 700 },
-  { label: '700–1,500 mi', max: 1500 },
-  { label: '1,500–3,000 mi', max: 3000 },
-  { label: '3,000–6,000 mi', max: 6000 },
-  { label: '6,000+ mi', max: Infinity },
-]
+/** Default internal upper edges (mi) between distance bands; user-overridable via Settings.distanceEdges. */
+export const DEFAULT_DISTANCE_EDGES = [300, 700, 1500, 3000, 6000]
 
-export function distanceBuckets(flights: EnrichedFlight[]): { label: string; count: number }[] {
-  const counts = BUCKETS.map((b) => ({ label: b.label, count: 0 }))
+const fmtMi = (n: number) => n.toLocaleString('en-US')
+
+/** Normalize a custom edge list: positive integers only, ascending, de-duplicated; fall back to default if empty. */
+export function sanitizeEdges(edges?: number[]): number[] {
+  const clean = [...new Set((edges ?? []).filter((n) => Number.isFinite(n) && n > 0).map((n) => Math.round(n)))]
+    .sort((a, b) => a - b)
+  return clean.length ? clean : [...DEFAULT_DISTANCE_EDGES]
+}
+
+/** Distance bands from arbitrary internal edges. Each band carries lo/hi (mi) for click-through; hi is exclusive
+ *  (a value exactly on a boundary falls into the higher band), matching flightsByDistanceBand's [lo, hi). */
+export function distanceBucketsFor(flights: EnrichedFlight[], edgesIn?: number[]): { label: string; count: number; lo: number; hi: number }[] {
+  const edges = sanitizeEdges(edgesIn)
+  const bounds = [0, ...edges, Infinity]
+  const bands = bounds.slice(0, -1).map((lo, i) => {
+    const hi = bounds[i + 1]
+    const label = i === 0 ? `<${fmtMi(hi)} mi` : hi === Infinity ? `${fmtMi(lo)}+ mi` : `${fmtMi(lo)}–${fmtMi(hi)} mi`
+    return { label, count: 0, lo, hi }
+  })
   for (const f of flights) {
     if (f.distanceMi === null || f.distanceMi <= 0) continue
-    const i = BUCKETS.findIndex((b) => f.distanceMi! < b.max) // strict <: a value exactly on a boundary (e.g. 300) falls into the higher band
-    if (i >= 0) counts[i].count += 1
+    const i = bands.findIndex((b) => f.distanceMi! < b.hi)
+    if (i >= 0) bands[i].count += 1
   }
-  return counts
+  return bands
+}
+
+export function distanceBuckets(flights: EnrichedFlight[]): { label: string; count: number }[] {
+  return distanceBucketsFor(flights, DEFAULT_DISTANCE_EDGES).map(({ label, count }) => ({ label, count }))
 }
 
 export function byYear(flights: EnrichedFlight[]): { year: number; count: number }[] {

@@ -99,5 +99,6 @@ export interface Settings {
   layoverMaxHours: number           // a connection counts as a layover when the gap is <= this many hours
   excludeDayTrips: boolean          // when true, a turnaround (land at X then fly back to where you came from) is NOT a layover
   splitCountriesByState: string[]   // country codes (subset of US/MX/IN) whose states rank inline as their own rows
+  distanceEdges: number[]           // internal upper edges (mi) between "How far" distance bands; ascending, excludes 0/∞
   duration: DurationConstants
 }
