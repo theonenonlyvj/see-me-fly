@@ -35,7 +35,7 @@ function Row({ r, peak, acc, grad, soft, formatValue, onClick }: {
         style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '7px 14px', alignItems: 'baseline', cursor: onClick ? 'pointer' : undefined }}
       >
         <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-          {r.iconUrl && <img src={r.iconUrl} alt="" width={16} height={16} style={{ borderRadius: 3, flexShrink: 0 }} />}
+          {r.iconUrl && <img src={r.iconUrl} alt="" style={{ height: 14, width: 'auto', maxWidth: 22, objectFit: 'contain', borderRadius: 2, flexShrink: 0, boxShadow: '0 0 0 0.5px rgba(0,0,0,0.15)' }} />}
           {r.label}
           {r.sub && (hasSub ? (
             <button
