@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { applyFilters } from '../../engine/filter'
-import { byAirport, byRoute, byAirline, distanceBuckets, byYear, milestones, totals } from '../../engine/aggregate'
+import { byAirport, byRoute, byAirline, distanceBuckets, distanceBucketsFor, sanitizeEdges, DEFAULT_DISTANCE_EDGES, byYear, milestones, totals } from '../../engine/aggregate'
 import { enrichFlight } from '../../engine/enrich'
 import { parseFlightyCsv, REQUIRED_COLUMNS } from '../../engine/parse'
 import { DEFAULT_DURATION_CONSTANTS as C } from '../../engine/constants'
@@ -12,7 +12,7 @@ const mk = (line: string) => enrichFlight(parseFlightyCsv([H, line].join('\n')).
 const route = (from: string, to: string, date = '2018-01-01') =>
   mk(`${date},AAL,1,${from},${to},,,,,false,,${date}T09:00,,,,,,,,Boeing 737,,,,,,,,,,,`)
 const S = (over: Partial<Settings> = {}): Settings => ({
-  groupAirports: false, explicitlyUnique: true, includeCanceled: false, excludeBeforeDate: null, home: null, excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], duration: C, ...over,
+  groupAirports: false, explicitlyUnique: true, includeCanceled: false, excludeBeforeDate: null, home: null, excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], distanceEdges: [300, 700, 1500, 3000, 6000], duration: C, ...over,
 })
 
 describe('filter', () => {
@@ -51,6 +51,27 @@ describe('aggregate', () => {
     const res = distanceBuckets([route('DFW', 'AUS'), route('DFW', 'LHR')]) // ~190mi, ~4700mi
     const short = res.find((b) => b.label.includes('<300'))!
     expect(short.count).toBe(1)
+  })
+  it('distanceBuckets matches the default edges exactly (back-compat labels)', () => {
+    expect(distanceBuckets([]).map((b) => b.label)).toEqual([
+      '<300 mi', '300–700 mi', '700–1,500 mi', '1,500–3,000 mi', '3,000–6,000 mi', '6,000+ mi',
+    ])
+    expect(DEFAULT_DISTANCE_EDGES).toEqual([300, 700, 1500, 3000, 6000])
+  })
+  it('distanceBucketsFor honors custom edges with lo/hi + thousands labels', () => {
+    const res = distanceBucketsFor([route('DFW', 'AUS'), route('DFW', 'LHR')], [500, 5000]) // ~190, ~4700
+    expect(res.map((b) => b.label)).toEqual(['<500 mi', '500–5,000 mi', '5,000+ mi'])
+    expect(res[0].count).toBe(1) // 190 < 500
+    expect(res[1].count).toBe(1) // 4700 in [500, 5000)
+    expect(res[2].count).toBe(0)
+    expect(res[0].lo).toBe(0)
+    expect(res[2].lo).toBe(5000)
+    expect(res[2].hi).toBe(Infinity)
+  })
+  it('sanitizeEdges drops invalid, sorts, dedupes, and falls back to default', () => {
+    expect(sanitizeEdges([700, 300, 300, -5, 0, NaN])).toEqual([300, 700])
+    expect(sanitizeEdges([])).toEqual(DEFAULT_DISTANCE_EDGES)
+    expect(sanitizeEdges(undefined)).toEqual(DEFAULT_DISTANCE_EDGES)
   })
   it('totals uses undirected unique routes honoring the overview exception', () => {
     const t = totals([route('DFW', 'SFO'), route('SFO', 'DFW')], S({ explicitlyUnique: true }))
