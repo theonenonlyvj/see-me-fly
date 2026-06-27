@@ -37,7 +37,7 @@ function FlightsBody({ flights, onOpenFlight }: { flights: EnrichedFlight[]; onO
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {hasRoutes && (
         <div style={{ marginBottom: 14, borderRadius: 12, overflow: 'hidden' }}>
-          <WorldMap flights={flights} accent="var(--accent-4)" />
+          <WorldMap flights={flights} accent="var(--accent-4)" fit />
         </div>
       )}
       {shown.map((f) => (
