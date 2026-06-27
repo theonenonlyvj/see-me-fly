@@ -3,7 +3,7 @@ import type { Model } from '../state/useModel'
 import type { Settings } from '../../engine'
 import type { OverlayApi } from '../components/Overlay'
 
-export interface CardContext { model: Model; settings: Settings; overlay?: OverlayApi }
+export interface CardContext { model: Model; settings: Settings; overlay?: OverlayApi; update?: (patch: Partial<Settings>) => void }
 export interface CardDef {
   id: string
   title: string

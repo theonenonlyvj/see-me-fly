@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import CardFrame from '../components/CardFrame'
+import CardFrame, { QuickToggle } from '../components/CardFrame'
 import { fmtInt, fmtMiles } from '../lib/format'
 import { displayRoute, displayRouteString } from '../lib/places'
 import { flightsByRouteKey } from '../lib/flight-filters'
@@ -59,7 +59,7 @@ function RouteRows({ routes, metric, peak, settings, model, overlay }: {
   )
 }
 
-function Routes({ model, settings, overlay }: CardContext) {
+function Routes({ model, settings, overlay, update }: CardContext) {
   const [metric, setMetric] = useState<Metric>('count')
   const sorted = [...model!.byRoute].sort((a, b) => metric === 'count' ? b.count - a.count : b.miles - a.miles)
   const peak = Math.max(...sorted.map((r) => metric === 'count' ? r.count : r.miles), 1)
@@ -83,7 +83,8 @@ function Routes({ model, settings, overlay }: CardContext) {
 
   return (
     <CardFrame title="Top routes" eyebrow="Your corridors" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛫"
-      onTitleClick={() => overlay?.openFlights('Top routes', model!.scoped)}>
+      onTitleClick={() => overlay?.openFlights('Top routes', model!.scoped)}
+      controls={update && <QuickToggle label="Group metros" checked={settings.groupAirports} onChange={(v) => update({ groupAirports: v })} accent={ACCENT} />}>
       {toggle}
       <RouteRows routes={sorted.slice(0, 5)} metric={metric} peak={peak} settings={settings} model={model} overlay={overlay} />
       {sorted.length > 5 && (

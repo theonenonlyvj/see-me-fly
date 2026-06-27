@@ -128,10 +128,10 @@ function SectionHeader({ title }: { title: string }) {
   )
 }
 
-export default function CardGrid({ model, settings }: { model: Model; settings: Settings }) {
+export default function CardGrid({ model, settings, update }: { model: Model; settings: Settings; update?: (patch: Partial<Settings>) => void }) {
   const overlay = useOverlay()
   const cols = useColumns()
-  const ctx: CardContext = { model, settings, overlay }
+  const ctx: CardContext = { model, settings, overlay, update }
 
   const byId = useMemo(() => Object.fromEntries(CARDS.map((c) => [c.id, c])), [])
   const mapCard = byId['map']

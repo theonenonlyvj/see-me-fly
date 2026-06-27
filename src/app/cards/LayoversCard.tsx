@@ -1,4 +1,4 @@
-import CardFrame from '../components/CardFrame'
+import CardFrame, { QuickToggle } from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { commonLayovers } from '../../engine/stats'
@@ -33,6 +33,7 @@ export const layoversCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🔁"
+        controls={ctx.update && <QuickToggle label="Skip day-trips" checked={ctx.settings.excludeDayTrips} onChange={(v) => ctx.update!({ excludeDayTrips: v })} accent={ACCENT} />}
       >
         <BarList rows={rows} max={5} seeAllTitle="Common layovers" formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
           onRowClick={(row) => row.id && ctx.overlay?.openFlights(`Flights via ${row.label}`, flightsByAirportKey(ctx.model!.scoped, row.id, ctx.settings))} />

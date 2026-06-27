@@ -1,4 +1,4 @@
-import CardFrame from '../components/CardFrame'
+import CardFrame, { QuickToggle } from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { byCountry } from '../../engine/stats'
@@ -66,6 +66,7 @@ export const countriesCard: CardDef = {
         accentSoft={ACCENT_SOFT}
         icon="🌍"
         onTitleClick={() => ctx.overlay?.openFlights("Where you've been", ctx.model!.scoped)}
+        controls={ctx.update && <QuickToggle label="Skip home" checked={ctx.settings.excludeHomeFromRankings} onChange={(v) => ctx.update!({ excludeHomeFromRankings: v })} accent={ACCENT} />}
       >
         <BarList
           rows={rows}

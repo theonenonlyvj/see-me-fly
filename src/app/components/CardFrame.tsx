@@ -13,8 +13,17 @@ const cardStyle: CSSProperties = {
   pageBreakInside: 'avoid',
 }
 
+export function QuickToggle({ label, checked, onChange, accent }: { label: string; checked: boolean; onChange: (v: boolean) => void; accent?: string }) {
+  return (
+    <label onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, color: 'var(--ink-2)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{ accentColor: accent ?? 'var(--coral)' }} />
+      {label}
+    </label>
+  )
+}
+
 export default function CardFrame({
-  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth, onTitleClick,
+  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth, onTitleClick, controls,
 }: {
   title: string
   children: ReactNode
@@ -27,6 +36,8 @@ export default function CardFrame({
   fullWidth?: boolean
   /** makes the header clickable → opens a subset view (with a ↗ affordance) */
   onTitleClick?: () => void
+  /** small inline controls (quick toggles) rendered on the right of the header */
+  controls?: ReactNode
 }) {
   const grad = accentGrad ?? `linear-gradient(90deg, ${accent ?? 'var(--coral)'}, ${accent ?? 'var(--coral)'})`
   const soft = accentSoft ?? 'var(--hair-2)'
@@ -98,7 +109,12 @@ export default function CardFrame({
             color: 'var(--ink)',
           }}>{title}</h2>
         </div>
-        {onTitleClick && <span style={{ marginLeft: 'auto', fontSize: 12, color: acc, fontWeight: 800, whiteSpace: 'nowrap' }}>↗ map</span>}
+        {(controls || onTitleClick) && (
+          <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+            {controls}
+            {onTitleClick && <span onClick={onTitleClick} style={{ fontSize: 12, color: acc, fontWeight: 800, whiteSpace: 'nowrap', cursor: 'pointer' }}>↗ map</span>}
+          </div>
+        )}
       </div>
 
       {children}
