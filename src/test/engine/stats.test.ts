@@ -3,7 +3,7 @@ import {
   byCountry, superDomestic, intercontinental,
   extremeFlights, byMonth, byYearMonthMatrix, hourHistogram,
   byAircraft, byTail, delayStats, geoExtremes, odometer, records,
-  commonLayovers,
+  commonLayovers, intercontinentalByPair,
 } from '../../engine/stats'
 import type { EnrichedFlight } from '../../engine/types'
 import { enrichFlight } from '../../engine/enrich'
@@ -622,6 +622,27 @@ describe('records', () => {
   it('milestones returns empty when none of [100,500,1000] <= flight count', () => {
     const result = records([fA, fB], TODAY2)
     expect(result.milestones).toEqual([])
+  })
+})
+
+describe('intercontinentalByPair', () => {
+  it('groups intercontinental flights by continent pair', () => {
+    const fs = [route('DFW', 'LHR'), route('HNL', 'DFW'), route('DFW', 'AUS')]
+    const groups = intercontinentalByPair(fs, S())
+    expect(groups).toHaveLength(2) // EU↔NA and NA↔OC (DFW-AUS is intra-state, excluded)
+    const labels = groups.map((g) => g.label)
+    expect(labels.some((l) => /Europe/.test(l) && /North America/.test(l))).toBe(true)
+    expect(labels.some((l) => /Oceania/.test(l))).toBe(true)
+  })
+})
+
+describe('superDomestic home-state scoping', () => {
+  it('keeps only home-state routes in intra-state; other same-state routes become intra-country', () => {
+    // home DFW (US-TX): DFW-AUS stays intra-state; LAX-SFO (both US-CA) drops to intra-country
+    const fs = [route('DFW', 'AUS'), route('LAX', 'SFO')]
+    const tiers = superDomestic(fs, S({ home: 'DFW', groupAirports: false }))
+    expect(tiers.find((t) => t.tier === 'intra-state')?.routes).toHaveLength(1)
+    expect(tiers.find((t) => t.tier === 'intra-country')?.routes).toHaveLength(1)
   })
 })
 

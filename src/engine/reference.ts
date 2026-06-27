@@ -38,6 +38,11 @@ const { regions, countries } = regionsRaw as { regions: Record<string, string>; 
 export function regionName(code: string): string { return regions[code] ?? code }
 export function countryName(code: string): string { return countries[code] ?? code }
 
+const CONTINENT_NAMES: Record<Continent, string> = {
+  NA: 'North America', SA: 'South America', EU: 'Europe', AF: 'Africa', AS: 'Asia', OC: 'Oceania', AN: 'Antarctica',
+}
+export function continentName(code: string): string { return CONTINENT_NAMES[code as Continent] ?? code }
+
 export const groups = groupsRaw as { name: string; airports: string[] }[]
 export const airportToGroup = new Map<string, string>()
 for (const g of groups) for (const code of g.airports) airportToGroup.set(code.toUpperCase(), g.name)

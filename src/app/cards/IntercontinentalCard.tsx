@@ -1,8 +1,9 @@
 import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
-import { intercontinental } from '../../engine/stats'
+import { intercontinentalByPair } from '../../engine/stats'
 import { displayRouteString } from '../lib/places'
+import { flightsByContinentPair } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#6a3cff'
@@ -16,8 +17,14 @@ export const intercontinentalCard: CardDef = {
   accent: ACCENT,
   icon: '🌐',
   render: (ctx: CardContext) => {
-    const routes = intercontinental(ctx.model!.scoped, ctx.settings)
-    const rows: BarRow[] = routes.slice(0, 10).map((r) => ({ label: displayRouteString(r.key, ctx.settings), value: r.count }))
+    const groups = intercontinentalByPair(ctx.model!.scoped, ctx.settings)
+    const rows: BarRow[] = groups.map((g) => ({
+      label: g.label,
+      value: g.count,
+      sub: `(${g.routes.length} route${g.routes.length === 1 ? '' : 's'})`,
+      subRows: g.routes.map((r) => ({ label: displayRouteString(r.key, ctx.settings), value: r.count })),
+      id: g.pair,
+    }))
     return (
       <CardFrame
         title="Intercontinental"
@@ -34,6 +41,7 @@ export const intercontinentalCard: CardDef = {
           accent={ACCENT}
           accentGrad={ACCENT_GRAD}
           accentSoft={ACCENT_SOFT}
+          onRowClick={(row) => row.id && ctx.overlay?.openFlights(`Flights · ${row.label}`, flightsByContinentPair(ctx.model!.scoped, row.id))}
         />
       </CardFrame>
     )

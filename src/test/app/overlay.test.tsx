@@ -58,8 +58,9 @@ function CardHarness({ model, settings }: { model: Model; settings: Settings }) 
 
 describe('card click-through', () => {
   it('clicking a country row opens its flight list', async () => {
-    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    render(<OverlayProvider><CardHarness model={model} settings={DEFAULT_SETTINGS} /></OverlayProvider>)
+    const settings = { ...DEFAULT_SETTINGS, splitCountriesByState: [] } // unsplit so US shows as one country row
+    const model = buildModel(csv, settings, '2026-06-25')
+    render(<OverlayProvider><CardHarness model={model} settings={settings} /></OverlayProvider>)
     await userEvent.click(screen.getByText(/United States/))
     expect(await screen.findByText(/Flights touching/)).toBeInTheDocument()
   })

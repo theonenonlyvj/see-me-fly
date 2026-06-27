@@ -6,7 +6,7 @@
   { "name": "Chicago", "airports": ["ORD", "MDW"] },
   { "name": "Bay Area", "airports": ["SFO", "OAK", "SJC"] },
   { "name": "Los Angeles", "airports": ["LAX", "BUR", "SNA", "ONT", "LGB"] },
-  { "name": "South Florida", "airports": ["MIA", "FLL", "PBI"] },
+  { "name": "Miami Metro", "airports": ["MIA", "FLL", "PBI"] },
   { "name": "London", "airports": ["LHR", "LGW", "STN", "LTN", "LCY", "SEN"] },
   { "name": "Boston", "airports": ["BOS", "PVD", "MHT"] },
   { "name": "Rio Grande Valley", "airports": ["HRL", "BRO", "MFE"] },

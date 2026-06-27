@@ -73,6 +73,11 @@ export const countriesCard: CardDef = {
             }
           }}
         />
+        {(ctx.settings.splitCountriesByState ?? []).length > 0 && (
+          <p style={{ marginTop: 14, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
+            Split into states — choose which countries (or group them) in Settings.
+          </p>
+        )}
       </CardFrame>
     )
   },

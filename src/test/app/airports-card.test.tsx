@@ -14,11 +14,9 @@ describe('airportsCard', () => {
   it('shows Dallas group as a top airport when grouping is on', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{airportsCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    // Dallas group label includes flag + "Dallas"
-    expect(screen.getByText(/Dallas/)).toBeInTheDocument()
-    // Dallas group's member codes shown as sub "(DFW/DAL)"
-    expect(screen.getByText('(DFW/DAL)')).toBeInTheDocument()
-    // AUS is a single airport whose municipality is "Austin"
-    expect(screen.getByText(/Austin/)).toBeInTheDocument()
+    // metro label always includes the member codes: "Dallas (DFW/DAL)"
+    expect(screen.getByText(/Dallas \(DFW\/DAL\)/)).toBeInTheDocument()
+    // a single airport always shows its code: "Austin (AUS)"
+    expect(screen.getByText(/Austin \(AUS\)/)).toBeInTheDocument()
   })
 })

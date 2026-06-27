@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: Settings = {
   excludeBeforeDate: null,
   home: 'DFW',
   layoverMaxHours: 5,
-  splitCountriesByState: [],
+  splitCountriesByState: ['US', 'IN', 'MX'],
   groupAircraftFamilies: false,
   duration: DEFAULT_DURATION_CONSTANTS,
 }

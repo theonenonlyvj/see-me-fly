@@ -25,6 +25,11 @@ export function flightsByAirportCode(flights: EnrichedFlight[], code: string): E
   return flights.filter((f) => f.resolved && (f.fromCode === code || (!f.isLocalFlight && f.toCode === code)))
 }
 
+/** Flights touching a specific resolved airport (by stable ident). */
+export function flightsByAirportIdent(flights: EnrichedFlight[], ident: string): EnrichedFlight[] {
+  return flights.filter((f) => f.resolved && (f.from?.ident === ident || (!f.isLocalFlight && f.to?.ident === ident)))
+}
+
 /** Flights touching an ISO region (state/province) code, e.g. "US-TX". */
 export function flightsByRegion(flights: EnrichedFlight[], region: string): EnrichedFlight[] {
   return flights.filter((f) => f.resolved && (f.from?.region === region || (!f.isLocalFlight && f.to?.region === region)))
@@ -43,4 +48,11 @@ export function flightsByAirline(flights: EnrichedFlight[], name: string): Enric
 /** Flights on a given route key (respects grouping + directionality settings). */
 export function flightsByRouteKey(flights: EnrichedFlight[], key: string, settings: Settings): EnrichedFlight[] {
   return flights.filter((f) => routeKey(f, settings) === key)
+}
+
+/** Intercontinental flights crossing a given (unordered) continent pair, e.g. "EU|NA". */
+export function flightsByContinentPair(flights: EnrichedFlight[], pair: string): EnrichedFlight[] {
+  return flights.filter((f) =>
+    f.resolved && f.from && f.to && f.from.continent !== f.to.continent &&
+    [f.from.continent, f.to.continent].sort().join('|') === pair)
 }

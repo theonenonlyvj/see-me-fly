@@ -16,23 +16,29 @@ const csv = [
   '2018-02-01,AAL,2,DFW,LHR,,,,,false,,2018-02-01T09:00,,,,,,,,Boeing 747,,,,,,,,,,,',
 ].join('\n')
 
+const UNSPLIT = { ...DEFAULT_SETTINGS, splitCountriesByState: [] }
+
 describe('countriesCard', () => {
-  it('shows United States with flag and "(N states)" annotation', () => {
+  it('shows United States with flag and "(N states)" annotation when NOT split', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    render(<>{countriesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    // Should show United States (touched by both flights)
+    render(<>{countriesCard.render({ model, settings: UNSPLIT })}</>)
     expect(screen.getByText(/United States/)).toBeInTheDocument()
-    // US has regions — should show a "(N state)" sub-label (not the card title)
     expect(screen.getByText(/\(\d+ state/i)).toBeInTheDocument()
   })
 
-  it('expands the US row to reveal the state breakdown (Texas)', async () => {
+  it('expands the US row to reveal the state breakdown (Texas) when NOT split', async () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    render(<>{countriesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
+    render(<>{countriesCard.render({ model, settings: UNSPLIT })}</>)
     expect(screen.queryByText('Texas')).not.toBeInTheDocument()
     // the state-breakdown disclosure is the only button carrying aria-expanded
     await userEvent.click(screen.getByRole('button', { expanded: false }))
     expect(screen.getByText('Texas')).toBeInTheDocument()
+  })
+
+  it('splits US/India/Mexico by default (Texas (USA) shown inline)', () => {
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    render(<>{countriesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
+    expect(screen.getByText(/Texas \(USA\)/)).toBeInTheDocument()
   })
 
   it('shows United Kingdom', () => {

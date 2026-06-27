@@ -1,4 +1,4 @@
-import { groups } from '../../engine/reference'
+import { groups, lookupAirport } from '../../engine/reference'
 import { airportKey } from '../../engine/normalize'
 import type { Settings } from '../../engine'
 
@@ -12,11 +12,14 @@ export function homeKey(settings: Settings): string | null {
   return airportKey(settings.home, settings.groupAirports)
 }
 
-/** Decorate a route/airport endpoint: a metro group name gains its member codes —
- *  "Dallas" -> "Dallas (DFW/DAL)". A plain airport code is returned unchanged. */
+/** Decorate a route/airport endpoint so the code is always visible:
+ *  a metro group name gains its member codes — "Dallas" -> "Dallas (DFW/DAL)";
+ *  an airport code gains its city — "AUS" -> "Austin (AUS)" (falls back to the bare code). */
 export function displayEndpoint(token: string): string {
   const members = membersByName.get(token)
-  return members ? `${token} (${members.join('/')})` : token
+  if (members) return `${token} (${members.join('/')})`
+  const ap = lookupAirport(token)
+  return ap?.municipality ? `${ap.municipality} (${token})` : token
 }
 
 export interface RouteParts { left: string; right: string; sep: '↔' | '→'; directed: boolean }

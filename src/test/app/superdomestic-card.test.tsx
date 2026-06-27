@@ -16,10 +16,10 @@ const csv = [
 ].join('\n')
 
 describe('superDomesticCard', () => {
-  it('shows "Intra-state" section header', () => {
+  it('labels the intra-state tier with the home state ("Within Texas" for home=DFW)', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{superDomesticCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    expect(screen.getByText(/Intra-state/i)).toBeInTheDocument()
+    expect(screen.getByText(/Within Texas/i)).toBeInTheDocument()
   })
 
   it('shows a TX domestic route (DFW / AUS)', () => {

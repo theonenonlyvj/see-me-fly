@@ -1,7 +1,7 @@
-import type { EnrichedFlight, Airport, Settings } from './types'
+import type { EnrichedFlight, Airport, Settings, Continent } from './types'
 import { classifyRoute } from './classify'
 import { routeKey, airportKey } from './normalize'
-import { countryName, regionName, aircraftFamily } from './reference'
+import { countryName, regionName, aircraftFamily, lookupAirport, continentName } from './reference'
 import { haversineMi } from './distance'
 import { milestones } from './aggregate'
 
@@ -167,11 +167,14 @@ export function superDomestic(
   flights: EnrichedFlight[],
   settings: Settings,
 ): { tier: 'intra-state' | 'intra-country' | 'intra-continent'; routes: { key: string; count: number }[] }[] {
+  // intra-state is scoped to the HOME state: a same-state route in another state is just same-country.
+  const homeRegion = settings.home ? (lookupAirport(settings.home)?.region ?? null) : null
   const tierRoutes = new Map<string, Map<string, number>>()
 
   for (const f of flights) {
-    const cls = classifyRoute(f)
+    let cls = classifyRoute(f)
     if (!cls || cls === 'intercontinental') continue
+    if (cls === 'intra-state' && homeRegion && f.from && f.from.region !== homeRegion) cls = 'intra-country'
 
     const key = routeKey(f, settings)
     if (key === null) continue
@@ -218,6 +221,40 @@ export function intercontinental(
 
   return [...m.entries()]
     .map(([key, v]) => ({ key, count: v.count, miles: v.miles }))
+    .sort((a, b) => b.count - a.count)
+}
+
+export interface ContinentPairGroup {
+  pair: string          // sorted continent codes joined, e.g. "EU|NA" (used as a click-through id)
+  label: string         // "North America ↔ Europe"
+  count: number
+  routes: { key: string; count: number }[]
+}
+
+/**
+ * Intercontinental flights grouped by the (unordered) continent pair they cross.
+ * Each group lists its routes (by routeKey). Groups + routes sorted desc by count.
+ */
+export function intercontinentalByPair(flights: EnrichedFlight[], settings: Settings): ContinentPairGroup[] {
+  const groups = new Map<string, { conts: [Continent, Continent]; routes: Map<string, number>; count: number }>()
+  for (const f of flights) {
+    if (classifyRoute(f) !== 'intercontinental' || !f.from || !f.to) continue
+    const key = routeKey(f, settings)
+    if (key === null) continue
+    const conts = [f.from.continent, f.to.continent].sort() as [Continent, Continent]
+    const pairKey = conts.join('|')
+    let g = groups.get(pairKey)
+    if (!g) { g = { conts, routes: new Map(), count: 0 }; groups.set(pairKey, g) }
+    g.count += 1
+    g.routes.set(key, (g.routes.get(key) ?? 0) + 1)
+  }
+  return [...groups.values()]
+    .map((g) => ({
+      pair: g.conts.join('|'),
+      label: `${continentName(g.conts[0])} ↔ ${continentName(g.conts[1])}`,
+      count: g.count,
+      routes: [...g.routes.entries()].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count),
+    }))
     .sort((a, b) => b.count - a.count)
 }
 
