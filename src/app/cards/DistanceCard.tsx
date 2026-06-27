@@ -17,9 +17,11 @@ function BandEditor({ edges, onCommit, onReset }: { edges: number[]; onCommit: (
   useEffect(() => { setDraft(edges.map(String)) }, [edges.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const commit = () => {
-    const nums = draft.map((s) => Number(s.replace(/[, ]/g, '')))
+    // Round first — the engine's sanitizeEdges rounds+dedups, so validating raw floats would let
+    // e.g. 300 & 300.4 pass this dedup yet collapse to one band downstream (an input box vanishes).
+    const nums = draft.map((s) => Math.round(Number(s.replace(/[, ]/g, ''))))
     if (nums.some((n) => !Number.isFinite(n) || n <= 0) || new Set(nums).size !== nums.length) {
-      setDraft(edges.map(String)) // invalid → revert, keep band count stable
+      setDraft(edges.map(String)) // invalid (blank/dup/non-positive/rounds-to-collision) → revert, keep band count stable
       return
     }
     const sorted = [...nums].sort((a, b) => a - b)

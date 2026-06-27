@@ -39,6 +39,20 @@ describe('distanceCard', () => {
     expect(patch).toEqual({ distanceEdges: [250, 300] })
   })
 
+  it('reverts a fractional edit that would round onto another edge (no band collapse)', async () => {
+    const user = userEvent.setup()
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    let calls = 0
+    const update = () => { calls++ }
+    render(<>{distanceCard.render({ model, settings: { ...DEFAULT_SETTINGS, distanceEdges: [300, 700] }, update })}</>)
+    const second = screen.getByLabelText('Distance band edge 2')
+    await user.clear(second)
+    await user.type(second, '300.4') // rounds to 300 → collides with edge 1
+    await user.tab()
+    expect(calls).toBe(0)
+    expect((screen.getByLabelText('Distance band edge 2') as HTMLInputElement).value).toBe('700') // reverted
+  })
+
   it('reverts invalid edits (blank/non-positive) without calling update', async () => {
     const user = userEvent.setup()
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
