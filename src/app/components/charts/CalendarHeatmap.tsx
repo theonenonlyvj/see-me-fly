@@ -3,9 +3,11 @@ const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep
 export default function CalendarHeatmap({
   matrix,
   accent,
+  onCell,
 }: {
   matrix: { year: number; months: number[] }[]
   accent: string
+  onCell?: (year: number, monthIndex: number) => void
 }) {
   // Find global max for opacity scaling
   const allCounts = matrix.flatMap((row) => row.months)
@@ -42,12 +44,13 @@ export default function CalendarHeatmap({
                 key={mi}
                 data-cell
                 title={`${count} flights`}
+                onClick={onCell && count > 0 ? () => onCell(row.year, mi) : undefined}
                 style={{
                   height: 18,
                   borderRadius: 3,
                   backgroundColor: accent,
                   opacity,
-                  cursor: 'default',
+                  cursor: onCell && count > 0 ? 'pointer' : 'default',
                 }}
               />
             )

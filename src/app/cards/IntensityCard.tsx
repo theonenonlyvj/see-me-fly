@@ -1,6 +1,7 @@
 import CardFrame from '../components/CardFrame'
 import CalendarHeatmap from '../components/charts/CalendarHeatmap'
 import { byYearMonthMatrix } from '../../engine/stats'
+import { flightsByYearMonth } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = 'var(--accent-3)'
@@ -25,7 +26,11 @@ export const intensityCard: CardDef = {
         accentSoft={ACCENT_SOFT}
         icon="📅"
       >
-        <CalendarHeatmap matrix={matrix} accent={ACCENT} />
+        <CalendarHeatmap matrix={matrix} accent={ACCENT}
+          onCell={(year, mi) => {
+            const ym = `${year}-${String(mi + 1).padStart(2, '0')}`
+            ctx.overlay?.openFlights(`Flights in ${ym}`, flightsByYearMonth(ctx.model!.scoped, ym))
+          }} />
         <div style={{ marginTop: 12, fontSize: 12, color: 'var(--ink-2)', fontWeight: 600, textAlign: 'center' }}>
           flights per month
         </div>
