@@ -36,7 +36,8 @@ export const intercontinentalCard: CardDef = {
       >
         <BarList
           rows={rows}
-          max={10}
+          max={5}
+          seeAllTitle="Crossing continents"
           formatValue={(n) => `${n}`}
           accent={ACCENT}
           accentGrad={ACCENT_GRAD}

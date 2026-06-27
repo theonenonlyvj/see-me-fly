@@ -33,7 +33,8 @@ export const sameMetalCard: CardDef = {
       >
         <BarList
           rows={rows}
-          max={10}
+          max={5}
+          seeAllTitle="Same metal"
           formatValue={(n) => `${n}`}
           accent={ACCENT}
           accentGrad={ACCENT_GRAD}

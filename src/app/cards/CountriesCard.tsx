@@ -59,7 +59,8 @@ export const countriesCard: CardDef = {
       >
         <BarList
           rows={rows}
-          max={10}
+          max={5}
+          seeAllTitle="Countries & states"
           formatValue={(n) => `${n}`}
           accent={ACCENT}
           accentGrad={ACCENT_GRAD}

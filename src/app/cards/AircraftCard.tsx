@@ -18,7 +18,7 @@ export const aircraftCard: CardDef = {
     const { byClass, byType } = byAircraft(ctx.model!.scoped, ctx.settings.groupAircraftFamilies)
 
     const classRows: BarRow[] = byClass.map((c) => ({ label: c.cls, value: c.count }))
-    const topTypes: BarRow[] = byType.slice(0, 5).map((t) => ({ label: t.type, value: t.count }))
+    const topTypes: BarRow[] = byType.map((t) => ({ label: t.type, value: t.count }))
 
     return (
       <CardFrame
@@ -56,6 +56,7 @@ export const aircraftCard: CardDef = {
             <BarList
               rows={topTypes}
               max={5}
+              seeAllTitle="Aircraft types"
               accent={ACCENT}
               accentGrad={ACCENT_GRAD}
               accentSoft={ACCENT_SOFT}

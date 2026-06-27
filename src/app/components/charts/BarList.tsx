@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useOverlay } from '../Overlay'
 
 export interface BarRow {
   label: string
@@ -90,7 +91,7 @@ function MoreButton({ label, grad, onClick }: { label: string; grad: string; onC
   )
 }
 
-export default function BarList({ rows, max = 10, formatValue = (n: number) => n.toLocaleString('en-US'), accent, accentGrad, accentSoft, onRowClick }: {
+export default function BarList({ rows, max = 10, formatValue = (n: number) => n.toLocaleString('en-US'), accent, accentGrad, accentSoft, onRowClick, seeAllTitle }: {
   rows: BarRow[]
   max?: number
   formatValue?: (n: number) => string
@@ -98,8 +99,11 @@ export default function BarList({ rows, max = 10, formatValue = (n: number) => n
   accentGrad?: string
   accentSoft?: string
   onRowClick?: (row: BarRow) => void
+  /** When set, a row overflow shows a single "See all (N) →" that opens the full list in a popup. */
+  seeAllTitle?: string
 }) {
   const [visible, setVisible] = useState(max)
+  const overlay = useOverlay()
   // Reset expansion when the underlying data set changes (e.g. switching year scope),
   // so a stale "Show less" can't linger after the row count shrinks below it.
   useEffect(() => { setVisible(max) }, [rows.length, max])
@@ -121,7 +125,20 @@ export default function BarList({ rows, max = 10, formatValue = (n: number) => n
             onClick={onRowClick ? () => onRowClick(r) : undefined} />
         ))}
       </div>
-      {(remaining > 0 || visible > max) && (
+      {seeAllTitle ? (
+        rows.length > max && (
+          <div style={{ marginTop: 18 }}>
+            <MoreButton
+              label={`See all (${rows.length}) →`}
+              grad={grad}
+              onClick={() => overlay.openList(
+                seeAllTitle,
+                <BarList rows={rows} max={rows.length} formatValue={formatValue} accent={accent} accentGrad={accentGrad} accentSoft={accentSoft} onRowClick={onRowClick} />,
+              )}
+            />
+          </div>
+        )
+      ) : (remaining > 0 || visible > max) && (
         <div style={{ marginTop: 18, display: 'flex', gap: 18, flexWrap: 'wrap' }}>
           {remaining > 0 && (
             <MoreButton label={`Show ${Math.min(STEP, remaining)} more ▾`} grad={grad} onClick={() => setVisible((v) => Math.min(v + STEP, rows.length))} />

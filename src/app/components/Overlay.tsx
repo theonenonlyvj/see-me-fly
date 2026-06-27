@@ -8,15 +8,18 @@ import FlightDetail from './FlightDetail'
 export interface OverlayApi {
   openFlights: (title: string, flights: EnrichedFlight[], subtitle?: string) => void
   openFlight: (flight: EnrichedFlight) => void
+  /** Open a full stat-list in a popup. The caller passes a ready-rendered body (e.g. a full BarList). */
+  openList: (title: string, body: ReactNode, subtitle?: string) => void
 }
 
-const NOOP: OverlayApi = { openFlights: () => {}, openFlight: () => {} }
+const NOOP: OverlayApi = { openFlights: () => {}, openFlight: () => {}, openList: () => {} }
 const Ctx = createContext<OverlayApi>(NOOP)
 export function useOverlay(): OverlayApi { return useContext(Ctx) }
 
 type Overlay =
   | { kind: 'flights'; title: string; subtitle?: string; flights: EnrichedFlight[] }
   | { kind: 'flight'; flight: EnrichedFlight }
+  | { kind: 'list'; title: string; subtitle?: string; body: ReactNode }
 
 const LIST_CAP = 500
 
@@ -105,6 +108,9 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const openFlight = useCallback((flight: EnrichedFlight) => {
     setStack((s) => [...s, { kind: 'flight', flight }])
   }, [])
+  const openList = useCallback((title: string, body: ReactNode, subtitle?: string) => {
+    setStack((s) => [...s, { kind: 'list', title, body, subtitle }])
+  }, [])
   const pop = useCallback(() => setStack((s) => s.slice(0, -1)), [])
   const closeAll = useCallback(() => setStack([]), [])
 
@@ -119,7 +125,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const top = stack[stack.length - 1]
 
   return (
-    <Ctx.Provider value={{ openFlights, openFlight }}>
+    <Ctx.Provider value={{ openFlights, openFlight, openList }}>
       {children}
       {top && (
         <div
@@ -138,6 +144,15 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
               onBack={stack.length > 1 ? pop : undefined}
             >
               <FlightsBody flights={top.flights} onOpenFlight={openFlight} />
+            </Panel>
+          ) : top.kind === 'list' ? (
+            <Panel
+              title={top.title}
+              subtitle={top.subtitle}
+              onClose={closeAll}
+              onBack={stack.length > 1 ? pop : undefined}
+            >
+              {top.body}
             </Panel>
           ) : (
             <Panel

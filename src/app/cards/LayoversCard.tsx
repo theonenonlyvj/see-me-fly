@@ -34,7 +34,7 @@ export const layoversCard: CardDef = {
         accentSoft={ACCENT_SOFT}
         icon="🔁"
       >
-        <BarList rows={rows} max={10} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
+        <BarList rows={rows} max={5} seeAllTitle="Common layovers" formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
           onRowClick={(row) => row.id && ctx.overlay?.openFlights(`Flights via ${row.label}`, flightsByAirportKey(ctx.model!.scoped, row.id, ctx.settings))} />
       </CardFrame>
     )

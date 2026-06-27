@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import BarList from '../../app/components/charts/BarList'
+import { OverlayProvider } from '../../app/components/Overlay'
 
 afterEach(cleanup)
 
@@ -39,6 +40,15 @@ describe('BarList', () => {
     expect(screen.getByText('R24')).toBeInTheDocument()
     rerender(<BarList rows={small} max={10} />)
     expect(screen.queryByRole('button', { name: /show less/i })).not.toBeInTheDocument()
+  })
+
+  it('seeAllTitle: shows a top-N then opens the full list in a popup', async () => {
+    render(<OverlayProvider><BarList rows={rows} max={5} seeAllTitle="All rows" /></OverlayProvider>)
+    expect(screen.getByText('R0')).toBeInTheDocument()
+    expect(screen.queryByText('R5')).not.toBeInTheDocument() // capped at 5 inline
+    await userEvent.click(screen.getByRole('button', { name: /see all/i }))
+    expect(screen.getByText('All rows')).toBeInTheDocument()   // popup title
+    expect(screen.getByText('R24')).toBeInTheDocument()        // full list in the popup
   })
 
   it('expands a row\'s nested sub-rows on click', async () => {

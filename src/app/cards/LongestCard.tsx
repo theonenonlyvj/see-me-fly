@@ -2,6 +2,7 @@ import { useState } from 'react'
 import CardFrame from '../components/CardFrame'
 import { fmtMiles, fmtDuration } from '../lib/format'
 import { extremeFlights } from '../../engine/stats'
+import type { EnrichedFlight } from '../../engine'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#ff3d57'
@@ -10,20 +11,42 @@ const ACCENT_SOFT = '#ffe8ec'
 
 type Metric = 'distance' | 'duration'
 
+function Rows({ flights, metric, onOpen }: { flights: EnrichedFlight[]; metric: Metric; onOpen?: (f: EnrichedFlight) => void }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {flights.map((f) => {
+        const val = metric === 'distance' ? fmtMiles(f.distanceMi ?? 0) : fmtDuration(f.durationMin)
+        return (
+          <div key={f.id}
+            onClick={() => onOpen?.(f)}
+            role={onOpen ? 'button' : undefined}
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 13, color: 'var(--ink)', cursor: onOpen ? 'pointer' : undefined }}>
+            <span style={{ fontWeight: 600 }}>{f.date} · {f.fromCode}→{f.toCode}</span>
+            <span style={{ fontWeight: 800, color: ACCENT, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 12 }}>{val}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function SeeAll({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={{
+      marginTop: 16, fontSize: 12.5, fontWeight: 800,
+      background: ACCENT_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text',
+      WebkitTextFillColor: 'transparent', color: 'transparent', border: 'none', padding: 0, cursor: 'pointer',
+    }}>{label}</button>
+  )
+}
+
 function LongestFlights(ctx: CardContext) {
   const [metric, setMetric] = useState<Metric>('distance')
-  const flights = extremeFlights(ctx.model!.scoped, metric, 'long', 10)
+  const flights = extremeFlights(ctx.model!.scoped, metric, 'long', 50)
+  const onOpen = (f: EnrichedFlight) => ctx.overlay?.openFlight(f)
 
   return (
-    <CardFrame
-      title="Longest flights"
-      eyebrow="Epic hauls"
-      accent={ACCENT}
-      accentGrad={ACCENT_GRAD}
-      accentSoft={ACCENT_SOFT}
-      icon="🛬"
-    >
-      {/* metric toggle */}
+    <CardFrame title="Longest flights" eyebrow="Epic hauls" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛬">
       <div style={{ display: 'inline-flex', padding: 3, gap: 2, marginBottom: 18, background: ACCENT_SOFT, borderRadius: 12, border: `1px solid color-mix(in srgb, ${ACCENT} 24%, transparent)` }}>
         {(['distance', 'duration'] as Metric[]).map((m) => (
           <button key={m} onClick={() => setMetric(m)}
@@ -42,24 +65,12 @@ function LongestFlights(ctx: CardContext) {
       {flights.length === 0 ? (
         <p style={{ color: 'var(--ink-2)' }}>No data for this view.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {flights.map((f) => {
-            const val = metric === 'distance' ? fmtMiles(f.distanceMi ?? 0) : fmtDuration(f.durationMin)
-            return (
-              <div key={f.id}
-                onClick={() => ctx.overlay?.openFlight(f)}
-                role={ctx.overlay ? 'button' : undefined}
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 13, color: 'var(--ink)', cursor: ctx.overlay ? 'pointer' : undefined }}>
-                <span style={{ fontWeight: 600 }}>
-                  {f.date} · {f.fromCode}→{f.toCode}
-                </span>
-                <span style={{ fontWeight: 800, color: ACCENT, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', marginLeft: 12 }}>
-                  {val}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        <>
+          <Rows flights={flights.slice(0, 5)} metric={metric} onOpen={onOpen} />
+          {flights.length > 5 && (
+            <SeeAll label={`See all (${flights.length}) →`} onClick={() => ctx.overlay?.openList(`Longest by ${metric}`, <Rows flights={flights} metric={metric} onOpen={onOpen} />)} />
+          )}
+        </>
       )}
     </CardFrame>
   )

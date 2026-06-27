@@ -32,7 +32,8 @@ function TierSection({ label, routes, settings, model, overlay }: {
       </div>
       <BarList
         rows={rows}
-        max={6}
+        max={5}
+        seeAllTitle={label}
         formatValue={(n) => `${n}`}
         accent={ACCENT}
         accentGrad={ACCENT_GRAD}
