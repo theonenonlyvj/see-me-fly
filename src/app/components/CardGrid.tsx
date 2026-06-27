@@ -13,7 +13,7 @@ const SECTIONS: { title: string; ids: string[] }[] = [
   { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes'] },
   { title: 'How far you go', ids: ['distance', 'shortest', 'longest'] },
   { title: 'Your routes', ids: ['routes', 'layovers', 'domesticState', 'domesticCountry', 'domesticContinent', 'intercontinental'] },
-  { title: 'How you fly', ids: ['airlines', 'aircraft', 'sameMetal', 'delays'] },
+  { title: 'How you fly', ids: ['airlines', 'aircraft', 'aircraftClass', 'sameMetal', 'delays'] },
   { title: 'When you fly', ids: ['whenYouFly', 'intensity', 'records'] },
 ]
 

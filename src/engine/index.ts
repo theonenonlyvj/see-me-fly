@@ -11,10 +11,10 @@ export const DEFAULT_SETTINGS: Settings = {
   includeCanceled: false,
   excludeBeforeDate: null,
   home: 'DFW',
+  excludeHomeFromRankings: true,
   layoverMaxHours: 5,
   excludeDayTrips: true,
   splitCountriesByState: ['US', 'IN', 'MX'],
-  groupAircraftFamilies: false,
   duration: DEFAULT_DURATION_CONSTANTS,
 }
 

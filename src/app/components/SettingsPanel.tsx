@@ -79,6 +79,7 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
         </select>
         <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>(routes lead with home; sets farthest-from-home)</span>
       </label>
+      <Toggle label="Exclude home from rankings (Airports pill + don't credit home in Countries)" checked={settings.excludeHomeFromRankings} onChange={(v) => update({ excludeHomeFromRankings: v })} />
 
       <Toggle label="Treat A→B and B→A as different routes (explicitly unique)" checked={settings.explicitlyUnique} onChange={(v) => update({ explicitlyUnique: v })} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
@@ -99,8 +100,6 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
         ))}
         <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>(states rank inline, e.g. "Texas (USA)")</span>
       </div>
-
-      <Toggle label="Group aircraft variants (e.g. 737-700 + 737-800 → 737, A320 + A320neo → A320)" checked={settings.groupAircraftFamilies} onChange={(v) => update({ groupAircraftFamilies: v })} />
 
       <Toggle label="Include canceled flights" checked={settings.includeCanceled} onChange={(v) => update({ includeCanceled: v })} />
       <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

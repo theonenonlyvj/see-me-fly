@@ -10,7 +10,7 @@ const f = (from: string, to: string) =>
   enrichFlight(parseFlightyCsv([H, `2018-01-01,AAL,1,${from},${to},,,,,false,,2018-01-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,`].join('\n')).rows[0], '2026-06-25', C)
 
 const settings = (over: Partial<Settings>): Settings => ({
-  groupAirports: false, explicitlyUnique: true, includeCanceled: false, excludeBeforeDate: null, home: null, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], groupAircraftFamilies: false, duration: C, ...over,
+  groupAirports: false, explicitlyUnique: true, includeCanceled: false, excludeBeforeDate: null, home: null, excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], duration: C, ...over,
 })
 
 describe('normalize', () => {

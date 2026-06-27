@@ -36,38 +36,39 @@ export interface CountryEntry {
  * For US, IN, MX only: also populate `regions` with per-iso_region counts.
  * Sorted desc by count.
  */
-export function byCountry(flights: EnrichedFlight[], _settings: Settings): CountryEntry[] {
+export function byCountry(flights: EnrichedFlight[], settings: Settings): CountryEntry[] {
   // Map: country code → count
   const countryCount = new Map<string, number>()
   // Map: country code → (region code → Set of flight IDs that touched it)
   const regionFlightIds = new Map<string, Map<string, Set<string>>>()
 
+  // Optionally don't credit the HOME endpoint, so a flight counts only toward where you WENT
+  // (DFW→ORD credits Illinois, not Texas-via-Dallas). Home matched by metro key.
+  const homeMetro = settings.excludeHomeFromRankings && settings.home
+    ? airportKey(settings.home, settings.groupAirports) : null
+  const isHome = (code: string) => homeMetro !== null && airportKey(code, settings.groupAirports) === homeMetro
+
+  const creditRegion = (country: string, region: string, id: string) => {
+    if (!REGION_COUNTRIES.has(country)) return
+    if (!regionFlightIds.has(country)) regionFlightIds.set(country, new Map())
+    const regionMap = regionFlightIds.get(country)!
+    if (!regionMap.has(region)) regionMap.set(region, new Set())
+    regionMap.get(region)!.add(id)
+  }
+
   for (const f of flights) {
     if (!f.resolved || !f.from || !f.to) continue
+    const fromHome = isHome(f.fromCode)
+    const toHome = isHome(f.toCode)
 
-    // Collect distinct countries this flight touches
+    // Collect distinct countries this flight touches (skipping the home endpoint)
     const countries = new Set<string>()
-    countries.add(f.from.country)
-    if (!f.isLocalFlight) countries.add(f.to.country)
+    if (!fromHome) countries.add(f.from.country)
+    if (!f.isLocalFlight && !toHome) countries.add(f.to.country)
+    for (const code of countries) countryCount.set(code, (countryCount.get(code) ?? 0) + 1)
 
-    for (const code of countries) {
-      countryCount.set(code, (countryCount.get(code) ?? 0) + 1)
-    }
-
-    // Track regions for qualifying countries
-    if (REGION_COUNTRIES.has(f.from.country)) {
-      if (!regionFlightIds.has(f.from.country)) regionFlightIds.set(f.from.country, new Map())
-      const regionMap = regionFlightIds.get(f.from.country)!
-      if (!regionMap.has(f.from.region)) regionMap.set(f.from.region, new Set())
-      regionMap.get(f.from.region)!.add(f.id)
-    }
-
-    if (!f.isLocalFlight && REGION_COUNTRIES.has(f.to.country)) {
-      if (!regionFlightIds.has(f.to.country)) regionFlightIds.set(f.to.country, new Map())
-      const regionMap = regionFlightIds.get(f.to.country)!
-      if (!regionMap.has(f.to.region)) regionMap.set(f.to.region, new Set())
-      regionMap.get(f.to.region)!.add(f.id)
-    }
+    if (!fromHome) creditRegion(f.from.country, f.from.region, f.id)
+    if (!f.isLocalFlight && !toHome) creditRegion(f.to.country, f.to.region, f.id)
   }
 
   const result: CountryEntry[] = []

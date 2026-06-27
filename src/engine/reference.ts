@@ -73,4 +73,22 @@ export function aircraftFamily(typeName: string): string {
   return typeName
 }
 
+/** Manufacturer/brand of an aircraft type ("Boeing 737-800" → "Boeing", "McDonnell Douglas MD-83" → "McDonnell Douglas"). */
+export function aircraftBrand(typeName: string): string {
+  if (!typeName) return typeName
+  const t = typeName.trim()
+  if (/^Boeing/i.test(t)) return 'Boeing'
+  if (/^Airbus/i.test(t)) return 'Airbus'
+  if (/^McDonnell Douglas|^MD-/i.test(t)) return 'McDonnell Douglas'
+  if (/^Bombardier|^Canadair|^CRJ/i.test(t)) return 'Bombardier'
+  if (/^Embraer|^ERJ|^E-?Jet/i.test(t)) return 'Embraer'
+  if (/^(DHC|De Havilland)/i.test(t)) return 'De Havilland'
+  if (/^(Avro|BAe|British Aerospace)/i.test(t)) return 'Avro / BAe'
+  if (/^Hawker/i.test(t)) return 'Hawker'
+  if (/^Helio/i.test(t)) return 'Helio'
+  if (/^ATR/i.test(t)) return 'ATR'
+  if (/^Cessna/i.test(t)) return 'Cessna'
+  return t.split(/[\s-]/)[0] // fallback: first word
+}
+
 export type { Continent }
