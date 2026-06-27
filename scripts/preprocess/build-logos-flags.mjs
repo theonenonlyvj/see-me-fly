@@ -35,8 +35,10 @@ const AIRLINES = [
   ['RYR', 'FR'], ['EZY', 'U2'], ['WZZ', 'W6'], ['VLG', 'VY'], ['NAX', 'DY'], ['EWG', 'EW'], ['ROU', 'RV'],
   ['JZA', 'QK'], ['SKW', 'OO'], ['RPA', 'YX'], ['ENY', 'MQ'], ['ASH', 'YV'], ['QXE', 'QX'], ['EDV', '9E'], ['PDT', 'PT'], ['JIA', 'OH'], ['GJS', 'G7'],
   // carriers in Vijay's data + historical/defunct (Kiwi has icons for most of these)
-  ['BEL', 'SN'], ['AFL', 'SU'], ['ALK', 'UL'], ['UZB', 'HY'], ['NOZ', 'Z0'], ['JSX', 'XE'], ['KFR', 'IT'],
-  ['COA', 'CO'], ['AWE', 'US'], ['JAI', '9W'], ['VRD', 'VX'], ['TRS', 'FL'], ['JLL', 'S2'], ['EWG', 'EW'], ['LAN', 'LA'], ['BAW', 'BA'],
+  // active carriers only — defunct airlines (Continental/CO, Kingfisher/IT, AirTran/FL, JetLite/S2,
+  // US Airways/US, Jet Airways/9W, Virgin America/VX) have REASSIGNED IATA codes → Kiwi returns the
+  // wrong (new code-holder's) logo, so we omit them (clean monogram instead).
+  ['BEL', 'SN'], ['AFL', 'SU'], ['ALK', 'UL'], ['UZB', 'HY'], ['EWG', 'EW'], ['LAN', 'LA'], ['BAW', 'BA'],
 ]
 // Kiwi serves SQUARE airline ICONS (not wordmarks) by IATA. 303 = no logo → skip (monogram fallback).
 const logos = {}
