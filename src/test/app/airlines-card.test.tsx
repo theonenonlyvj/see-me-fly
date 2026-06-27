@@ -10,9 +10,10 @@ const csv = [REQUIRED_COLUMNS.join(','),
 ].join('\n')
 
 describe('airlinesCard', () => {
-  it('shows a resolved airline name', () => {
+  it('shows the airline brand logo (alt = resolved name)', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{airlinesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    expect(screen.getByText(/American/i)).toBeInTheDocument()
+    // American Airlines has a bundled logo → rendered as a wordmark <img> with its name as alt text
+    expect(screen.getByRole('img', { name: /American/i })).toBeInTheDocument()
   })
 })

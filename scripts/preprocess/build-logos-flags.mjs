@@ -41,81 +41,99 @@ async function wikidataFlags() {
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms))
 
-// Fetch a Commons file rasterized to a small PNG (server-side via ?width=). data-URI or null.
+// Fetch a Wikimedia file rasterized to a small image (server-side via ?width=). data-URI or null.
 // Wikimedia rate-limits on-the-fly thumbnail rendering hard, so throttle every request (~300ms
 // gap) and back off exponentially on 429/5xx — back-to-back requests get 429-stormed.
-async function fetchPng(urlNoWidth) {
-  const url = urlNoWidth + (urlNoWidth.includes('?') ? '&' : '?') + 'width=' + FLAG_PX
+async function fetchImage(urlNoWidth, width) {
+  const url = urlNoWidth + (urlNoWidth.includes('?') ? '&' : '?') + 'width=' + width
   for (let attempt = 0; attempt < 4; attempt++) {
     await sleep(attempt === 0 ? 300 : 1000 * attempt) // 300ms base gap, then 1s/2s/3s backoff
     try {
       const r = await fetch(url, { headers: UA })
       if (r.status === 404) return null
       if (r.status === 429 || r.status >= 500) continue // throttled/transient → back off & retry
-      if (r.ok && (r.headers.get('content-type') || '').includes('image')) {
+      const ct = (r.headers.get('content-type') || '').split(';')[0].trim()
+      if (r.ok && ct.startsWith('image/')) {
         const buf = Buffer.from(await r.arrayBuffer())
-        if (buf.length > 200) return 'data:image/png;base64,' + buf.toString('base64')
+        if (buf.length > 200) return `data:${ct};base64,` + buf.toString('base64')
       }
       return null // other non-retryable response
     } catch { /* network hiccup → retry */ }
   }
   return null
 }
+const fetchPng = (urlNoWidth) => fetchImage(urlNoWidth, FLAG_PX)
 
-const p41 = await wikidataFlags()
-const regionFlags = {}
-for (const code of subCodes) {
-  const name = regions[code]
-  const candidates = []
-  if (OVERRIDE[code]) candidates.push(filePath(OVERRIDE[code]))
-  if (p41[code]) candidates.push(p41[code])
-  candidates.push(filePath(`Flag of ${name}.svg`))
-  if (stripDiacritics(name) !== name) candidates.push(filePath(`Flag of ${stripDiacritics(name)}.svg`))
-  if (code.startsWith('IN-')) {
-    candidates.push(filePath(`Flag of ${name}, India.svg`))
-    candidates.push(filePath(`Flag of ${stripDiacritics(name)}, India.svg`))
+if (!process.env.SKIP_FLAGS) { // SKIP_FLAGS=1 to iterate on logos without re-fetching all flags
+  const p41 = await wikidataFlags()
+  const regionFlags = {}
+  for (const code of subCodes) {
+    const name = regions[code]
+    const candidates = []
+    if (OVERRIDE[code]) candidates.push(filePath(OVERRIDE[code]))
+    if (p41[code]) candidates.push(p41[code])
+    candidates.push(filePath(`Flag of ${name}.svg`))
+    if (stripDiacritics(name) !== name) candidates.push(filePath(`Flag of ${stripDiacritics(name)}.svg`))
+    if (code.startsWith('IN-')) {
+      candidates.push(filePath(`Flag of ${name}, India.svg`))
+      candidates.push(filePath(`Flag of ${stripDiacritics(name)}, India.svg`))
+    }
+    for (const c of candidates) {
+      const uri = await fetchPng(c)
+      if (uri) { regionFlags[code] = uri; break }
+    }
   }
-  for (const c of candidates) {
-    const uri = await fetchPng(c)
-    if (uri) { regionFlags[code] = uri; break }
-  }
+  writeFileSync('src/reference/region-flags.json', JSON.stringify(regionFlags) + '\n')
+  const cnt = (p) => subCodes.filter((c) => c.startsWith(p) && regionFlags[c]).length
+  const tot = (p) => subCodes.filter((c) => c.startsWith(p)).length
+  console.log(`region flags: US ${cnt('US-')}/${tot('US-')}, IN ${cnt('IN-')}/${tot('IN-')}, MX ${cnt('MX-')}/${tot('MX-')}`)
 }
-writeFileSync('src/reference/region-flags.json', JSON.stringify(regionFlags) + '\n')
-const cnt = (p) => subCodes.filter((c) => c.startsWith(p) && regionFlags[c]).length
-const tot = (p) => subCodes.filter((c) => c.startsWith(p)).length
-console.log(`region flags: US ${cnt('US-')}/${tot('US-')}, IN ${cnt('IN-')}/${tot('IN-')}, MX ${cnt('MX-')}/${tot('MX-')}`)
 
-// curated major carriers as [ICAO, IATA] — covers most travel; monogram fallback handles the rest
-const AIRLINES = [
-  ['AAL', 'AA'], ['UAL', 'UA'], ['DAL', 'DL'], ['SWA', 'WN'], ['ASA', 'AS'], ['JBU', 'B6'], ['FFT', 'F9'], ['NKS', 'NK'], ['HAL', 'HA'], ['SCX', 'SY'],
-  ['BAW', 'BA'], ['VIR', 'VS'], ['DLH', 'LH'], ['AFR', 'AF'], ['KLM', 'KL'], ['IBE', 'IB'], ['SWR', 'LX'], ['AUA', 'OS'], ['TAP', 'TP'], ['SAS', 'SK'],
-  ['FIN', 'AY'], ['EIN', 'EI'], ['ITY', 'AZ'], ['AEE', 'A3'], ['TVS', 'QS'],
-  ['UAE', 'EK'], ['QTR', 'QR'], ['ETD', 'EY'], ['THY', 'TK'], ['SVA', 'SV'], ['ELY', 'LY'],
-  ['QFA', 'QF'], ['ANZ', 'NZ'], ['SIA', 'SQ'], ['CPA', 'CX'], ['JAL', 'JL'], ['ANA', 'NH'], ['KAL', 'KE'], ['AAR', 'OZ'], ['THA', 'TG'], ['MAS', 'MH'], ['GIA', 'GA'], ['SIA', 'SQ'],
-  ['CCA', 'CA'], ['CES', 'MU'], ['CSN', 'CZ'], ['AIC', 'AI'], ['IGO', '6E'],
-  ['ACA', 'AC'], ['WJA', 'WS'], ['AMX', 'AM'], ['VOI', 'Y4'], ['LAN', 'LA'], ['TAM', 'JJ'], ['AVA', 'AV'], ['CMP', 'CM'], ['AZU', 'AD'], ['GLO', 'G3'],
-  ['RYR', 'FR'], ['EZY', 'U2'], ['WZZ', 'W6'], ['VLG', 'VY'], ['NAX', 'DY'], ['EWG', 'EW'], ['ROU', 'RV'],
-  ['JZA', 'QK'], ['SKW', 'OO'], ['RPA', 'YX'], ['ENY', 'MQ'], ['ASH', 'YV'], ['QXE', 'QX'], ['EDV', '9E'], ['PDT', 'PT'], ['JIA', 'OH'], ['GJS', 'G7'],
-  // carriers in Vijay's data + historical/defunct (Kiwi has icons for most of these)
-  // active carriers only — defunct airlines (Continental/CO, Kingfisher/IT, AirTran/FL, JetLite/S2,
-  // US Airways/US, Jet Airways/9W, Virgin America/VX) have REASSIGNED IATA codes → Kiwi returns the
-  // wrong (new code-holder's) logo, so we omit them (clean monogram instead).
-  ['BEL', 'SN'], ['AFL', 'SU'], ['ALK', 'UL'], ['UZB', 'HY'], ['EWG', 'EW'], ['LAN', 'LA'], ['BAW', 'BA'],
-]
-// Kiwi serves SQUARE airline ICONS (not wordmarks) by IATA. 303 = no logo → skip (monogram fallback).
+// Real airline brand logos (wordmarks), keyed by ICAO (the code that appears in the flight export).
+// Sourced from each carrier's Wikipedia infobox logo via en.wikipedia's FilePath, which serves BOTH
+// Commons PD wordmarks (Southwest, AirTran, Delta…) AND local fair-use logos (United, Continental,
+// US Airways, Jet Airways, Virgin America…). This REPLACES the old Kiwi-by-IATA source, which served
+// Kiwi's own "K" placeholder for carriers it lacked (Southwest!) and the WRONG (reassigned-IATA)
+// logo for defunct carriers. Filenames resolved from infoboxes; the export's carriers were
+// spot-checked visually. Anything not listed falls back to a clean monogram badge.
+const enFilePath = (name) => 'https://en.wikipedia.org/wiki/Special:FilePath/' + encodeURIComponent(name)
+const LOGO_PX = 120 // en.wikipedia thumbnails bucket at 120/250px; 120 (displayed ~20px tall) keeps the full set in budget
+const AIRLINE_LOGO_FILES = {
+  // carriers in the export (visually verified)
+  AAL: 'American Airlines wordmark (2013).svg', SWA: 'Southwest Airlines logo 2014.svg', AWE: 'US Airways Logo.svg',
+  UAL: 'United Airlines Logo.svg', DAL: 'Delta logo.svg', BAW: 'British Airways Logo.svg', QTR: 'Qatar Airways logo.svg',
+  JAI: 'Jet Airways Logo.svg', TRS: 'Air Tran Airways Logo.svg', IBE: 'Logotipo de Iberia.svg', DLH: 'Lufthansa Logo 2018.svg',
+  IGO: 'IndiGo Airlines logo.svg', EZY: 'EasyJet logo.svg', ALK: 'SriLankan Airlines Logo.svg', SCX: 'Sun Country Airlines logo.svg',
+  NKS: 'Spirit Airlines logo 2014.svg', VRD: 'Virgin America logo.svg', FIN: 'Finnair Logo.svg', MAS: 'Malaysia Airlines Logo.svg',
+  JLL: 'Jet Lite logo.svg', CPA: 'Cathay Pacific Ltd. logo.svg', VLG: 'Logo Vueling.svg', JAL: 'Japan Airlines Wordmark (2011).svg',
+  UZB: 'Uzbekistan Airways logo.svg', COA: 'Continental Airlines Logo.svg', KFR: 'Fly kingfisher logo 2011.png',
+  BEL: 'Brussels airlines logo 2021.svg', RYR: 'Ryanair wordmark.svg', WZZ: 'Wizz Air logo 2015.svg', JBU: 'JetBlue Airways Logo.svg',
+  THY: 'Turkish Airlines logo 2019 compact.svg', AIC: 'Air India 2023.svg', NOZ: 'Norse.svg', AFL: 'Aeroflot Russian Airlines logo (en).svg',
+  JSX: 'Logo of JSX.svg', AEE: 'Aegean Airlines Logo 2020.svg', EWG: 'Eurowings Logo 2026.svg', LAN: 'LAN Airlines logo.svg',
+  AMX: 'Aeroméxico wordmark.svg', ASA: 'Alaska Airlines logo.svg',
+  // other major world carriers (resolved from Wikipedia infoboxes; broad coverage for other users)
+  AFR: 'Air France Logo.svg', VIR: 'Virgin Atlantic logo 2018.svg', SWR: 'Swiss International Air Lines Logo 2011.svg',
+  AUA: 'Austrian Airlines logo.svg', TAP: 'TAP-Portugal-Logo.svg', SAS: 'Scandinavian Airlines logo.svg', EIN: 'Aer Lingus logo 2019.svg',
+  UAE: 'Emirates Logo.svg', ETD: 'Etihad-airways-logo.svg', SVA: 'Logo of Saudia.svg', ELY: 'El Al logo.svg',
+  QFA: 'Qantas Airways logo 2016.svg', ANZ: 'Air New Zealand logo.svg', SIA: 'Singapore Airlines Logo 2.svg', KAL: 'Korean Air 2025.svg',
+  AAR: 'Asiana Airlines (2024).svg', THA: 'Thai Airways  logo.svg', GIA: 'Garuda Indonesia Logo.svg', CCA: 'Air China logo.svg',
+  CES: 'China Eastern Airlines logo.svg', CSN: 'China Southern Airlines logo.svg', ACA: 'Air Canada 2017.svg', WJA: 'WestJetLogo2018.svg',
+  AVA: 'Logo Avianca (Colombia) 2023.svg', CMP: 'Copa airlines logo.svg', AZU: 'Logo da Azul Linhas Aéreas Brasileiras.svg',
+  NAX: 'Norwegian_Logo_2024.svg', FFT: 'Frontier Airlines logo.svg', HAL: 'Hawaiian Airlines logo 2017.svg', TVS: 'Smartwings_logo.svg',
+  KLM: 'KLM logo.svg', ANA: 'All Nippon Airways Logo.svg', VOI: 'Volaris-logo.svg',
+  GLO: 'Gol Linhas Aéreas Inteligentes logo (2015, without the slogan).svg',
+}
 const logos = {}
-for (const [icao, iata] of AIRLINES) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const r = await fetch(`https://images.kiwi.com/airlines/64/${iata}.png`) // follow redirects (Kiwi 303s to the real icon)
-      if (r.ok) {
-        const buf = Buffer.from(await r.arrayBuffer())
-        if (buf.length > 400) logos[icao] = 'data:image/png;base64,' + buf.toString('base64')
-        break
-      }
-    } catch { /* retry */ }
-    await new Promise((res) => setTimeout(res, 150))
+let pending = Object.entries(AIRLINE_LOGO_FILES)
+for (let pass = 0; pass < 4 && pending.length; pass++) {
+  if (pass > 0) await sleep(4000) // cool-off, then retry stragglers (en.wikipedia 429s under load)
+  const next = []
+  for (const [icao, file] of pending) {
+    const uri = await fetchImage(enFilePath(file), LOGO_PX)
+    if (uri) logos[icao] = uri; else next.push([icao, file])
   }
+  pending = next
 }
 writeFileSync('src/reference/airline-logos.json', JSON.stringify(logos) + '\n')
-console.log(`airline logos: ${Object.keys(logos).length} of ${AIRLINES.length} carriers`)
+console.log(`airline logos: ${Object.keys(logos).length} of ${Object.keys(AIRLINE_LOGO_FILES).length} carriers`)
+if (pending.length) console.log('  still missing (check filenames):', pending.map(([c]) => c).join(' '))

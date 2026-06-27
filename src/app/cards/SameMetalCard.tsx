@@ -24,6 +24,7 @@ export const sameMetalCard: CardDef = {
       id: t.tail,
       sub: t.airline ? (t.multipleAirlines ? `${t.airline} (+)` : t.airline) : undefined,
       iconUrl: airlineLogos[t.airlineCode],
+      iconWide: true,
     }))
     const N = tails.reduce((s, t) => s + t.count, 0)
     const M = ctx.model!.scoped.length
