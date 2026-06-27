@@ -78,6 +78,8 @@ export default function CardGrid({ model, settings }: { model: Model; settings: 
 
   // Track each card's height; re-pack whenever one changes (an expand/collapse).
   useLayoutEffect(() => {
+    // Synchronous measure first so the initial pre-paint layout uses real heights (no flash).
+    for (const id of ids) { const el = wrapRefs.current[id]; if (el) heights.current[id] = el.offsetHeight }
     relayout()
     if (typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver((entries) => {

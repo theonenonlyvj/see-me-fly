@@ -14,9 +14,10 @@ function pairMinutes(aIso: string, aTz: string, bIso: string, bTz: string): numb
   return (b - a) / 60000
 }
 
-// Faster than any airliner's ground speed (incl. strong tailwinds, ~600-650mph real). A time-based
-// air time implying more than this for the route's distance is bad data, not a real short flight.
-const MAX_GROUND_MPH = 700
+// Faster than any airliner's ground speed even in extreme jet-stream tailwinds (real ground speeds
+// top out around ~780-800mph in rare strong westerlies). A time-based air/gate time implying more
+// than this for the route's distance is bad data (degenerate timestamps), not a real short flight.
+const MAX_GROUND_MPH = 800
 
 export function computeDuration(args: {
   from: Airport | null
@@ -56,7 +57,9 @@ export function computeDuration(args: {
   const gateArr = raw.gateArrActual || raw.gateArrSched
   if (gateDep && gateArr && fromTz && toTz) {
     const m = pairMinutes(gateDep, fromTz, gateArr, toTz)
-    if (m !== null && m > 0) {
+    // gate-to-gate includes taxi so it's longer than air time; same plausibility floor still rejects
+    // degenerate near-zero gate spans, falling through to the distance estimate.
+    if (plausible(m)) {
       return { min: Math.round(Math.max(c.localFlightMinMin, m - c.gateTaxiMin)), source: 'gate' }
     }
   }
