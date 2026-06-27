@@ -286,12 +286,9 @@ export function extremeFlights(
 ): EnrichedFlight[] {
   const metric = (f: EnrichedFlight) => by === 'distance' ? f.distanceMi : f.durationMin
   let filtered = flights.filter(f => metric(f) !== null)
-  if (dir === 'short') {
-    // a 0-or-negative metric is a data artifact, never a real "shortest" flight
+  // duration 0 = data artifact; distance 0 = a REAL local flight (e.g. RPJ skydiving), keep it
+  if (dir === 'short' && by === 'duration') {
     filtered = filtered.filter(f => (metric(f) as number) > 0)
-  }
-  if (by === 'distance' && dir === 'short') {
-    filtered = filtered.filter(f => !f.isLocalFlight)
   }
   const sorted = [...filtered].sort((a, b) => {
     const ma = metric(a)!

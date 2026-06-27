@@ -8,13 +8,17 @@ const subCodes = Object.keys(regions).filter((k) => /^(US|IN|MX)-/.test(k))
 const regionFlags = {}
 for (const code of subCodes) {
   const slug = code.toLowerCase() // US-TX -> us-tx
-  try {
-    const r = await fetch(`https://cdn.jsdelivr.net/gh/HatScripts/circle-flags/flags/${slug}.svg`)
-    if (r.ok) {
-      const svg = await r.text()
-      if (svg.includes('<svg')) regionFlags[code] = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64')
-    }
-  } catch { /* skip */ }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(`https://cdn.jsdelivr.net/gh/HatScripts/circle-flags/flags/${slug}.svg`)
+      if (r.status === 404) break
+      if (r.ok) {
+        const svg = await r.text()
+        if (svg.includes('<svg')) { regionFlags[code] = 'data:image/svg+xml;base64,' + Buffer.from(svg).toString('base64'); break }
+      }
+    } catch { /* retry */ }
+    await new Promise((res) => setTimeout(res, 200))
+  }
 }
 writeFileSync('src/reference/region-flags.json', JSON.stringify(regionFlags) + '\n')
 console.log(`region flags: ${Object.keys(regionFlags).length} of ${subCodes.length} subdivisions`)
@@ -37,13 +41,17 @@ const AIRLINES = [
 // Kiwi serves SQUARE airline ICONS (not wordmarks) by IATA. 303 = no logo → skip (monogram fallback).
 const logos = {}
 for (const [icao, iata] of AIRLINES) {
-  try {
-    const r = await fetch(`https://images.kiwi.com/airlines/64/${iata}.png`, { redirect: 'manual' })
-    if (r.status === 200) {
-      const buf = Buffer.from(await r.arrayBuffer())
-      if (buf.length > 200) logos[icao] = 'data:image/png;base64,' + buf.toString('base64')
-    }
-  } catch { /* skip */ }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await fetch(`https://images.kiwi.com/airlines/64/${iata}.png`) // follow redirects (Kiwi 303s to the real icon)
+      if (r.ok) {
+        const buf = Buffer.from(await r.arrayBuffer())
+        if (buf.length > 400) logos[icao] = 'data:image/png;base64,' + buf.toString('base64')
+        break
+      }
+    } catch { /* retry */ }
+    await new Promise((res) => setTimeout(res, 150))
+  }
 }
 writeFileSync('src/reference/airline-logos.json', JSON.stringify(logos) + '\n')
 console.log(`airline logos: ${Object.keys(logos).length} of ${AIRLINES.length} carriers`)

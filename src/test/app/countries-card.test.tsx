@@ -38,7 +38,7 @@ describe('countriesCard', () => {
   it('splits US/India/Mexico by default (Texas (USA) shown inline)', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{countriesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    expect(screen.getByText(/Texas \(USA\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Texas \(.*USA\)/)).toBeInTheDocument()
   })
 
   it('shows United Kingdom', () => {
@@ -51,7 +51,7 @@ describe('countriesCard', () => {
     const settings = { ...DEFAULT_SETTINGS, splitCountriesByState: ['US'] }
     const model = buildModel(csv, settings, '2026-06-25')
     render(<>{countriesCard.render({ model, settings })}</>)
-    expect(screen.getByText(/Texas \(USA\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Texas \(.*USA\)/)).toBeInTheDocument()
     expect(screen.queryByText(/United States/)).not.toBeInTheDocument() // country row replaced by its states
   })
 
@@ -63,7 +63,7 @@ describe('countriesCard', () => {
       return <>{countriesCard.render({ model, settings, overlay })}</>
     }
     render(<OverlayProvider><Harness /></OverlayProvider>)
-    await userEvent.click(screen.getByText(/Texas \(USA\)/))
+    await userEvent.click(screen.getByText(/Texas \(.*USA\)/))
     expect(await screen.findByText(/Flights in/)).toBeInTheDocument()
   })
 })

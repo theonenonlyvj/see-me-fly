@@ -274,11 +274,11 @@ describe('extremeFlights', () => {
   const f_local = mkRow({ from: 'DFW', to: 'DFW', date: '2020-01-03' })
   const allThree = [f_short, f_long, f_local]
 
-  it('distance,short excludes 0-mi local flights and returns ascending', () => {
+  it('distance,short now INCLUDES 0-mi local flights (real flights like RPJ), ascending', () => {
     const result = extremeFlights(allThree, 'distance', 'short')
-    expect(result.every(f => !f.isLocalFlight)).toBe(true)
-    expect(result[0]).toBe(f_short)
-    expect(result[1]).toBe(f_long)
+    expect(result[0]).toBe(f_local) // 0 mi is the shortest
+    expect(result[1]).toBe(f_short)
+    expect(result[2]).toBe(f_long)
   })
 
   it('distance,long returns descending (LHR first)', () => {

@@ -25,10 +25,9 @@ function buildRows(ctx: CardContext): BarRow[] {
       // Promote each state to its own row, ranked inline with whole countries.
       const short = SHORT[c.code] ?? c.name
       for (const r of c.regions) {
-        const stateFlag = regionFlags[r.region]
         rows.push({
-          label: stateFlag ? `${r.name} (${short})` : `${c.flag} ${r.name} (${short})`.trim(),
-          value: r.count, id: `r:${r.region}`, iconUrl: stateFlag,
+          label: `${r.name} (${c.flag} ${short})`.trim(), // country emoji next to country in parens
+          value: r.count, id: `r:${r.region}`, iconUrl: regionFlags[r.region],
         })
       }
     } else {
