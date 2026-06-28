@@ -1,4 +1,4 @@
-import type { EnrichedFlight, Airport, Settings, Continent } from './types'
+import type { EnrichedFlight, Airport, Settings, Continent, AircraftClass } from './types'
 import { classifyRoute } from './classify'
 import { routeKey, airportKey } from './normalize'
 import { countryName, regionName, aircraftFamily, lookupAirport, continentName } from './reference'
@@ -561,4 +561,226 @@ export function groundGaps(flights: EnrichedFlight[], n = 10): { days: number; f
     if (days > 0) gaps.push({ days, from: dates[i - 1], to: dates[i] })
   }
   return gaps.sort((a, b) => b.days - a.days).slice(0, n)
+}
+
+// ── Time / behavioral aggregators (additive cards) ──────────────────────────
+
+/** Weekday key (0=Mon … 6=Sun) for a YYYY-MM-DD date, computed in UTC to stay deterministic. */
+export function weekdayMonFirst(date: string): number | null {
+  const t = Date.parse(date + 'T00:00:00Z')
+  if (!Number.isFinite(t)) return null
+  return (new Date(t).getUTCDay() + 6) % 7 // getUTCDay: 0=Sun → Mon-first
+}
+
+export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** Flight counts per weekday, Monday-first (index 0=Mon … 6=Sun). */
+export function byWeekday(flights: EnrichedFlight[]): number[] {
+  const counts = new Array(7).fill(0)
+  for (const f of flights) {
+    const w = weekdayMonFirst(f.date)
+    if (w !== null) counts[w] += 1
+  }
+  return counts
+}
+
+export type HomeTier = 'intra-state' | 'intra-country' | 'intra-continent' | 'intercontinental'
+export const HOME_TIER_LABELS: Record<HomeTier, string> = {
+  'intra-state': 'In-state', 'intra-country': 'Domestic', 'intra-continent': 'Continental', intercontinental: 'Intercontinental',
+}
+
+/** One mutually-exclusive "how far from home" tier per resolved flight, closest→farthest. */
+export function homeDistanceTiers(flights: EnrichedFlight[], settings: Settings): { tier: HomeTier; count: number }[] {
+  const counts: Record<HomeTier, number> = { 'intra-state': 0, 'intra-country': 0, 'intra-continent': 0, intercontinental: 0 }
+  for (const f of flights) {
+    if (!f.resolved || f.isLocalFlight) continue
+    const tier = domesticTierOf(f, settings)
+    counts[tier ?? 'intercontinental'] += 1 // domesticTierOf → null means resolved cross-continent
+  }
+  return (['intra-state', 'intra-country', 'intra-continent', 'intercontinental'] as HomeTier[]).map((tier) => ({ tier, count: counts[tier] }))
+}
+
+/** Flights per aircraft body class, ordered wide→narrow→regional→prop→unclassified, zero-classes dropped. */
+export function aircraftClassCounts(flights: EnrichedFlight[]): { cls: AircraftClass; count: number }[] {
+  const m = new Map<AircraftClass, number>()
+  for (const f of flights) {
+    const c = f.aircraftClass || 'unclassified'
+    m.set(c, (m.get(c) ?? 0) + 1)
+  }
+  const order: AircraftClass[] = ['wide', 'narrow', 'regional', 'prop', 'unclassified']
+  return order.map((cls) => ({ cls, count: m.get(cls) ?? 0 })).filter((x) => x.count > 0)
+}
+
+/** Per-year flight counts split across the top-N airlines (by name) + an "Other" bucket — for stacked eras. */
+export function airlineByYear(flights: EnrichedFlight[], topN = 2): { years: number[]; series: { name: string; counts: number[] }[] } {
+  const totals = new Map<string, number>()
+  for (const f of flights) {
+    if (!f.airlineName || f.airlineName === 'Unknown airline') continue
+    totals.set(f.airlineName, (totals.get(f.airlineName) ?? 0) + 1)
+  }
+  const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, topN).map((e) => e[0])
+  const topSet = new Set(top)
+  const years = [...new Set(flights.map((f) => f.year))].filter((y) => Number.isFinite(y)).sort((a, b) => a - b)
+  const yearIdx = new Map(years.map((y, i) => [y, i]))
+  const series = [...top.map((name) => ({ name, counts: new Array(years.length).fill(0) })), { name: 'Other', counts: new Array(years.length).fill(0) }]
+  const byName = new Map(series.map((s) => [s.name, s]))
+  for (const f of flights) {
+    if (!f.airlineName || f.airlineName === 'Unknown airline') continue
+    const i = yearIdx.get(f.year)
+    if (i === undefined) continue
+    const s = topSet.has(f.airlineName) ? byName.get(f.airlineName)! : byName.get('Other')!
+    s.counts[i] += 1
+  }
+  return { years, series }
+}
+
+// ── Identity / behavioral cards (batch 2) ───────────────────────────────────
+
+/** Departure time-of-day profile. depHourLocal is 0-23 local (no tz shift). */
+export function redEyeProfile(flights: EnrichedFlight[]): {
+  redEyes: number; dawnPatrol: number; hourCounts: number[]; withTime: number; commonHour: number | null
+} {
+  const hourCounts = new Array(24).fill(0)
+  let redEyes = 0, dawnPatrol = 0, withTime = 0
+  for (const f of flights) {
+    const h = f.depHourLocal
+    if (h === null || h === undefined) continue
+    withTime += 1
+    hourCounts[h] += 1
+    if (h >= 22 || h <= 4) redEyes += 1     // late-night / overnight departure
+    if (h >= 5 && h <= 6) dawnPatrol += 1   // pre-7am "dawn patrol"
+  }
+  const commonHour = withTime > 0 ? hourCounts.indexOf(Math.max(...hourCounts)) : null
+  return { redEyes, dawnPatrol, hourCounts, withTime, commonHour }
+}
+
+export interface FleetStats { distinctTails: number; withTail: number; oneTimers: number; mostRepeated: { tail: string; count: number; airline: string } | null }
+
+/** The personal fleet: how many distinct airframes (tail numbers), the most-ridden one, and one-timers. */
+export function fleetStats(flights: EnrichedFlight[]): FleetStats {
+  const m = new Map<string, { count: number; airline: string }>()
+  for (const f of flights) {
+    const t = (f.tail || '').trim()
+    if (!t) continue
+    const cur = m.get(t) ?? { count: 0, airline: f.airlineName }
+    cur.count += 1
+    m.set(t, cur)
+  }
+  let withTail = 0, oneTimers = 0
+  let mostRepeated: FleetStats['mostRepeated'] = null
+  for (const [tail, v] of m) {
+    withTail += v.count
+    if (v.count === 1) oneTimers += 1
+    if (!mostRepeated || v.count > mostRepeated.count) mostRepeated = { tail, count: v.count, airline: v.airline }
+  }
+  return { distinctTails: m.size, withTail, oneTimers, mostRepeated }
+}
+
+/** Defunct / merged carriers (ICAO → fate text). Curated; covers the long-tail carriers in real data. */
+export const DEFUNCT_AIRLINES: Record<string, string> = {
+  AWE: 'merged into American, 2015',
+  COA: 'merged into United, 2012',
+  TRS: 'merged into Southwest, 2014',
+  VRD: 'merged into Alaska, 2018',
+  JAI: 'ceased operations, 2019',
+  KFR: 'ceased operations, 2012',
+  JLL: 'folded into Jet Airways, 2012',
+  NWA: 'merged into Delta, 2010',
+  AAH: 'merged into US Airways, 2005',
+}
+
+/** Carriers you flew that no longer exist, with your flight count, last flight, and fate. */
+export function ghostAirlines(flights: EnrichedFlight[]): { code: string; name: string; count: number; last: string; fate: string }[] {
+  const m = new Map<string, { name: string; count: number; last: string }>()
+  for (const f of flights) {
+    const code = f.airlineCode
+    if (!DEFUNCT_AIRLINES[code]) continue
+    const cur = m.get(code) ?? { name: f.airlineName, count: 0, last: f.date }
+    cur.count += 1
+    if (f.date > cur.last) cur.last = f.date
+    m.set(code, cur)
+  }
+  return [...m.entries()]
+    .map(([code, v]) => ({ code, name: v.name, count: v.count, last: v.last, fate: DEFUNCT_AIRLINES[code] }))
+    .sort((a, b) => b.count - a.count)
+}
+
+// ── Trip reconstruction (batch 3): group legs into home-anchored journeys ────
+
+export interface Trip {
+  flights: EnrichedFlight[]
+  departDate: string
+  returnDate: string
+  nights: number            // calendar nights between leaving home and returning
+  year: number              // year of departure
+  outboundWeekday: number   // 0=Mon … 6=Sun
+  returnWeekday: number
+  roundTrip: boolean        // ended back at home
+  destinations: string[]    // distinct non-home airport keys touched
+}
+
+/**
+ * Group chronological flights into trips bracketed by home. A trip accumulates legs until one
+ * ARRIVES home, then closes. Needs a home airport; returns [] without one. Best-effort across
+ * data gaps (a leg that doesn't start from home simply extends the current trip).
+ */
+export function reconstructTrips(flights: EnrichedFlight[], settings: Settings): Trip[] {
+  const homeKey = settings.home ? airportKey(settings.home, settings.groupAirports) : null
+  if (homeKey == null) return []
+  const k = (c: string) => airportKey(c, settings.groupAirports)
+  const isHome = (c: string) => k(c) === homeKey
+  const sortMs = (f: EnrichedFlight) => (f.depUtcMs ?? (Date.parse(f.date) || 0))
+  const ordered = flights.filter((f) => f.resolved && !f.isLocalFlight).sort((a, b) => sortMs(a) - sortMs(b) || a.rawIndex - b.rawIndex)
+
+  const trips: Trip[] = []
+  let cur: EnrichedFlight[] = []
+  const close = () => {
+    if (!cur.length) return
+    const first = cur[0], last = cur[cur.length - 1]
+    const nights = Math.max(0, Math.round((Date.parse(last.date) - Date.parse(first.date)) / 86_400_000))
+    const dests = new Set<string>()
+    for (const f of cur) if (!isHome(f.toCode)) dests.add(k(f.toCode))
+    trips.push({
+      flights: cur, departDate: first.date, returnDate: last.date, nights, year: first.year,
+      outboundWeekday: weekdayMonFirst(first.date) ?? 0, returnWeekday: weekdayMonFirst(last.date) ?? 0,
+      roundTrip: isHome(last.toCode), destinations: [...dests],
+    })
+    cur = []
+  }
+  for (const f of ordered) {
+    cur.push(f)
+    if (isHome(f.toCode)) close() // arrived home → trip ends
+  }
+  close()
+  return trips
+}
+
+const modeOf = (arr: number[]): number | null => {
+  if (!arr.length) return null
+  const m = new Map<number, number>()
+  for (const x of arr) m.set(x, (m.get(x) ?? 0) + 1)
+  return [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]
+}
+
+/** Roll-up of trips for the Commuter Cadence + Nights Away cards. */
+export function tripSummary(trips: Trip[]): {
+  tripCount: number; roundTrips: number; totalNights: number; medianNights: number; longest: Trip | null
+  commonOutbound: number | null; commonReturn: number | null; businessPct: number
+  nightsByYear: { year: number; nights: number }[]
+} {
+  const round = trips.filter((t) => t.roundTrip)
+  const nightsSorted = round.map((t) => t.nights).filter((n) => n > 0).sort((a, b) => a - b)
+  const medianNights = nightsSorted.length ? nightsSorted[Math.floor(nightsSorted.length / 2)] : 0
+  const totalNights = trips.reduce((s, t) => s + t.nights, 0)
+  let longest: Trip | null = null
+  for (const t of trips) if (!longest || t.nights > longest.nights) longest = t
+  const business = round.filter((t) => t.nights >= 1 && t.nights <= 4 && t.outboundWeekday <= 3).length
+  const byYear = new Map<number, number>()
+  for (const t of trips) byYear.set(t.year, (byYear.get(t.year) ?? 0) + t.nights)
+  return {
+    tripCount: trips.length, roundTrips: round.length, totalNights, medianNights, longest,
+    commonOutbound: modeOf(round.map((t) => t.outboundWeekday)), commonReturn: modeOf(round.map((t) => t.returnWeekday)),
+    businessPct: round.length ? Math.round((business / round.length) * 100) : 0,
+    nightsByYear: [...byYear.entries()].map(([year, nights]) => ({ year, nights })).sort((a, b) => a.year - b.year),
+  }
 }

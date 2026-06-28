@@ -9,13 +9,17 @@ const GAP = 24
 
 // The storyline: section title -> ordered card ids. The full-width map is the hero of section 1.
 const SECTIONS: { title: string; ids: string[] }[] = [
-  { title: 'The big picture', ids: ['overview', 'odometer'] },
-  { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes'] },
-  { title: 'How far you go', ids: ['distance', 'shortest', 'longest'] },
-  { title: 'Your routes', ids: ['routes', 'layovers', 'domesticState', 'domesticCountry', 'domesticContinent', 'intercontinental'] },
-  { title: 'How you fly', ids: ['airlines', 'aircraft', 'aircraftClass', 'sameMetal', 'delays'] },
-  { title: 'When you fly', ids: ['whenYouFly', 'intensity', 'records'] },
+  { title: 'The big picture', ids: ['map', 'mapV2', 'overview', 'odometer', 'personality'] },
+  { title: 'Your story over time', ids: ['careerArc', 'airlineEras'] },
+  { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes', 'howFarFromHome'] },
+  { title: 'How far you go', ids: ['distance', 'topRouteHero', 'shortest', 'longest'] },
+  { title: 'Your routes & trips', ids: ['routes', 'layovers', 'commuterCadence', 'nightsAway', 'domesticState', 'domesticCountry', 'domesticContinent', 'intercontinental'] },
+  { title: 'How you fly', ids: ['airlines', 'ghostAirlines', 'aircraft', 'aircraftClass', 'aircraftClassBar', 'sameMetal', 'fleet', 'delays'] },
+  { title: 'When you fly', ids: ['whenYouFly', 'whenYouFlyOverlay', 'dayOfWeek', 'redEyes', 'intensity', 'records'] },
 ]
+
+// Cards rendered full-width (stacked above the masonry) rather than in a column.
+const FULLWIDTH = new Set(['map', 'mapV2'])
 
 /** Responsive column count (3 / 2 / 1). */
 function useColumns(): number {
@@ -134,10 +138,9 @@ export default function CardGrid({ model, settings, update }: { model: Model; se
   const ctx: CardContext = { model, settings, overlay, update }
 
   const byId = useMemo(() => Object.fromEntries(CARDS.map((c) => [c.id, c])), [])
-  const mapCard = byId['map']
 
   // Any registered card not placed in a section falls into a trailing "More" section (defensive).
-  const placed = new Set<string>(['map', ...SECTIONS.flatMap((s) => s.ids)])
+  const placed = new Set<string>(SECTIONS.flatMap((s) => s.ids))
   const leftovers = CARDS.filter((c) => !placed.has(c.id))
   const sections = leftovers.length ? [...SECTIONS, { title: 'More', ids: leftovers.map((c) => c.id) }] : SECTIONS
 
@@ -145,12 +148,13 @@ export default function CardGrid({ model, settings, update }: { model: Model; se
     <div style={{ maxWidth: 1280, margin: '0 auto', padding: '14px 28px 80px' }}>
       {sections.map((section) => {
         const cards = section.ids.map((id) => byId[id]).filter(Boolean) as CardDef[]
-        const isBigPicture = section.title === 'The big picture'
+        const wide = cards.filter((c) => FULLWIDTH.has(c.id))   // maps render full-width, stacked
+        const rest = cards.filter((c) => !FULLWIDTH.has(c.id))  // everything else flows in the masonry
         return (
           <section key={section.title} style={{ marginBottom: 40 }}>
             <SectionHeader title={section.title} />
-            {isBigPicture && mapCard && <div style={{ marginBottom: GAP }}>{mapCard.render(ctx)}</div>}
-            <Masonry cards={cards} cols={cols} ctx={ctx} />
+            {wide.map((c) => <div key={c.id} style={{ marginBottom: GAP }}>{c.render(ctx)}</div>)}
+            {rest.length > 0 && <Masonry cards={rest} cols={cols} ctx={ctx} />}
           </section>
         )
       })}
