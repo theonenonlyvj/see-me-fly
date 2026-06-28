@@ -20,6 +20,7 @@ export default function StackedColumns({
   onYear?: (year: number) => void
   highlightYear?: number
 }) {
+  if (years.length === 0) return null // defensive: nothing to plot
   const totals = years.map((_, i) => series.reduce((s, ser) => s + (ser.counts[i] || 0), 0))
   const peak = Math.max(...totals, 1)
   const peakIdx = totals.indexOf(Math.max(...totals))
