@@ -102,7 +102,7 @@ const AIRLINE_LOGO_FILES = {
   // carriers in the export — each VISUALLY picked (full brand logo: symbol+name, correct era) by a
   // per-airline agent comparing the current logo vs the Wikipedia infobox logo. Text-only brands
   // (easyJet/Spirit/Vueling/JetBlue/Finnair/JetLite) are genuinely wordmark-only; LAN kept (not LATAM).
-  AAL: 'American Airlines logo 2013.svg', SWA: 'Southwest Airlines logo 2014.svg', AWE: 'US Airways Logo.svg',
+  AAL: 'American Airlines logo 2013.svg', SWA: 'Southwest Airlines logo 2014.svg', AWE: 'US Airways Logo Star Alliance 2011.svg', // horizontal side-by-side lockup (the plain "US Airways Logo.svg" is stacked/tall)
   UAL: 'United Airlines Logo.svg', DAL: 'Delta logo.svg', BAW: 'British Airways Logo.svg', QTR: 'Qatar Airways Logo.svg',
   JAI: 'Jet Airways Logo.svg', TRS: 'AirTran Airways logo.svg', IBE: 'Iberia (2013).svg', DLH: 'Lufthansa Logo 2018.svg',
   IGO: 'IndiGo Airlines logo.svg', EZY: 'EasyJet logo.svg', ALK: 'SriLankan Airlines Logo.svg', SCX: 'Sun Country Airlines logo.svg',
