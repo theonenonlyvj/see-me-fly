@@ -3,7 +3,7 @@ import { parseFlightyCsv } from '../../engine/parse'
 import { enrichFlight } from '../../engine/enrich'
 import { DEFAULT_DURATION_CONSTANTS } from '../../engine/constants'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
-import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines } from '../../engine/stats'
+import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines, reconstructTrips, tripSummary } from '../../engine/stats'
 import type { Settings } from '../../engine'
 
 const C = DEFAULT_DURATION_CONSTANTS
@@ -75,6 +75,34 @@ describe('time/behavioral aggregators', () => {
     expect(res.length).toBe(1)
     expect(res[0]).toMatchObject({ code: 'AWE', count: 2, last: '2015-01-01' })
     expect(res[0].fate).toMatch(/American/)
+  })
+
+  it('reconstructTrips groups legs into home-anchored trips', () => {
+    const flights = [
+      row('2018-01-02', 'DFW', 'ORD'), row('2018-01-04', 'ORD', 'DFW'), // round trip, 2 nights, Tue→Thu
+      row('2018-02-01', 'DFW', 'AUS'), row('2018-02-01', 'AUS', 'DFW'), // day trip, 0 nights
+      row('2018-03-01', 'DFW', 'LHR'),                                   // open (no return)
+    ]
+    const trips = reconstructTrips(flights, S({ home: 'DFW' }))
+    expect(trips.length).toBe(3)
+    expect(trips[0]).toMatchObject({ nights: 2, roundTrip: true, outboundWeekday: 1, returnWeekday: 3 }) // Tue→Thu
+    expect(trips[1]).toMatchObject({ nights: 0, roundTrip: true })
+    expect(trips[2].roundTrip).toBe(false) // open trip to London
+    expect(reconstructTrips(flights, S({ home: null }))).toEqual([]) // no home → no trips
+  })
+
+  it('tripSummary rolls up cadence + nights-away', () => {
+    const flights = [
+      row('2018-01-02', 'DFW', 'ORD'), row('2018-01-04', 'ORD', 'DFW'), // 2 nights, business shape
+      row('2019-01-01', 'DFW', 'AUS'), row('2019-01-03', 'AUS', 'DFW'), // 2 nights
+    ]
+    const s = tripSummary(reconstructTrips(flights, S({ home: 'DFW' })))
+    expect(s.tripCount).toBe(2)
+    expect(s.roundTrips).toBe(2)
+    expect(s.totalNights).toBe(4)
+    expect(s.medianNights).toBe(2)
+    expect(s.commonOutbound).not.toBeNull()
+    expect(s.nightsByYear).toEqual([{ year: 2018, nights: 2 }, { year: 2019, nights: 2 }])
   })
 
   it('airlineByYear stacks top-N airlines + Other across years', () => {

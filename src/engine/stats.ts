@@ -704,3 +704,83 @@ export function ghostAirlines(flights: EnrichedFlight[]): { code: string; name: 
     .map(([code, v]) => ({ code, name: v.name, count: v.count, last: v.last, fate: DEFUNCT_AIRLINES[code] }))
     .sort((a, b) => b.count - a.count)
 }
+
+// ── Trip reconstruction (batch 3): group legs into home-anchored journeys ────
+
+export interface Trip {
+  flights: EnrichedFlight[]
+  departDate: string
+  returnDate: string
+  nights: number            // calendar nights between leaving home and returning
+  year: number              // year of departure
+  outboundWeekday: number   // 0=Mon … 6=Sun
+  returnWeekday: number
+  roundTrip: boolean        // ended back at home
+  destinations: string[]    // distinct non-home airport keys touched
+}
+
+/**
+ * Group chronological flights into trips bracketed by home. A trip accumulates legs until one
+ * ARRIVES home, then closes. Needs a home airport; returns [] without one. Best-effort across
+ * data gaps (a leg that doesn't start from home simply extends the current trip).
+ */
+export function reconstructTrips(flights: EnrichedFlight[], settings: Settings): Trip[] {
+  const homeKey = settings.home ? airportKey(settings.home, settings.groupAirports) : null
+  if (homeKey == null) return []
+  const k = (c: string) => airportKey(c, settings.groupAirports)
+  const isHome = (c: string) => k(c) === homeKey
+  const sortMs = (f: EnrichedFlight) => (f.depUtcMs ?? (Date.parse(f.date) || 0))
+  const ordered = flights.filter((f) => f.resolved && !f.isLocalFlight).sort((a, b) => sortMs(a) - sortMs(b) || a.rawIndex - b.rawIndex)
+
+  const trips: Trip[] = []
+  let cur: EnrichedFlight[] = []
+  const close = () => {
+    if (!cur.length) return
+    const first = cur[0], last = cur[cur.length - 1]
+    const nights = Math.max(0, Math.round((Date.parse(last.date) - Date.parse(first.date)) / 86_400_000))
+    const dests = new Set<string>()
+    for (const f of cur) if (!isHome(f.toCode)) dests.add(k(f.toCode))
+    trips.push({
+      flights: cur, departDate: first.date, returnDate: last.date, nights, year: first.year,
+      outboundWeekday: weekdayMonFirst(first.date) ?? 0, returnWeekday: weekdayMonFirst(last.date) ?? 0,
+      roundTrip: isHome(last.toCode), destinations: [...dests],
+    })
+    cur = []
+  }
+  for (const f of ordered) {
+    cur.push(f)
+    if (isHome(f.toCode)) close() // arrived home → trip ends
+  }
+  close()
+  return trips
+}
+
+const modeOf = (arr: number[]): number | null => {
+  if (!arr.length) return null
+  const m = new Map<number, number>()
+  for (const x of arr) m.set(x, (m.get(x) ?? 0) + 1)
+  return [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]
+}
+
+/** Roll-up of trips for the Commuter Cadence + Nights Away cards. */
+export function tripSummary(trips: Trip[]): {
+  tripCount: number; roundTrips: number; totalNights: number; medianNights: number; longest: Trip | null
+  commonOutbound: number | null; commonReturn: number | null; businessPct: number
+  nightsByYear: { year: number; nights: number }[]
+} {
+  const round = trips.filter((t) => t.roundTrip)
+  const nightsSorted = round.map((t) => t.nights).filter((n) => n > 0).sort((a, b) => a - b)
+  const medianNights = nightsSorted.length ? nightsSorted[Math.floor(nightsSorted.length / 2)] : 0
+  const totalNights = trips.reduce((s, t) => s + t.nights, 0)
+  let longest: Trip | null = null
+  for (const t of trips) if (!longest || t.nights > longest.nights) longest = t
+  const business = round.filter((t) => t.nights >= 1 && t.nights <= 4 && t.outboundWeekday <= 3).length
+  const byYear = new Map<number, number>()
+  for (const t of trips) byYear.set(t.year, (byYear.get(t.year) ?? 0) + t.nights)
+  return {
+    tripCount: trips.length, roundTrips: round.length, totalNights, medianNights, longest,
+    commonOutbound: modeOf(round.map((t) => t.outboundWeekday)), commonReturn: modeOf(round.map((t) => t.returnWeekday)),
+    businessPct: round.length ? Math.round((business / round.length) * 100) : 0,
+    nightsByYear: [...byYear.entries()].map(([year, nights]) => ({ year, nights })).sort((a, b) => a.year - b.year),
+  }
+}
