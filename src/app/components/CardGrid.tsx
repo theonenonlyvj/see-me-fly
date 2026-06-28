@@ -10,11 +10,12 @@ const GAP = 24
 // The storyline: section title -> ordered card ids. The full-width map is the hero of section 1.
 const SECTIONS: { title: string; ids: string[] }[] = [
   { title: 'The big picture', ids: ['overview', 'odometer'] },
-  { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes'] },
+  { title: 'Your story over time', ids: ['careerArc', 'airlineEras'] },
+  { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes', 'howFarFromHome'] },
   { title: 'How far you go', ids: ['distance', 'shortest', 'longest'] },
   { title: 'Your routes', ids: ['routes', 'layovers', 'domesticState', 'domesticCountry', 'domesticContinent', 'intercontinental'] },
-  { title: 'How you fly', ids: ['airlines', 'aircraft', 'aircraftClass', 'sameMetal', 'delays'] },
-  { title: 'When you fly', ids: ['whenYouFly', 'intensity', 'records'] },
+  { title: 'How you fly', ids: ['airlines', 'aircraft', 'aircraftClass', 'aircraftClassBar', 'sameMetal', 'delays'] },
+  { title: 'When you fly', ids: ['whenYouFly', 'dayOfWeek', 'intensity', 'records'] },
 ]
 
 /** Responsive column count (3 / 2 / 1). */

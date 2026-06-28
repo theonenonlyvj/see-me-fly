@@ -1,4 +1,4 @@
-import type { EnrichedFlight, Airport, Settings, Continent } from './types'
+import type { EnrichedFlight, Airport, Settings, Continent, AircraftClass } from './types'
 import { classifyRoute } from './classify'
 import { routeKey, airportKey } from './normalize'
 import { countryName, regionName, aircraftFamily, lookupAirport, continentName } from './reference'
@@ -561,4 +561,75 @@ export function groundGaps(flights: EnrichedFlight[], n = 10): { days: number; f
     if (days > 0) gaps.push({ days, from: dates[i - 1], to: dates[i] })
   }
   return gaps.sort((a, b) => b.days - a.days).slice(0, n)
+}
+
+// ── Time / behavioral aggregators (additive cards) ──────────────────────────
+
+/** Weekday key (0=Mon … 6=Sun) for a YYYY-MM-DD date, computed in UTC to stay deterministic. */
+export function weekdayMonFirst(date: string): number | null {
+  const t = Date.parse(date + 'T00:00:00Z')
+  if (!Number.isFinite(t)) return null
+  return (new Date(t).getUTCDay() + 6) % 7 // getUTCDay: 0=Sun → Mon-first
+}
+
+export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+/** Flight counts per weekday, Monday-first (index 0=Mon … 6=Sun). */
+export function byWeekday(flights: EnrichedFlight[]): number[] {
+  const counts = new Array(7).fill(0)
+  for (const f of flights) {
+    const w = weekdayMonFirst(f.date)
+    if (w !== null) counts[w] += 1
+  }
+  return counts
+}
+
+export type HomeTier = 'intra-state' | 'intra-country' | 'intra-continent' | 'intercontinental'
+export const HOME_TIER_LABELS: Record<HomeTier, string> = {
+  'intra-state': 'In-state', 'intra-country': 'Domestic', 'intra-continent': 'Continental', intercontinental: 'Intercontinental',
+}
+
+/** One mutually-exclusive "how far from home" tier per resolved flight, closest→farthest. */
+export function homeDistanceTiers(flights: EnrichedFlight[], settings: Settings): { tier: HomeTier; count: number }[] {
+  const counts: Record<HomeTier, number> = { 'intra-state': 0, 'intra-country': 0, 'intra-continent': 0, intercontinental: 0 }
+  for (const f of flights) {
+    if (!f.resolved || f.isLocalFlight) continue
+    const tier = domesticTierOf(f, settings)
+    counts[tier ?? 'intercontinental'] += 1 // domesticTierOf → null means resolved cross-continent
+  }
+  return (['intra-state', 'intra-country', 'intra-continent', 'intercontinental'] as HomeTier[]).map((tier) => ({ tier, count: counts[tier] }))
+}
+
+/** Flights per aircraft body class, ordered wide→narrow→regional→prop→unclassified, zero-classes dropped. */
+export function aircraftClassCounts(flights: EnrichedFlight[]): { cls: AircraftClass; count: number }[] {
+  const m = new Map<AircraftClass, number>()
+  for (const f of flights) {
+    const c = f.aircraftClass || 'unclassified'
+    m.set(c, (m.get(c) ?? 0) + 1)
+  }
+  const order: AircraftClass[] = ['wide', 'narrow', 'regional', 'prop', 'unclassified']
+  return order.map((cls) => ({ cls, count: m.get(cls) ?? 0 })).filter((x) => x.count > 0)
+}
+
+/** Per-year flight counts split across the top-N airlines (by name) + an "Other" bucket — for stacked eras. */
+export function airlineByYear(flights: EnrichedFlight[], topN = 2): { years: number[]; series: { name: string; counts: number[] }[] } {
+  const totals = new Map<string, number>()
+  for (const f of flights) {
+    if (!f.airlineName || f.airlineName === 'Unknown airline') continue
+    totals.set(f.airlineName, (totals.get(f.airlineName) ?? 0) + 1)
+  }
+  const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, topN).map((e) => e[0])
+  const topSet = new Set(top)
+  const years = [...new Set(flights.map((f) => f.year))].filter((y) => Number.isFinite(y)).sort((a, b) => a - b)
+  const yearIdx = new Map(years.map((y, i) => [y, i]))
+  const series = [...top.map((name) => ({ name, counts: new Array(years.length).fill(0) })), { name: 'Other', counts: new Array(years.length).fill(0) }]
+  const byName = new Map(series.map((s) => [s.name, s]))
+  for (const f of flights) {
+    if (!f.airlineName || f.airlineName === 'Unknown airline') continue
+    const i = yearIdx.get(f.year)
+    if (i === undefined) continue
+    const s = topSet.has(f.airlineName) ? byName.get(f.airlineName)! : byName.get('Other')!
+    s.counts[i] += 1
+  }
+  return { years, series }
 }

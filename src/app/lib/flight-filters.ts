@@ -92,3 +92,12 @@ export function flightsIntercontinental(flights: EnrichedFlight[]): EnrichedFlig
 export function flightsByAircraftClass(flights: EnrichedFlight[], cls: string): EnrichedFlight[] {
   return flights.filter((f) => f.aircraftClass === cls)
 }
+
+/** Flights that departed on a given weekday (0=Mon … 6=Sun), computed in UTC. */
+export function flightsByWeekday(flights: EnrichedFlight[], weekday: number): EnrichedFlight[] {
+  return flights.filter((f) => {
+    const t = Date.parse(f.date + 'T00:00:00Z')
+    if (!Number.isFinite(t)) return false
+    return (new Date(t).getUTCDay() + 6) % 7 === weekday
+  })
+}
