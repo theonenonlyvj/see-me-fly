@@ -99,18 +99,20 @@ if (!process.env.SKIP_FLAGS) { // SKIP_FLAGS=1 to iterate on logos without re-fe
 const enFilePath = (name) => 'https://en.wikipedia.org/wiki/Special:FilePath/' + encodeURIComponent(name)
 const LOGO_PX = 120 // en.wikipedia thumbnails bucket at 120/250px; 120 (displayed ~20px tall) keeps the full set in budget
 const AIRLINE_LOGO_FILES = {
-  // carriers in the export (visually verified)
-  AAL: 'American Airlines wordmark (2013).svg', SWA: 'Southwest Airlines logo 2014.svg', AWE: 'US Airways Logo.svg',
-  UAL: 'United Airlines Logo.svg', DAL: 'Delta logo.svg', BAW: 'British Airways Logo.svg', QTR: 'Qatar Airways logo.svg',
-  JAI: 'Jet Airways Logo.svg', TRS: 'Air Tran Airways Logo.svg', IBE: 'Logotipo de Iberia.svg', DLH: 'Lufthansa Logo 2018.svg',
+  // carriers in the export — each VISUALLY picked (full brand logo: symbol+name, correct era) by a
+  // per-airline agent comparing the current logo vs the Wikipedia infobox logo. Text-only brands
+  // (easyJet/Spirit/Vueling/JetBlue/Finnair/JetLite) are genuinely wordmark-only; LAN kept (not LATAM).
+  AAL: 'American Airlines logo 2013.svg', SWA: 'Southwest Airlines logo 2014.svg', AWE: 'US Airways Logo.svg',
+  UAL: 'United Airlines Logo.svg', DAL: 'Delta logo.svg', BAW: 'British Airways Logo.svg', QTR: 'Qatar Airways Logo.svg',
+  JAI: 'Jet Airways Logo.svg', TRS: 'AirTran Airways logo.svg', IBE: 'Iberia (2013).svg', DLH: 'Lufthansa Logo 2018.svg',
   IGO: 'IndiGo Airlines logo.svg', EZY: 'EasyJet logo.svg', ALK: 'SriLankan Airlines Logo.svg', SCX: 'Sun Country Airlines logo.svg',
-  NKS: 'Spirit Airlines logo 2014.svg', VRD: 'Virgin America logo.svg', FIN: 'Finnair Logo.svg', MAS: 'Malaysia Airlines Logo.svg',
-  JLL: 'Jet Lite logo.svg', CPA: 'Cathay Pacific Ltd. logo.svg', VLG: 'Logo Vueling.svg', JAL: 'Japan Airlines Wordmark (2011).svg',
+  NKS: 'Spirit Airlines logo.svg', VRD: 'Virgin America logo.svg', FIN: 'Finnair Logo.svg', MAS: 'Malaysia Airlines Logo.svg',
+  JLL: 'Jet Lite logo.svg', CPA: 'Cathay Pacific logo.svg', VLG: 'Logo Vueling.svg', JAL: 'Japan Airlines Logo (2011).svg',
   UZB: 'Uzbekistan Airways logo.svg', COA: 'Continental Airlines Logo.svg', KFR: 'Fly kingfisher logo 2011.png',
-  BEL: 'Brussels airlines logo 2021.svg', RYR: 'Ryanair wordmark.svg', WZZ: 'Wizz Air logo 2015.svg', JBU: 'JetBlue Airways Logo.svg',
-  THY: 'Turkish Airlines logo 2019 compact.svg', AIC: 'Air India 2023.svg', NOZ: 'Norse.svg', AFL: 'Aeroflot Russian Airlines logo (en).svg',
-  JSX: 'Logo of JSX.svg', AEE: 'Aegean Airlines Logo 2020.svg', EWG: 'Eurowings Logo 2026.svg', LAN: 'LAN Airlines logo.svg',
-  AMX: 'Aeroméxico wordmark.svg', ASA: 'Alaska Airlines logo.svg',
+  BEL: 'Brussels airlines logo 2021.svg', RYR: 'Ryanair.svg', WZZ: 'Wizz Air logo 2015.svg', JBU: 'JetBlue Airways Logo.svg',
+  THY: 'Turkish Airlines logo 2019 compact.svg', AIC: 'Air India 2023.svg', NOZ: 'Norse.svg', AFL: 'Aeroflot Logo en.svg',
+  JSX: 'Logo of JSX.svg', AEE: 'Aegean Airlines Logo 2020.svg', EWG: 'Eurowings Logo.svg', LAN: 'LAN Airlines logo.svg',
+  AMX: 'Aeroméxico_Logo_2024_-_Navy.svg', ASA: 'Alaska Airlines logo with tagline.svg',
   // other major world carriers (resolved from Wikipedia infoboxes; broad coverage for other users)
   AFR: 'Air France Logo.svg', VIR: 'Virgin Atlantic logo 2018.svg', SWR: 'Swiss International Air Lines Logo 2011.svg',
   AUA: 'Austrian Airlines logo.svg', TAP: 'TAP-Portugal-Logo.svg', SAS: 'Scandinavian Airlines logo.svg', EIN: 'Aer Lingus logo 2019.svg',
