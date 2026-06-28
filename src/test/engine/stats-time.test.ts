@@ -3,7 +3,7 @@ import { parseFlightyCsv } from '../../engine/parse'
 import { enrichFlight } from '../../engine/enrich'
 import { DEFAULT_DURATION_CONSTANTS } from '../../engine/constants'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
-import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear } from '../../engine/stats'
+import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines } from '../../engine/stats'
 import type { Settings } from '../../engine'
 
 const C = DEFAULT_DURATION_CONSTANTS
@@ -12,6 +12,9 @@ const mk = (line: string) => enrichFlight(parseFlightyCsv([H, line].join('\n')).
 // date, airline(ICAO), flightnum, from, to, ... aircraft type at col 19
 const row = (date: string, from: string, to: string, airline = 'AAL', ac = 'Boeing 737-800') =>
   mk(`${date},${airline},1,${from},${to},,,,,false,,${date}T09:00,,,,,,,,${ac},,,,,,,,,,,`)
+// row with explicit local departure time + tail
+const rowT = (date: string, time: string, tail: string, airline = 'AAL') =>
+  mk(`${date},${airline},1,DFW,AUS,,,,,false,,${date}T${time},,,,,,,,Boeing 737-800,${tail},,,,,,,,,,,,`)
 
 const S = (over: Partial<Settings> = {}): Settings => ({
   groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: 'DFW', excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], distanceEdges: [300, 700, 1500, 3000, 6000], duration: C, ...over,
@@ -49,6 +52,29 @@ describe('time/behavioral aggregators', () => {
     expect(m['regional']).toBe(1)
     // wide listed before narrow before regional
     expect(res.findIndex((r) => r.cls === 'wide')).toBeLessThan(res.findIndex((r) => r.cls === 'narrow'))
+  })
+
+  it('redEyeProfile counts late-night and dawn departures by local hour', () => {
+    const res = redEyeProfile([rowT('2018-01-01', '23:30', 'N1'), rowT('2018-01-02', '02:00', 'N2'), rowT('2018-01-03', '05:30', 'N3'), rowT('2018-01-04', '09:00', 'N4')])
+    expect(res.withTime).toBe(4)
+    expect(res.redEyes).toBe(2)    // 23:00 and 02:00
+    expect(res.dawnPatrol).toBe(1) // 05:30
+    expect(res.hourCounts[23]).toBe(1)
+  })
+
+  it('fleetStats counts airframes, one-timers, and the most-ridden tail', () => {
+    const res = fleetStats([rowT('2018-01-01', '09:00', 'N100'), rowT('2018-02-01', '09:00', 'N100'), rowT('2018-03-01', '09:00', 'N200')])
+    expect(res.distinctTails).toBe(2)
+    expect(res.withTail).toBe(3)
+    expect(res.oneTimers).toBe(1)
+    expect(res.mostRepeated).toMatchObject({ tail: 'N100', count: 2 })
+  })
+
+  it('ghostAirlines surfaces defunct carriers with count + last flown', () => {
+    const res = ghostAirlines([row('2014-01-01', 'DFW', 'PHX', 'AWE'), row('2015-01-01', 'DFW', 'PHX', 'AWE'), row('2018-01-01', 'DFW', 'AUS', 'AAL')])
+    expect(res.length).toBe(1)
+    expect(res[0]).toMatchObject({ code: 'AWE', count: 2, last: '2015-01-01' })
+    expect(res[0].fate).toMatch(/American/)
   })
 
   it('airlineByYear stacks top-N airlines + Other across years', () => {

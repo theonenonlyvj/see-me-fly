@@ -101,3 +101,19 @@ export function flightsByWeekday(flights: EnrichedFlight[], weekday: number): En
     return (new Date(t).getUTCDay() + 6) % 7 === weekday
   })
 }
+
+/** Flights whose local departure hour (0-23) is in the given set. */
+export function flightsByDepHours(flights: EnrichedFlight[], hours: number[]): EnrichedFlight[] {
+  const set = new Set(hours)
+  return flights.filter((f) => f.depHourLocal != null && set.has(f.depHourLocal))
+}
+
+/** Flights between two airport KEYS (grouped or raw), either direction — for map arc click-through. */
+export function flightsByRoutePair(flights: EnrichedFlight[], aKey: string, bKey: string, groupAirports: boolean): EnrichedFlight[] {
+  const k = (c: string) => airportKey(c, groupAirports)
+  return flights.filter((f) => {
+    if (!f.resolved || f.isLocalFlight) return false
+    const fk = k(f.fromCode), tk = k(f.toCode)
+    return (fk === aKey && tk === bKey) || (fk === bKey && tk === aKey)
+  })
+}

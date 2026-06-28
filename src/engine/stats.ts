@@ -633,3 +633,74 @@ export function airlineByYear(flights: EnrichedFlight[], topN = 2): { years: num
   }
   return { years, series }
 }
+
+// ── Identity / behavioral cards (batch 2) ───────────────────────────────────
+
+/** Departure time-of-day profile. depHourLocal is 0-23 local (no tz shift). */
+export function redEyeProfile(flights: EnrichedFlight[]): {
+  redEyes: number; dawnPatrol: number; hourCounts: number[]; withTime: number; commonHour: number | null
+} {
+  const hourCounts = new Array(24).fill(0)
+  let redEyes = 0, dawnPatrol = 0, withTime = 0
+  for (const f of flights) {
+    const h = f.depHourLocal
+    if (h === null || h === undefined) continue
+    withTime += 1
+    hourCounts[h] += 1
+    if (h >= 22 || h <= 4) redEyes += 1     // late-night / overnight departure
+    if (h >= 5 && h <= 6) dawnPatrol += 1   // pre-7am "dawn patrol"
+  }
+  const commonHour = withTime > 0 ? hourCounts.indexOf(Math.max(...hourCounts)) : null
+  return { redEyes, dawnPatrol, hourCounts, withTime, commonHour }
+}
+
+export interface FleetStats { distinctTails: number; withTail: number; oneTimers: number; mostRepeated: { tail: string; count: number; airline: string } | null }
+
+/** The personal fleet: how many distinct airframes (tail numbers), the most-ridden one, and one-timers. */
+export function fleetStats(flights: EnrichedFlight[]): FleetStats {
+  const m = new Map<string, { count: number; airline: string }>()
+  for (const f of flights) {
+    const t = (f.tail || '').trim()
+    if (!t) continue
+    const cur = m.get(t) ?? { count: 0, airline: f.airlineName }
+    cur.count += 1
+    m.set(t, cur)
+  }
+  let withTail = 0, oneTimers = 0
+  let mostRepeated: FleetStats['mostRepeated'] = null
+  for (const [tail, v] of m) {
+    withTail += v.count
+    if (v.count === 1) oneTimers += 1
+    if (!mostRepeated || v.count > mostRepeated.count) mostRepeated = { tail, count: v.count, airline: v.airline }
+  }
+  return { distinctTails: m.size, withTail, oneTimers, mostRepeated }
+}
+
+/** Defunct / merged carriers (ICAO → fate text). Curated; covers the long-tail carriers in real data. */
+export const DEFUNCT_AIRLINES: Record<string, string> = {
+  AWE: 'merged into American, 2015',
+  COA: 'merged into United, 2012',
+  TRS: 'merged into Southwest, 2014',
+  VRD: 'merged into Alaska, 2018',
+  JAI: 'ceased operations, 2019',
+  KFR: 'ceased operations, 2012',
+  JLL: 'folded into Jet Airways, 2012',
+  NWA: 'merged into Delta, 2010',
+  AAH: 'merged into US Airways, 2005',
+}
+
+/** Carriers you flew that no longer exist, with your flight count, last flight, and fate. */
+export function ghostAirlines(flights: EnrichedFlight[]): { code: string; name: string; count: number; last: string; fate: string }[] {
+  const m = new Map<string, { name: string; count: number; last: string }>()
+  for (const f of flights) {
+    const code = f.airlineCode
+    if (!DEFUNCT_AIRLINES[code]) continue
+    const cur = m.get(code) ?? { name: f.airlineName, count: 0, last: f.date }
+    cur.count += 1
+    if (f.date > cur.last) cur.last = f.date
+    m.set(code, cur)
+  }
+  return [...m.entries()]
+    .map(([code, v]) => ({ code, name: v.name, count: v.count, last: v.last, fate: DEFUNCT_AIRLINES[code] }))
+    .sort((a, b) => b.count - a.count)
+}
