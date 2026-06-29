@@ -13,6 +13,9 @@ export interface BarRow {
   id?: string
   /** Optional nested breakdown; when present the row's `sub` text becomes an expand toggle. */
   subRows?: { label: string; value: number }[]
+  /** Optional small pill after the label (e.g. an "estimated" trip-boundary marker). `title` is its
+   *  hover tooltip. Rendered inline, in the accent color, without affecting the bar value. */
+  badge?: { text: string; title?: string }
 }
 
 const STEP = 10
@@ -42,6 +45,17 @@ function Row({ r, peak, acc, grad, soft, formatValue, onClick, onSubRowClick }: 
             ? { height: 16, width: 'auto', maxWidth: 78, objectFit: 'contain', objectPosition: 'left center', flexShrink: 0 }
             : { height: 14, width: 'auto', maxWidth: 22, objectFit: 'contain', borderRadius: 2, flexShrink: 0, boxShadow: '0 0 0 0.5px rgba(0,0,0,0.15)' }} />}
           {r.label}
+          {r.badge && (
+            <span
+              title={r.badge.title}
+              style={{
+                fontSize: 10, fontWeight: 800, letterSpacing: '0.04em', textTransform: 'uppercase',
+                color: acc, background: soft, border: `1px solid color-mix(in srgb, ${acc} 35%, transparent)`,
+                borderRadius: 999, padding: '1px 7px', flexShrink: 0,
+                cursor: r.badge.title ? 'help' : undefined,
+              }}
+            >{r.badge.text}</span>
+          )}
           {r.sub && (hasSub ? (
             <button
               onClick={(e) => { e.stopPropagation(); setOpen((v) => !v) }}

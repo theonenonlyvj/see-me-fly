@@ -3,10 +3,11 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { flagEmoji } from '../lib/format'
 import { groups, lookupAirport } from '../../engine/reference'
-import { homeKeys, hasHome } from '../../engine/home'
+import { hasHome, homeAt, isHomeOn } from '../../engine/home'
+import { airportKey } from '../../engine/normalize'
 import { displayEndpoint } from '../lib/places'
 import { flightsByAirportKey } from '../lib/flight-filters'
-import type { Settings } from '../../engine'
+import type { EnrichedFlight, Settings } from '../../engine'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#12c08a'
@@ -42,6 +43,42 @@ function homeEraSummary(settings: Settings): string {
     .join('\n')
 }
 
+/**
+ * DATE-AWARE, per-base "Home base" pills. Mirrors `byAirport`'s exclusion EXACTLY: it walks the
+ * same endpoint occurrences (`[fromCode]` for a local flight, else `[fromCode, toCode]`) and keeps
+ * ONLY the ones `byAirport` dropped — i.e. those where `isHomeOn(code, f.date, settings)` is true —
+ * bucketing each by the home base that was actually home on that flight's date (the metro key of
+ * `homeAt(f.date).primary`). Because the pills count exactly the occurrences `byAirport` excluded,
+ * the pill totals and the ranked bars PARTITION the scoped endpoint occurrences with zero overlap:
+ * a 2012 DFW flight (DFW not yet home in 2012) stays a ranked bar, while a 2012 MKE endpoint (MKE
+ * home in 2012) is dropped from the bars and shows under the Milwaukee pill. `flights` is the set of
+ * scoped flights touching that base on a home date (deduped) for click-through.
+ */
+interface HomePill { key: string; count: number; flights: EnrichedFlight[] }
+function homePills(scoped: EnrichedFlight[], settings: Settings): HomePill[] {
+  const byBase = new Map<string, { count: number; flights: EnrichedFlight[] }>()
+  for (const f of scoped) {
+    if (!f.resolved) continue
+    const codes = f.isLocalFlight ? [f.fromCode] : [f.fromCode, f.toCode]
+    let touchedBase: string | null = null
+    for (const code of codes) {
+      if (!isHomeOn(code, f.date, settings)) continue // only the endpoints byAirport drops
+      const resolved = homeAt(f.date, settings)
+      // The home base this date resolves to, in the current token space (metro key when grouping).
+      const baseKey = resolved ? airportKey(resolved.primary, settings.groupAirports) : airportKey(code, settings.groupAirports)
+      const cur = byBase.get(baseKey) ?? { count: 0, flights: [] }
+      cur.count += 1 // one per excluded endpoint occurrence — partitions with byAirport's counts
+      byBase.set(baseKey, cur)
+      touchedBase = baseKey
+    }
+    // Record the flight once on the base it touched (for the click-through list — deduped per flight).
+    if (touchedBase) byBase.get(touchedBase)!.flights.push(f)
+  }
+  return [...byBase]
+    .map(([key, v]) => ({ key, count: v.count, flights: v.flights }))
+    .sort((a, b) => b.count - a.count)
+}
+
 export const airportsCard: CardDef = {
   id: 'airports',
   title: 'Most-visited airports',
@@ -49,24 +86,23 @@ export const airportsCard: CardDef = {
   accent: ACCENT,
   icon: '📍',
   render: ({ model, settings, overlay }: CardContext) => {
-    // Home exclusion now happens DATE-AWARE inside `byAirport`, so `model.byAirport` already omits
-    // each home airport for the years it was home — no card-level post-filter. The "Home base" pill
-    // still surfaces the (most-recent) home: its display key comes from `homeKeys`, and its count is
-    // taken from the scoped flights directly (the home airport is no longer in `byAirport` when
-    // excluded). Pill shows only when exclusion is on AND a home exists.
+    // Home exclusion happens DATE-AWARE inside `byAirport`, so `model.byAirport` already omits each
+    // home airport for the years it was home — no card-level post-filter. The "Home base" pills
+    // surface those excluded endpoints, DATE-AWARE and per-era (see `homePills`): under a prior-year
+    // scope the pill names that era's home, and there is ONE pill per distinct excluded home base.
+    // Pills show only when exclusion is on AND a home exists.
     const excludeOn = settings.excludeHomeFromRankings && hasHome(settings)
-    const homeKey = excludeOn ? homeKeys(settings).primaryKey : null
-    const homeFlights = homeKey ? flightsByAirportKey(model!.scoped, homeKey, settings) : []
-    const homeEntry = homeKey && homeFlights.length > 0 ? { key: homeKey, count: homeFlights.length } : undefined
+    const pills = excludeOn ? homePills(model!.scoped, settings) : []
     const eraSummary = excludeOn ? homeEraSummary(settings) : ''
     const rows: BarRow[] = model!.byAirport.map((a) => ({ label: `${flagFor(a.key)} ${displayEndpoint(a.key)}`.trim(), value: a.count, id: a.key }))
 
     return (
       <CardFrame title="Most-visited airports" eyebrow="Where you land" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="📍"
         onTitleClick={() => overlay?.openFlights('Most-visited airports', model!.scoped)}>
-        {homeEntry && (
+        {pills.map((pill) => (
           <div
-            onClick={() => overlay?.openFlights(`Flights via ${displayEndpoint(homeEntry.key)}`, flightsByAirportKey(model!.scoped, homeEntry.key, settings))}
+            key={pill.key}
+            onClick={() => overlay?.openFlights(`Flights via ${displayEndpoint(pill.key)}`, pill.flights)}
             role={overlay ? 'button' : undefined}
             style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
@@ -75,11 +111,11 @@ export const airportsCard: CardDef = {
             }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
               <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, marginRight: 8 }}>Home base</span>
-              {flagFor(homeEntry.key)} {displayEndpoint(homeEntry.key)}
+              {flagFor(pill.key)} {displayEndpoint(pill.key)}
             </span>
-            <span style={{ fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{homeEntry.count}</span>
+            <span style={{ fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{pill.count}</span>
           </div>
-        )}
+        ))}
         <BarList rows={rows} max={5} seeAllTitle="Most-visited airports" formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
           onRowClick={(row) => row.id && overlay?.openFlights(`Flights via ${row.label}`, flightsByAirportKey(model!.scoped, row.id, settings))} />
         {excludeOn && (

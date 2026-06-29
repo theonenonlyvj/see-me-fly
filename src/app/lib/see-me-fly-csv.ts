@@ -17,6 +17,43 @@ export const SMF_SCHEMA_VERSION = 1
 /** Re-exported so the editor/loader has one import for the canonical sanitizer. */
 export { sanitizeHomeHistory }
 
+/**
+ * Header + schema_version guard shared by both parsers (MUST-FIX 2). Returns an error STRING when
+ * the file should be REJECTED (parsers then emit zero rows so a malformed/wrong-shape file can never
+ * wipe the saved data), or null when it's safe to parse:
+ *  - A file with data rows must carry every `required` column; missing any → reject (this catches a
+ *    Flighty flight CSV dropped into the homes/links slot).
+ *  - A `schema_version` newer than `SMF_SCHEMA_VERSION` in any row → reject (never import a higher
+ *    version; the columns may have changed meaning).
+ *  - A header-only file (zero data rows) is allowed through — that's the legitimate "clear the list"
+ *    action, handled by the caller, not a malformed import.
+ */
+function checkSchema(
+  headers: string[],
+  data: Record<string, string>[],
+  required: string[],
+  kind: 'homes' | 'links',
+): string | null {
+  // Header-only / empty file: nothing to validate; let the caller decide whether to clear.
+  if (data.length === 0) return null
+  const have = new Set(headers)
+  const missing = required.filter((c) => !have.has(c))
+  if (missing.length > 0) {
+    return `Not a see-me-fly ${kind} CSV — missing required column(s): ${missing.join(', ')}. Nothing was changed.`
+  }
+  if (have.has('schema_version')) {
+    for (const r of data) {
+      const raw = (r.schema_version ?? '').trim()
+      if (raw === '') continue
+      const v = Number(raw)
+      if (Number.isFinite(v) && v > SMF_SCHEMA_VERSION) {
+        return `This file is schema_version ${raw}, newer than this app supports (${SMF_SCHEMA_VERSION}). Update the app to import it. Nothing was changed.`
+      }
+    }
+  }
+  return null
+}
+
 // ---------------------------------------------------------------------------
 // homes.csv
 // ---------------------------------------------------------------------------
@@ -53,6 +90,12 @@ export function parseHomesCsv(text: string): { eras: HomeEra[]; errors: string[]
   for (const err of parsed.errors ?? []) {
     errors.push(`CSV parse error${err.row != null ? ` (row ${err.row})` : ''}: ${err.message}`)
   }
+
+  // Schema/header guard (MUST-FIX 2): a wrong-shape file (e.g. a Flighty flight CSV pasted into the
+  // homes slot) must yield ZERO rows + an error so the importer never wipes the saved timeline.
+  const headers = parsed.meta?.fields ?? []
+  const schemaErr = checkSchema(headers, parsed.data, ['start_date', 'home_airports'], 'homes')
+  if (schemaErr) return { eras: [], errors: [...errors, schemaErr] }
 
   const raw: HomeEra[] = []
   for (const r of parsed.data) {
@@ -167,6 +210,11 @@ export function parseLinksCsv(text: string): { links: GroundLink[]; errors: stri
   for (const err of parsed.errors ?? []) {
     errors.push(`CSV parse error${err.row != null ? ` (row ${err.row})` : ''}: ${err.message}`)
   }
+
+  // Schema/header guard (MUST-FIX 2): reject a wrong-shape file with zero rows + an error.
+  const headers = parsed.meta?.fields ?? []
+  const schemaErr = checkSchema(headers, parsed.data, ['date', 'from_airport', 'to_airport'], 'links')
+  if (schemaErr) return { links: [], errors: [...errors, schemaErr] }
 
   const links: GroundLink[] = parsed.data.map((r) => {
     const get = (col: string): string => (r[col] ?? '').trim()

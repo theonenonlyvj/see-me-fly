@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { searchAirports, airportLabel, type AirportHit } from '../../lib/airport-search'
 
 /**
@@ -35,6 +35,14 @@ export default function AirportPicker({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Resync the visible text when the controlled `value` changes EXTERNALLY (the picker instance is
+  // reused across re-renders via a stable `key`, e.g. after a CSV import swaps the stored code).
+  // The controlled value wins; we only re-seed when `value` actually changes (the dependency), so
+  // typing-driven local `text` updates aren't clobbered mid-edit.
+  useEffect(() => {
+    setText(value ? airportLabel(value) : '')
+  }, [value])
 
   const hits: AirportHit[] = useMemo(() => searchAirports(query, 8), [query])
 

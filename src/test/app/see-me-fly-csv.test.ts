@@ -73,6 +73,61 @@ describe('see-me-fly homes CSV', () => {
   })
 })
 
+describe('see-me-fly homes CSV — schema/header validation (MUST-FIX 2)', () => {
+  it('rejects a non-empty file missing the required homes columns (zero rows + error)', () => {
+    // A Flighty-style flight CSV pasted into the homes slot: no start_date / home_airports.
+    const text = ['Date,Airline,From,To', '2018-01-01,AAL,DFW,AUS'].join('\n')
+    const { eras, errors } = parseHomesCsv(text)
+    expect(eras).toEqual([])
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors.join(' ')).toMatch(/start_date|home_airports|column|header/i)
+  })
+
+  it('refuses a homes file whose schema_version is newer than supported', () => {
+    const text = [
+      'schema_version,start_date,home_airports,label',
+      `${SMF_SCHEMA_VERSION + 1},2008-08-18,RDU,College`,
+    ].join('\n')
+    const { eras, errors } = parseHomesCsv(text)
+    expect(eras).toEqual([])
+    expect(errors.join(' ')).toMatch(/version/i)
+  })
+
+  it('still accepts a valid homes file at the current schema_version', () => {
+    const text = ['schema_version,start_date,home_airports,label', '1,2008-08-18,RDU,College'].join('\n')
+    const { eras, errors } = parseHomesCsv(text)
+    expect(eras).toHaveLength(1)
+    expect(errors).toEqual([])
+  })
+
+  it('an empty file (header only) is valid and clears to zero rows with no error', () => {
+    const text = 'schema_version,start_date,home_airports,label'
+    const { eras, errors } = parseHomesCsv(text)
+    expect(eras).toEqual([])
+    expect(errors).toEqual([])
+  })
+})
+
+describe('see-me-fly links CSV — schema/header validation (MUST-FIX 2)', () => {
+  it('rejects a non-empty file missing the required links columns (zero rows + error)', () => {
+    const text = ['Date,Airline,From,To', '2018-01-01,AAL,DFW,AUS'].join('\n')
+    const { links, errors } = parseLinksCsv(text)
+    expect(links).toEqual([])
+    expect(errors.length).toBeGreaterThan(0)
+    expect(errors.join(' ')).toMatch(/date|from_airport|to_airport|column|header/i)
+  })
+
+  it('refuses a links file whose schema_version is newer than supported', () => {
+    const text = [
+      'schema_version,date,from_airport,to_airport,mode',
+      `${SMF_SCHEMA_VERSION + 1},2012-07-03,IAH,MKE,drive`,
+    ].join('\n')
+    const { links, errors } = parseLinksCsv(text)
+    expect(links).toEqual([])
+    expect(errors.join(' ')).toMatch(/version/i)
+  })
+})
+
 describe('sanitizeHomeHistory (pure)', () => {
   it('sorts ascending by start', () => {
     const out = sanitizeHomeHistory([

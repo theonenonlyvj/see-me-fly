@@ -53,4 +53,54 @@ describe('airportsCard', () => {
     render(<>{airportsCard.render({ model, settings: s })}</>)
     expect(screen.queryByText(/Home airports excluded for the years each was home/i)).toBeNull()
   })
+
+  // MUST-FIX 1: the "Home base" pill must be DATE-AWARE and per-era. Under a prior-year scope it
+  // names the home of THAT era (MKE), and a same-year flight through the most-recent home metro
+  // (DFW) stays a ranked bar — never double-counted as both the pill and a bar.
+  describe('date-aware home pill (multi-era)', () => {
+    // Eras: MKE (2012-07-03) → DFW/DAL (2013-01-15). In 2012, MKE is home; DFW is NOT yet home.
+    const eraCsv = [REQUIRED_COLUMNS.join(','),
+      // 2012: a flight through MKE (the 2012 home) and a flight through DFW (a normal destination in 2012).
+      '2012-08-01,AAL,10,MKE,AUS,,,,,false,,2012-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+      '2012-09-01,AAL,11,DFW,AUS,,,,,false,,2012-09-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+    ].join('\n')
+    const eraSettings = {
+      ...DEFAULT_SETTINGS,
+      home: null,
+      excludeHomeFromRankings: true,
+      homeHistory: [
+        { start: '2012-07-03', airports: ['MKE'] },
+        { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+      ],
+    }
+
+    it('under 2012 scope the pill names the 2012 home (Milwaukee), not the most-recent home (DFW)', () => {
+      const model = buildModel(eraCsv, eraSettings, '2026-06-25', 2012)
+      render(<>{airportsCard.render({ model, settings: eraSettings })}</>)
+      // The pill region carries the "Home base" eyebrow.
+      const pillEyebrow = screen.getByText(/Home base/)
+      const pill = pillEyebrow.closest('div')!
+      // The pill names Milwaukee (the 2012 era's home), with its code.
+      expect(pill.textContent).toMatch(/Milwaukee \(MKE\)/)
+      // It does NOT name Dallas (DFW only became home in 2013).
+      expect(pill.textContent).not.toMatch(/Dallas/)
+    })
+
+    it('DFW stays a ranked bar in 2012 (not pulled into the pill) — no double-count', () => {
+      const model = buildModel(eraCsv, eraSettings, '2026-06-25', 2012)
+      // byAirport (ranked bars) must still contain the Dallas group for the 2012 DFW flight.
+      const dallasBar = model.byAirport.find((a) => a.key === 'Dallas')
+      expect(dallasBar?.count).toBe(1)
+      // MKE must be excluded from the ranked bars (it's the 2012 home).
+      expect(model.byAirport.find((a) => a.key === 'MKE')).toBeUndefined()
+      // Exactly one pill renders (the single excluded era-home), and it is Milwaukee with count 1.
+      render(<>{airportsCard.render({ model, settings: eraSettings })}</>)
+      const eyebrows = screen.getAllByText(/^Home base$/)
+      expect(eyebrows).toHaveLength(1)
+      const pill = eyebrows[0].closest('div')!
+      expect(pill.textContent).toMatch(/Milwaukee \(MKE\)/)
+      // pill count = 1 (the single 2012 MKE endpoint that byAirport dropped)
+      expect(pill.textContent).toMatch(/\b1\b/)
+    })
+  })
 })

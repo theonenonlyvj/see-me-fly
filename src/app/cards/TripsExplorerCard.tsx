@@ -4,6 +4,7 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { reconstructTrips, tripsForYear, type Trip } from '../../engine/stats'
 import { hasHome } from '../../engine/home'
+import { estimatedBadge } from './TripsCard'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT = '#0891b2'
@@ -38,11 +39,19 @@ const SORTS: [Sort, string, (t: Trip) => number, (t: Trip) => string][] = [
 
 function TripsExplorerView({ model, settings, overlay }: CardContext) {
   const [sort, setSort] = useState<Sort>('nights')
+  // "Needs a link": narrow to trips whose start/end boundary was INFERRED (estimated) — the ones a
+  // ground link would resolve. Off by default; a toggle pill next to the sort tabs flips it.
+  const [onlyEstimated, setOnlyEstimated] = useState(false)
   const cfg = SORTS.find((s) => s[0] === sort)!
   // All-time reconstruction, sliced to the active year-scope (keeps cross-year trips whole).
-  const trips = tripsForYear(reconstructTrips(model!.flown, settings), model!.scopeYear).slice().sort((a, b) => cfg[2](a) - cfg[2](b))
+  const all = tripsForYear(reconstructTrips(model!.flown, settings), model!.scopeYear)
+  const estimatedCount = all.filter((t) => t.estimated).length
+  const trips = all
+    .filter((t) => !onlyEstimated || t.estimated)
+    .slice()
+    .sort((a, b) => cfg[2](a) - cfg[2](b))
   const valueOf = sort === 'legs' ? (t: Trip) => t.flights.length : sort === 'nights' ? (t: Trip) => t.nights : sort === 'distance' ? tripMiles : (t: Trip) => t.flights.length
-  const rows: BarRow[] = trips.map((t, i) => ({ label: `${when(t)} · ${routePath(t)}`, value: valueOf(t), sub: cfg[3](t), id: String(i) }))
+  const rows: BarRow[] = trips.map((t, i) => ({ label: `${when(t)} · ${routePath(t)}`, value: valueOf(t), sub: cfg[3](t), id: String(i), badge: estimatedBadge(t) }))
   return (
     <CardFrame title="Trips explorer" eyebrow="Sort your journeys" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🧭">
       {!hasHome(settings) ? (
@@ -51,13 +60,24 @@ function TripsExplorerView({ model, settings, overlay }: CardContext) {
         <p style={{ color: 'var(--ink-2)' }}>No trips in this view.</p>
       ) : (
         <>
-          <div style={{ display: 'inline-flex', padding: 3, gap: 2, marginBottom: 14, background: SOFT, borderRadius: 12, border: `1px solid color-mix(in srgb, ${ACCENT} 24%, transparent)` }}>
-            {SORTS.map(([k, lbl]) => (
-              <button key={k} onClick={() => setSort(k)}
-                style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9, color: sort === k ? '#fff' : 'var(--ink)', background: sort === k ? ACCENT : 'transparent' }}>
-                {lbl}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'inline-flex', padding: 3, gap: 2, background: SOFT, borderRadius: 12, border: `1px solid color-mix(in srgb, ${ACCENT} 24%, transparent)` }}>
+              {SORTS.map(([k, lbl]) => (
+                <button key={k} onClick={() => setSort(k)}
+                  style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', padding: '6px 12px', borderRadius: 9, color: sort === k ? '#fff' : 'var(--ink)', background: sort === k ? ACCENT : 'transparent' }}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            {estimatedCount > 0 && (
+              <button
+                onClick={() => setOnlyEstimated((v) => !v)}
+                aria-pressed={onlyEstimated}
+                title="Show only trips whose start/end was inferred — add a ground link to resolve them"
+                style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 800, cursor: 'pointer', padding: '6px 12px', borderRadius: 9, color: onlyEstimated ? '#fff' : 'var(--ink)', background: onlyEstimated ? ACCENT : 'transparent', border: `1px solid color-mix(in srgb, ${ACCENT} 30%, transparent)` }}>
+                Needs a link ({estimatedCount})
               </button>
-            ))}
+            )}
           </div>
           <BarList rows={rows} max={10} seeAllTitle="Trips explorer" formatValue={(n) => sort === 'legs' ? `${n} legs` : sort === 'distance' ? `${fmtMi(n)} mi` : `${n}`}
             accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT}

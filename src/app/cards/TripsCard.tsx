@@ -22,6 +22,18 @@ function destLabel(t: Trip): string {
   return names.join(', ') + (extra > 0 ? ` +${extra}` : '') || 'local'
 }
 
+/**
+ * The "estimated" badge for a trip whose start/end boundary was INFERRED (no recorded leg/link).
+ * The tooltip names the guessed boundary so the user knows which ground link would resolve it.
+ */
+export function estimatedBadge(t: Trip): { text: string; title: string } | undefined {
+  if (!t.estimated) return undefined
+  const title = t.estimated.boundary === 'end'
+    ? 'Return inferred — add a ground link to record how this trip ended'
+    : 'Start inferred — add a ground link to record how this trip began'
+  return { text: 'estimated', title }
+}
+
 export const tripsCard: CardDef = {
   id: 'trips',
   title: 'Your trips',
@@ -39,6 +51,7 @@ export const tripsCard: CardDef = {
       value: t.flights.length,
       sub: t.nights > 0 ? `${t.nights} night${t.nights === 1 ? '' : 's'}` : 'day trip',
       id: String(i),
+      badge: estimatedBadge(t),
     }))
     return (
       <CardFrame title="Your trips" eyebrow="Journeys, not just legs" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🧳">

@@ -5,6 +5,8 @@ import { DEFAULT_SETTINGS, type Settings } from '../../engine'
 import HomeHistoryEditor from '../../app/components/home/HomeHistoryEditor'
 import GroundLinksEditor from '../../app/components/home/GroundLinksEditor'
 import SettingsPanel from '../../app/components/SettingsPanel'
+import AirportPicker from '../../app/components/home/AirportPicker'
+import { airportLabel } from '../../app/lib/airport-search'
 import { serializeHomesCsv, serializeLinksCsv } from '../../app/lib/see-me-fly-csv'
 
 function settings(over: Partial<Settings> = {}): Settings {
@@ -192,6 +194,58 @@ describe('SettingsPanel — import/export wiring', () => {
     expect(calledWithHomes).toBe(true)
     // summary shows a count
     expect(screen.getByText(/2\s+(home )?era/i)).toBeInTheDocument()
+  })
+
+  // MUST-FIX 2: a malformed / wrong-shape import must NEVER wipe the existing timeline.
+  it('importing a flight-style CSV into the homes slot leaves homeHistory UNCHANGED and shows an error', async () => {
+    // homeHistory non-empty → the timeline section (with the import controls) starts expanded.
+    const update = renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['RDU'] }] })
+    // A Flighty-style flight CSV (no start_date / home_airports columns).
+    const badCsv = ['Date,Airline,From,To', '2018-01-01,AAL,DFW,AUS'].join('\n')
+    const file = new File([badCsv], 'flights.csv', { type: 'text/csv' })
+    const input = document.querySelector('input[data-testid="import-homes"]') as HTMLInputElement
+    Object.defineProperty(input, 'files', { value: [file] })
+    fireEvent.change(input)
+    await screen.findByRole('status')
+    // homeHistory must NOT be written (no update with a homeHistory patch at all).
+    const wroteHomes = update.mock.calls.some((c) => 'homeHistory' in (c[0] as Partial<Settings>))
+    expect(wroteHomes).toBe(false)
+    // An error is surfaced in the post-import summary.
+    expect(screen.getByText(/column|header|start_date|home_airports|could not|invalid/i)).toBeInTheDocument()
+  })
+
+  it('refuses a homes CSV with a newer schema_version (no wipe, error shown)', async () => {
+    const update = renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['RDU'] }] })
+    const text = ['schema_version,start_date,home_airports,label', '2,2008-08-18,RDU,College'].join('\n')
+    const file = new File([text], 'homes.csv', { type: 'text/csv' })
+    const input = document.querySelector('input[data-testid="import-homes"]') as HTMLInputElement
+    Object.defineProperty(input, 'files', { value: [file] })
+    fireEvent.change(input)
+    await screen.findByRole('status')
+    const wroteHomes = update.mock.calls.some((c) => 'homeHistory' in (c[0] as Partial<Settings>))
+    expect(wroteHomes).toBe(false)
+    expect(screen.getByText(/version/i)).toBeInTheDocument()
+  })
+})
+
+// MUST-FIX 3: a stable-keyed AirportPicker is reused across re-renders (e.g. after an import),
+// so it must mirror an EXTERNALLY-changed `value` prop, not keep the stale seeded text.
+describe('AirportPicker — external value resync', () => {
+  it('reflects a changed `value` prop after mount (input text follows the new code)', () => {
+    const { rerender } = render(<AirportPicker value="DFW" onChange={() => {}} ariaLabel="home airport" />)
+    const input = screen.getByLabelText('home airport') as HTMLInputElement
+    expect(input.value).toBe(airportLabel('DFW'))
+    // External change (e.g. an import swapped the stored code) — the input must follow.
+    rerender(<AirportPicker value="MKE" onChange={() => {}} ariaLabel="home airport" />)
+    expect(input.value).toBe(airportLabel('MKE'))
+    expect(input.value).toMatch(/MKE/)
+  })
+
+  it('clears the input when `value` is reset to empty externally', () => {
+    const { rerender } = render(<AirportPicker value="DFW" onChange={() => {}} ariaLabel="home airport" />)
+    const input = screen.getByLabelText('home airport') as HTMLInputElement
+    rerender(<AirportPicker value="" onChange={() => {}} ariaLabel="home airport" />)
+    expect(input.value).toBe('')
   })
 })
 

@@ -71,7 +71,13 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
     reader.onload = () => {
       const { eras, errors } = parseHomesCsv(String(reader.result ?? ''))
       const clean = sanitizeHomeHistory(eras)
-      update({ homeHistory: clean }) // per-file, idempotent: replaces the homes list
+      // NO-WIPE GUARD (MUST-FIX 2): write only when the import SUCCEEDED — it produced rows, OR it
+      // was a clean empty file (zero rows AND zero errors → a legitimate "clear the list" export).
+      // A non-empty file that yielded ZERO rows WITH errors (wrong shape / newer schema) keeps the
+      // existing timeline untouched and just surfaces the error in the summary.
+      if (clean.length > 0 || errors.length === 0) {
+        update({ homeHistory: clean }) // per-file, idempotent: replaces the homes list
+      }
       setImportSummary({ kind: 'homes', count: clean.length, errors })
     }
     reader.readAsText(file)
@@ -81,7 +87,10 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
     const reader = new FileReader()
     reader.onload = () => {
       const { links, errors } = parseLinksCsv(String(reader.result ?? ''))
-      update({ groundLinks: links }) // per-file, idempotent: replaces the links list
+      // NO-WIPE GUARD (MUST-FIX 2): see importHomes — never wipe on a malformed/wrong-shape file.
+      if (links.length > 0 || errors.length === 0) {
+        update({ groundLinks: links }) // per-file, idempotent: replaces the links list
+      }
       setImportSummary({ kind: 'links', count: links.length, errors })
     }
     reader.readAsText(file)

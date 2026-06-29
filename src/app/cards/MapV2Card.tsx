@@ -1,10 +1,28 @@
 import { useState } from 'react'
 import CardFrame from '../components/CardFrame'
 import { RouteMapV2 } from '../components/charts/RouteMapV2'
-import { homeKeys } from '../../engine/home'
+import { homeKeys, homeAt } from '../../engine/home'
+import { airportKey } from '../../engine/normalize'
 import { displayEndpoint } from '../lib/places'
 import { flightsByRoutePair, flightsByAirportKey } from '../lib/flight-filters'
+import type { Settings } from '../../engine'
 import type { CardContext, CardDef } from './registry'
+
+/**
+ * The home key to EMPHASIZE on the map's primary dot (SHOULD-FIX 5). For an all-time view it's the
+ * most-recent home (`homeKeys().primaryKey`). When the view is scoped to a single year, emphasize
+ * THAT year's home instead — `homeAt('<year>-07-01')?.primary`, key-normalized — so scoping to 2012
+ * highlights the 2012-era home (MKE) rather than today's DFW. The full `homeKeys` union still gets
+ * ringed; only which one is emphasized changes. Falls back to the all-time primary if a scoped year
+ * can't resolve a home (e.g. no timeline) so the legacy single `home` still emphasizes.
+ */
+export function emphasizedPrimaryKey(settings: Settings, scopeYear: number | null): string | null {
+  const allTime = homeKeys(settings).primaryKey
+  if (scopeYear == null) return allTime
+  // Mid-year probe date — avoids a boundary era flipping a Jan-1 / Dec-31 move.
+  const scoped = homeAt(`${scopeYear}-07-01`, settings)?.primary
+  return scoped ? airportKey(scoped, settings.groupAirports) : allTime
+}
 
 const ACCENT = 'var(--accent-4)'
 const ACCENT_GRAD = 'linear-gradient(90deg, var(--accent-4), color-mix(in srgb, var(--accent-4) 60%, white))'
@@ -12,9 +30,11 @@ const ACCENT_SOFT = 'color-mix(in srgb, var(--accent-4) 10%, white)'
 
 function MapV2View({ model, settings, overlay }: CardContext) {
   const [mode, setMode] = useState<'routes' | 'districts'>('routes')
-  // Date-less anchor: ring every home in the union (`homeKeys().keys`), emphasizing the
-  // current/most-recent home (`primaryKey`). Covers the legacy single `home` too.
-  const { keys: homeKeySet, primaryKey } = homeKeys(settings)
+  // Ring every home in the union (`homeKeys().keys`) — covers the legacy single `home` too — but
+  // emphasize the home of the ACTIVE year-scope (SHOULD-FIX 5): under a 2012 scope the 2012-era
+  // home is highlighted, not today's. All-time falls back to the most-recent primary.
+  const { keys: homeKeySet } = homeKeys(settings)
+  const primaryKey = emphasizedPrimaryKey(settings, model!.scopeYear)
   return (
     <CardFrame title="Your map ✦" eyebrow="Routes, hubs & home — tap to drill in" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🗺️" fullWidth>
       <div style={{ display: 'inline-flex', padding: 3, gap: 2, marginBottom: 12, background: ACCENT_SOFT, borderRadius: 12, border: `1px solid color-mix(in srgb, ${ACCENT} 24%, transparent)` }}>
