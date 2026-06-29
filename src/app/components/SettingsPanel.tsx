@@ -117,6 +117,7 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
         hours
       </label>
       <Toggle label="Exclude day-trip turnarounds from layovers (fly out & back)" checked={settings.excludeDayTrips} onChange={(v) => update({ excludeDayTrips: v })} />
+      <Toggle label="Merge defunct carriers into their survivor (US Airways→American, etc.) in airline counts" checked={settings.mergeDefunctAirlines} onChange={(v) => update({ mergeDefunctAirlines: v })} />
 
       <button onClick={() => setShowAdvanced((v) => !v)} style={{ justifySelf: 'start', background: 'transparent', border: 'none', color: 'var(--text-dim)', padding: 0, textDecoration: 'underline' }}>
         {showAdvanced ? 'Hide advanced' : 'Advanced (duration estimate)'}

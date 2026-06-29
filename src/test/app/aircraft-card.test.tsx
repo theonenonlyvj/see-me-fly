@@ -36,7 +36,7 @@ describe('aircraftCard (by brand)', () => {
     expect(screen.getByText('Airbus')).toBeInTheDocument()
   })
 
-  it('clicking a brand opens its exact types', async () => {
+  it('clicking a brand opens that brand’s flights (with the subset map)', async () => {
     const settings: Settings = DEFAULT_SETTINGS
     const model = buildModel(csv, settings, '2026-06-25')
     function Harness() {
@@ -45,7 +45,7 @@ describe('aircraftCard (by brand)', () => {
     }
     render(<OverlayProvider><Harness /></OverlayProvider>)
     await userEvent.click(screen.getByText('Boeing'))
-    expect(await screen.findByText(/Boeing — exact types/)).toBeInTheDocument()
-    expect(screen.getByText('Boeing 737-800')).toBeInTheDocument()
+    // overlay opens the Boeing flight subset (FlightsBody renders a fit map + the flight list)
+    expect(await screen.findByText(/Boeing flights/)).toBeInTheDocument()
   })
 })

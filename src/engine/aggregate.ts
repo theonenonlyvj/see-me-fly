@@ -1,5 +1,6 @@
 import type { EnrichedFlight, Settings } from './types'
 import { airportKey, routeKey } from './normalize'
+import { effectiveAirline } from './airline-history'
 
 function countMap<T>(items: T[], keyOf: (t: T) => string | null): Map<string, number> {
   const m = new Map<string, number>()
@@ -36,14 +37,15 @@ export function byRoute(flights: EnrichedFlight[], settings: Settings): { key: s
   return [...m].map(([key, v]) => ({ key, ...v })).sort((a, b) => b.count - a.count)
 }
 
-export function byAirline(flights: EnrichedFlight[]): { name: string; count: number; airlineCode: string }[] {
+export function byAirline(flights: EnrichedFlight[], mergeDefunct = false): { name: string; count: number; airlineCode: string }[] {
   const m = new Map<string, { count: number; codes: Map<string, number> }>()
   for (const f of flights) {
-    if (f.airlineName === 'Unknown airline') continue
-    const e = m.get(f.airlineName) ?? { count: 0, codes: new Map() }
+    const { code, name } = effectiveAirline(f, mergeDefunct)
+    if (name === 'Unknown airline') continue
+    const e = m.get(name) ?? { count: 0, codes: new Map() }
     e.count += 1
-    if (f.airlineCode) e.codes.set(f.airlineCode, (e.codes.get(f.airlineCode) ?? 0) + 1)
-    m.set(f.airlineName, e)
+    if (code) e.codes.set(code, (e.codes.get(code) ?? 0) + 1)
+    m.set(name, e)
   }
   return [...m].map(([name, e]) => ({
     name, count: e.count,

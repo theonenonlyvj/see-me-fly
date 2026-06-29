@@ -1,6 +1,7 @@
 import type { EnrichedFlight, Settings } from '../../engine'
 import { airportKey, routeKey } from '../../engine/normalize'
 import { domesticTierOf } from '../../engine/stats'
+import { aircraftBrand, aircraftFamily } from '../../engine/reference'
 
 /** Most-recent-first ordering for flight lists. */
 export function sortRecent(flights: EnrichedFlight[]): EnrichedFlight[] {
@@ -116,4 +117,15 @@ export function flightsByRoutePair(flights: EnrichedFlight[], aKey: string, bKey
     const fk = k(f.fromCode), tk = k(f.toCode)
     return (fk === aKey && tk === bKey) || (fk === bKey && tk === aKey)
   })
+}
+
+/** Flights by aircraft manufacturer/family/exact type (for aircraft drill-down → mapped subset). */
+export function flightsByAircraftBrand(flights: EnrichedFlight[], brand: string): EnrichedFlight[] {
+  return flights.filter((f) => aircraftBrand(f.aircraftType) === brand)
+}
+export function flightsByAircraftFamily(flights: EnrichedFlight[], family: string): EnrichedFlight[] {
+  return flights.filter((f) => aircraftFamily(f.aircraftType) === family)
+}
+export function flightsByAircraftType(flights: EnrichedFlight[], type: string): EnrichedFlight[] {
+  return flights.filter((f) => f.aircraftType === type)
 }

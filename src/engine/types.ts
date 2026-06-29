@@ -100,5 +100,6 @@ export interface Settings {
   excludeDayTrips: boolean          // when true, a turnaround (land at X then fly back to where you came from) is NOT a layover
   splitCountriesByState: string[]   // country codes (subset of US/MX/IN) whose states rank inline as their own rows
   distanceEdges: number[]           // internal upper edges (mi) between "How far" distance bands; ascending, excludes 0/∞
+  mergeDefunctAirlines: boolean     // roll acquired defunct carriers into their survivor (US Airways→American) in airline counts
   duration: DurationConstants
 }

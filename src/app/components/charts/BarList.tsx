@@ -17,7 +17,7 @@ export interface BarRow {
 
 const STEP = 10
 
-function Row({ r, peak, acc, grad, soft, formatValue, onClick }: {
+function Row({ r, peak, acc, grad, soft, formatValue, onClick, onSubRowClick }: {
   r: BarRow
   peak: number
   acc: string
@@ -25,6 +25,7 @@ function Row({ r, peak, acc, grad, soft, formatValue, onClick }: {
   soft: string
   formatValue: (n: number) => string
   onClick?: () => void
+  onSubRowClick?: (sub: { label: string; value: number }, parent: BarRow) => void
 }) {
   const [open, setOpen] = useState(false)
   const hasSub = !!(r.subRows && r.subRows.length > 0)
@@ -71,8 +72,11 @@ function Row({ r, peak, acc, grad, soft, formatValue, onClick }: {
       {hasSub && open && (
         <div style={{ margin: '8px 0 2px 14px', paddingLeft: 12, borderLeft: `2px solid ${soft}`, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {r.subRows!.map((s) => (
-            <div key={`${r.label}:${s.label}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12.5, color: 'var(--ink-2)' }}>
-              <span style={{ fontWeight: 600 }}>{s.label}</span>
+            <div key={`${r.label}:${s.label}`}
+              onClick={onSubRowClick ? () => onSubRowClick(s, r) : undefined}
+              role={onSubRowClick ? 'button' : undefined}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12.5, color: 'var(--ink-2)', cursor: onSubRowClick ? 'pointer' : undefined }}>
+              <span style={{ fontWeight: 600 }}>{s.label}{onSubRowClick && <span style={{ color: acc, fontWeight: 800 }}> ↗</span>}</span>
               <span style={{ fontWeight: 700, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{formatValue(s.value)}</span>
             </div>
           ))}
@@ -98,7 +102,7 @@ function MoreButton({ label, grad, onClick }: { label: string; grad: string; onC
   )
 }
 
-export default function BarList({ rows, max = 10, formatValue = (n: number) => n.toLocaleString('en-US'), accent, accentGrad, accentSoft, onRowClick, seeAllTitle }: {
+export default function BarList({ rows, max = 10, formatValue = (n: number) => n.toLocaleString('en-US'), accent, accentGrad, accentSoft, onRowClick, onSubRowClick, seeAllTitle }: {
   rows: BarRow[]
   max?: number
   formatValue?: (n: number) => string
@@ -106,6 +110,8 @@ export default function BarList({ rows, max = 10, formatValue = (n: number) => n
   accentGrad?: string
   accentSoft?: string
   onRowClick?: (row: BarRow) => void
+  /** Clicking an expanded sub-row (e.g. an aircraft model under a brand) → drill into that subset. */
+  onSubRowClick?: (sub: { label: string; value: number }, parent: BarRow) => void
   /** When set, a row overflow shows a single "See all (N) →" that opens the full list in a popup. */
   seeAllTitle?: string
 }) {
@@ -129,7 +135,7 @@ export default function BarList({ rows, max = 10, formatValue = (n: number) => n
       <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
         {shown.map((r) => (
           <Row key={r.label} r={r} peak={peak} acc={acc} grad={grad} soft={soft} formatValue={formatValue}
-            onClick={onRowClick ? () => onRowClick(r) : undefined} />
+            onClick={onRowClick ? () => onRowClick(r) : undefined} onSubRowClick={onSubRowClick} />
         ))}
       </div>
       {seeAllTitle ? (

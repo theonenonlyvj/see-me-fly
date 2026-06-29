@@ -4,6 +4,7 @@ import { enrichFlight } from '../../engine/enrich'
 import { DEFAULT_DURATION_CONSTANTS } from '../../engine/constants'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
 import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines, reconstructTrips, tripSummary } from '../../engine/stats'
+import { byAirline } from '../../engine/aggregate'
 import type { Settings } from '../../engine'
 
 const C = DEFAULT_DURATION_CONSTANTS
@@ -12,12 +13,12 @@ const mk = (line: string) => enrichFlight(parseFlightyCsv([H, line].join('\n')).
 // date, airline(ICAO), flightnum, from, to, ... aircraft type at col 19
 const row = (date: string, from: string, to: string, airline = 'AAL', ac = 'Boeing 737-800') =>
   mk(`${date},${airline},1,${from},${to},,,,,false,,${date}T09:00,,,,,,,,${ac},,,,,,,,,,,`)
-// row with explicit local departure time + tail
-const rowT = (date: string, time: string, tail: string, airline = 'AAL') =>
-  mk(`${date},${airline},1,DFW,AUS,,,,,false,,${date}T${time},,,,,,,,Boeing 737-800,${tail},,,,,,,,,,,,`)
+// row with explicit local departure time + tail (default short DFW→AUS; pass a long route for red-eyes)
+const rowT = (date: string, time: string, tail: string, airline = 'AAL', from = 'DFW', to = 'AUS') =>
+  mk(`${date},${airline},1,${from},${to},,,,,false,,${date}T${time},,,,,,,,Boeing 737-800,${tail},,,,,,,,,,,,`)
 
 const S = (over: Partial<Settings> = {}): Settings => ({
-  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: 'DFW', excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], distanceEdges: [300, 700, 1500, 3000, 6000], duration: C, ...over,
+  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: 'DFW', excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], distanceEdges: [300, 700, 1500, 3000, 6000], mergeDefunctAirlines: false, duration: C, ...over,
 })
 
 describe('time/behavioral aggregators', () => {
@@ -54,12 +55,17 @@ describe('time/behavioral aggregators', () => {
     expect(res.findIndex((r) => r.cls === 'wide')).toBeLessThan(res.findIndex((r) => r.cls === 'narrow'))
   })
 
-  it('redEyeProfile counts late-night and dawn departures by local hour', () => {
-    const res = redEyeProfile([rowT('2018-01-01', '23:30', 'N1'), rowT('2018-01-02', '02:00', 'N2'), rowT('2018-01-03', '05:30', 'N3'), rowT('2018-01-04', '09:00', 'N4')])
-    expect(res.withTime).toBe(4)
-    expect(res.redEyes).toBe(2)    // 23:00 and 02:00
+  it('redEyeProfile only counts overnight HAULS as red-eyes (not short late hops)', () => {
+    const res = redEyeProfile([
+      rowT('2018-01-01', '23:30', 'N1', 'AAL', 'DFW', 'LHR'), // late + long → red-eye
+      rowT('2018-01-02', '02:00', 'N2', 'AAL', 'DFW', 'LHR'), // late + long → red-eye
+      rowT('2018-01-03', '22:00', 'N3', 'WN', 'HOU', 'DAL'),  // late but SHORT hop → NOT a red-eye
+      rowT('2018-01-04', '05:30', 'N4'),                       // dawn patrol
+      rowT('2018-01-05', '09:00', 'N5'),                       // daytime
+    ])
+    expect(res.redEyes).toBe(2)    // only the two long overnight DFW→LHR
     expect(res.dawnPatrol).toBe(1) // 05:30
-    expect(res.hourCounts[23]).toBe(1)
+    expect(res.hourCounts[22]).toBe(1) // the HOU→DAL hop is still tallied in the strip, just not a red-eye
   })
 
   it('fleetStats counts airframes, one-timers, and the most-ridden tail', () => {
@@ -68,6 +74,28 @@ describe('time/behavioral aggregators', () => {
     expect(res.withTail).toBe(3)
     expect(res.oneTimers).toBe(1)
     expect(res.mostRepeated).toMatchObject({ tail: 'N100', count: 2 })
+  })
+
+  it('byAirline merges acquired defunct carriers into their survivor when enabled', () => {
+    const flights = [row('2010-01-01', 'DFW', 'PHX', 'AWE'), row('2018-01-01', 'DFW', 'AUS', 'AAL')]
+    expect(byAirline(flights, false).length).toBe(2) // US Airways + American kept separate
+    const merged = byAirline(flights, true)
+    expect(merged.length).toBe(1)
+    expect(merged[0]).toMatchObject({ name: 'American Airlines', count: 2 })
+  })
+
+  it('does NOT merge carriers that merely ceased (Aloha stays Aloha, not American)', () => {
+    const flights = [row('2007-01-01', 'HNL', 'OGG', 'AAH'), row('2018-01-01', 'DFW', 'AUS', 'AAL')]
+    const merged = byAirline(flights, true)
+    expect(merged.length).toBe(2) // Aloha (ceased, no successor) kept separate from American
+    expect(merged.some((a) => /Aloha/i.test(a.name))).toBe(true)
+  })
+
+  it('airlineByYear credits a merged defunct carrier to its survivor when enabled', () => {
+    const flights = [row('2010-01-01', 'DFW', 'PHX', 'AWE'), row('2018-01-01', 'DFW', 'AUS', 'AAL')]
+    const aa = airlineByYear(flights, 2, true).series.find((s) => s.name === 'American Airlines')
+    expect(aa).toBeTruthy()
+    expect(aa!.counts.reduce((a, b) => a + b, 0)).toBe(2)
   })
 
   it('ghostAirlines surfaces defunct carriers with count + last flown', () => {

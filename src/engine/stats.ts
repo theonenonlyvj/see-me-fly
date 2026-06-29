@@ -4,6 +4,7 @@ import { routeKey, airportKey } from './normalize'
 import { countryName, regionName, aircraftFamily, lookupAirport, continentName } from './reference'
 import { haversineMi } from './distance'
 import { milestones } from './aggregate'
+import { DEFUNCT_AIRLINES, effectiveAirline } from './airline-history'
 
 /** Convert a 2-letter ISO 3166-1 alpha-2 country code to a regional-indicator emoji pair.
  *  Returns '' if code is not exactly 2 ASCII alpha characters. */
@@ -612,11 +613,13 @@ export function aircraftClassCounts(flights: EnrichedFlight[]): { cls: AircraftC
 }
 
 /** Per-year flight counts split across the top-N airlines (by name) + an "Other" bucket — for stacked eras. */
-export function airlineByYear(flights: EnrichedFlight[], topN = 2): { years: number[]; series: { name: string; counts: number[] }[] } {
+export function airlineByYear(flights: EnrichedFlight[], topN = 2, mergeDefunct = false): { years: number[]; series: { name: string; counts: number[] }[] } {
+  const nameOf = (f: EnrichedFlight) => effectiveAirline(f, mergeDefunct).name
   const totals = new Map<string, number>()
   for (const f of flights) {
-    if (!f.airlineName || f.airlineName === 'Unknown airline') continue
-    totals.set(f.airlineName, (totals.get(f.airlineName) ?? 0) + 1)
+    const name = nameOf(f)
+    if (!name || name === 'Unknown airline') continue
+    totals.set(name, (totals.get(name) ?? 0) + 1)
   }
   const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, topN).map((e) => e[0])
   const topSet = new Set(top)
@@ -625,10 +628,11 @@ export function airlineByYear(flights: EnrichedFlight[], topN = 2): { years: num
   const series = [...top.map((name) => ({ name, counts: new Array(years.length).fill(0) })), { name: 'Other', counts: new Array(years.length).fill(0) }]
   const byName = new Map(series.map((s) => [s.name, s]))
   for (const f of flights) {
-    if (!f.airlineName || f.airlineName === 'Unknown airline') continue
+    const name = nameOf(f)
+    if (!name || name === 'Unknown airline') continue
     const i = yearIdx.get(f.year)
     if (i === undefined) continue
-    const s = topSet.has(f.airlineName) ? byName.get(f.airlineName)! : byName.get('Other')!
+    const s = topSet.has(name) ? byName.get(name)! : byName.get('Other')!
     s.counts[i] += 1
   }
   return { years, series }
@@ -647,7 +651,9 @@ export function redEyeProfile(flights: EnrichedFlight[]): {
     if (h === null || h === undefined) continue
     withTime += 1
     hourCounts[h] += 1
-    if (h >= 22 || h <= 4) redEyes += 1     // late-night / overnight departure
+    // A red-eye must run THROUGH the night: a late departure AND a real overnight haul (>= 3h).
+    // Excludes short late hops like a 10pm Houston→Dallas 1-hour flight.
+    if ((h >= 21 || h <= 4) && f.durationMin != null && f.durationMin >= 180) redEyes += 1
     if (h >= 5 && h <= 6) dawnPatrol += 1   // pre-7am "dawn patrol"
   }
   const commonHour = withTime > 0 ? hourCounts.indexOf(Math.max(...hourCounts)) : null
@@ -676,18 +682,6 @@ export function fleetStats(flights: EnrichedFlight[]): FleetStats {
   return { distinctTails: m.size, withTail, oneTimers, mostRepeated }
 }
 
-/** Defunct / merged carriers (ICAO → fate text). Curated; covers the long-tail carriers in real data. */
-export const DEFUNCT_AIRLINES: Record<string, string> = {
-  AWE: 'merged into American, 2015',
-  COA: 'merged into United, 2012',
-  TRS: 'merged into Southwest, 2014',
-  VRD: 'merged into Alaska, 2018',
-  JAI: 'ceased operations, 2019',
-  KFR: 'ceased operations, 2012',
-  JLL: 'folded into Jet Airways, 2012',
-  NWA: 'merged into Delta, 2010',
-  AAH: 'merged into US Airways, 2005',
-}
 
 /** Carriers you flew that no longer exist, with your flight count, last flight, and fate. */
 export function ghostAirlines(flights: EnrichedFlight[]): { code: string; name: string; count: number; last: string; fate: string }[] {
