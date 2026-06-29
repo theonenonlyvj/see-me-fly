@@ -3,7 +3,7 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { byAircraft } from '../../engine/stats'
 import { aircraftBrand, aircraftFamily, classifyAircraft } from '../../engine/reference'
-import { flightsByAircraftClass } from '../lib/flight-filters'
+import { flightsByAircraftClass, flightsByAircraftBrand, flightsByAircraftFamily, flightsByAircraftType } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#ff3d57'
@@ -43,7 +43,8 @@ export const aircraftClassCard: CardDef = {
       <CardFrame title="Aircraft class" eyebrow="Body types" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛩️"
         onTitleClick={() => ctx.overlay?.openFlights('All flights by aircraft', ctx.model!.scoped)}>
         <BarList rows={rows} max={rows.length} formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
-          onRowClick={(row) => row.id && ctx.overlay?.openFlights(`${row.label} flights`, flightsByAircraftClass(ctx.model!.scoped, row.id))} />
+          onRowClick={(row) => row.id && ctx.overlay?.openFlights(`${row.label} flights`, flightsByAircraftClass(ctx.model!.scoped, row.id))}
+          onSubRowClick={(s) => ctx.overlay?.openFlights(`${s.label} flights`, flightsByAircraftType(ctx.model!.scoped, s.label))} />
       </CardFrame>
     )
   },
@@ -93,15 +94,11 @@ export const aircraftCard: CardDef = {
           accent={BACCENT}
           accentGrad={BACCENT_GRAD}
           accentSoft={BACCENT_SOFT}
-          onRowClick={(row) => {
-            const b = row.id ? brands.get(row.id) : undefined
-            if (!b) return
-            const typeRows: BarRow[] = [...b.types].sort((x, y) => y.count - x.count).map((t) => ({ label: t.type, value: t.count }))
-            ctx.overlay?.openList(`${row.id} — exact types`, <BarList rows={typeRows} max={typeRows.length} formatValue={(n) => `${n}`} accent={BACCENT} accentGrad={BACCENT_GRAD} accentSoft={BACCENT_SOFT} />)
-          }}
+          onRowClick={(row) => row.id && ctx.overlay?.openFlights(`${row.id} flights`, flightsByAircraftBrand(ctx.model!.scoped, row.id))}
+          onSubRowClick={(s) => ctx.overlay?.openFlights(`${s.label} flights`, flightsByAircraftFamily(ctx.model!.scoped, s.label))}
         />
         <p style={{ marginTop: 14, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
-          Expand a brand to see models; click a row for exact types.
+          Click a brand for a map of everywhere you flew it; expand to drill into models.
         </p>
       </CardFrame>
     )

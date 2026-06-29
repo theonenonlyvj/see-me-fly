@@ -15,8 +15,8 @@ export const airlineErasCard: CardDef = {
   group: 'creative',
   accent: ACCENT,
   icon: '🎟️',
-  render: ({ model, overlay }: CardContext) => {
-    const { years, series } = airlineByYear(model!.scoped, 3)
+  render: ({ model, settings, overlay }: CardContext) => {
+    const { years, series } = airlineByYear(model!.scoped, 3, settings.mergeDefunctAirlines)
     return (
       <CardFrame title="Airline loyalty" eyebrow="Who flew you, by year" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🎟️"
         onTitleClick={() => overlay?.openFlights('All flights', model!.scoped)}>

@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: Settings = {
   excludeDayTrips: true,
   splitCountriesByState: ['US', 'IN', 'MX'],
   distanceEdges: [...DEFAULT_DISTANCE_EDGES],
+  mergeDefunctAirlines: false,
   duration: DEFAULT_DURATION_CONSTANTS,
 }
 
@@ -37,7 +38,7 @@ export function buildModel(csvText: string, settings: Settings, today: string, s
     totals: totals(scoped, settings),
     byAirport: byAirport(scoped, settings),
     byRoute: byRoute(scoped, settings),
-    byAirline: byAirline(scoped),
+    byAirline: byAirline(scoped, settings.mergeDefunctAirlines),
     distanceBuckets: distanceBuckets(scoped),
   }
 }
