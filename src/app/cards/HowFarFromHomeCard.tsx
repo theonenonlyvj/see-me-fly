@@ -1,6 +1,7 @@
 import CardFrame from '../components/CardFrame'
 import ProportionBar from '../components/charts/ProportionBar'
 import { homeDistanceTiers, HOME_TIER_LABELS, type HomeTier } from '../../engine/stats'
+import { hasHome } from '../../engine/home'
 import { flightsByDomesticTier, flightsIntercontinental } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
@@ -23,6 +24,9 @@ export const howFarFromHomeCard: CardDef = {
     const segments = tiers.map((t) => ({ label: HOME_TIER_LABELS[t.tier], value: t.count, color: TIER_COLORS[t.tier], id: t.tier }))
     return (
       <CardFrame title="How far from home" eyebrow="Close vs. far" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🏠">
+        {!hasHome(settings) ? (
+          <p style={{ color: 'var(--ink-2)' }}>Set a home airport in Settings to see how far each flight took you from home.</p>
+        ) : (<>
         <ProportionBar
           segments={segments}
           formatValue={(n) => `${n}`}
@@ -35,8 +39,9 @@ export const howFarFromHomeCard: CardDef = {
           }}
         />
         <p style={{ marginTop: 14, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
-          Each flight counted once, by how far it took you from home base.
+          Each flight counted once, by how far it took you from the home you had then.
         </p>
+        </>)}
       </CardFrame>
     )
   },

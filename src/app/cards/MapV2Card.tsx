@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import CardFrame from '../components/CardFrame'
 import { RouteMapV2 } from '../components/charts/RouteMapV2'
-import { airportKey } from '../../engine/normalize'
+import { homeKeys } from '../../engine/home'
 import { displayEndpoint } from '../lib/places'
 import { flightsByRoutePair, flightsByAirportKey } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
@@ -12,7 +12,9 @@ const ACCENT_SOFT = 'color-mix(in srgb, var(--accent-4) 10%, white)'
 
 function MapV2View({ model, settings, overlay }: CardContext) {
   const [mode, setMode] = useState<'routes' | 'districts'>('routes')
-  const homeKey = settings.home ? airportKey(settings.home, settings.groupAirports) : null
+  // Date-less anchor: ring every home in the union (`homeKeys().keys`), emphasizing the
+  // current/most-recent home (`primaryKey`). Covers the legacy single `home` too.
+  const { keys: homeKeySet, primaryKey } = homeKeys(settings)
   return (
     <CardFrame title="Your map ✦" eyebrow="Routes, hubs & home — tap to drill in" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🗺️" fullWidth>
       <div style={{ display: 'inline-flex', padding: 3, gap: 2, marginBottom: 12, background: ACCENT_SOFT, borderRadius: 12, border: `1px solid color-mix(in srgb, ${ACCENT} 24%, transparent)` }}>
@@ -27,7 +29,8 @@ function MapV2View({ model, settings, overlay }: CardContext) {
         flights={model!.scoped}
         accent="var(--accent-4)"
         groupAirports={settings.groupAirports}
-        homeKey={homeKey}
+        homeKeys={homeKeySet}
+        primaryKey={primaryKey}
         mode={mode}
         nameOf={(key) => displayEndpoint(key)}
         onRoute={mode === 'routes' && overlay ? (a, b, label) => overlay.openFlights(label, flightsByRoutePair(model!.scoped, a, b, settings.groupAirports)) : undefined}

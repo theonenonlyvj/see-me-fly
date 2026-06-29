@@ -66,4 +66,33 @@ describe('countriesCard', () => {
     await userEvent.click(screen.getByText(/Texas \(.*USA\)/))
     expect(await screen.findByText(/Flights in/)).toBeInTheDocument()
   })
+
+  it('shows the date-aware home-excluded note when exclusion is on (legacy single home)', () => {
+    const settings = { ...DEFAULT_SETTINGS, home: 'DFW', excludeHomeFromRankings: true }
+    const model = buildModel(csv, settings, '2026-06-25')
+    render(<>{countriesCard.render({ model, settings })}</>)
+    expect(screen.getByText(/excluded for the years each was home/i)).toBeInTheDocument()
+  })
+
+  it('shows the home-excluded note with a multi-era timeline (no legacy home set)', () => {
+    const settings = {
+      ...DEFAULT_SETTINGS,
+      home: null,
+      excludeHomeFromRankings: true,
+      homeHistory: [
+        { start: '2008-08-18', airports: ['RDU'] },
+        { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+      ],
+    }
+    const model = buildModel(csv, settings, '2026-06-25')
+    render(<>{countriesCard.render({ model, settings })}</>)
+    expect(screen.getByText(/excluded for the years each was home/i)).toBeInTheDocument()
+  })
+
+  it('no home-excluded note when exclusion is off', () => {
+    const settings = { ...DEFAULT_SETTINGS, home: 'DFW', excludeHomeFromRankings: false }
+    const model = buildModel(csv, settings, '2026-06-25')
+    render(<>{countriesCard.render({ model, settings })}</>)
+    expect(screen.queryByText(/excluded for the years each was home/i)).toBeNull()
+  })
 })

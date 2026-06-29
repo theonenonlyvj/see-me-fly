@@ -39,4 +39,41 @@ describe('places helpers', () => {
     expect(displayRoute('nonsense', S())).toBeNull()
     expect(displayRouteString('nonsense', S())).toBe('nonsense')
   })
+
+  it('orders home first when the home endpoint is in the homeKeys UNION (an earlier era)', () => {
+    // Two home eras: RDU (college) then DFW (present). A RDU↔AUS route should still
+    // lead with RDU even though it was only home in an earlier era — the union covers it.
+    const s = S({
+      home: null,
+      homeHistory: [
+        { start: '2008-08-18', airports: ['RDU'] },
+        { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+      ],
+    })
+    const p = displayRoute('AUS↔RDU', s)
+    expect(p?.left).toMatch(/\(RDU\)$/)
+    expect(p?.right).toMatch(/\(AUS\)$/)
+  })
+
+  it('breaks a both-home route tie toward the most-recent primaryKey', () => {
+    // Both endpoints were home in some era; the more-recent primary (DFW group) leads.
+    const s = S({
+      groupAirports: true,
+      home: null,
+      homeHistory: [
+        { start: '2008-08-18', airports: ['RDU'] },
+        { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+      ],
+    })
+    // key form: "RDU↔Dallas" — both are home keys; primaryKey = Dallas → Dallas leads.
+    const p = displayRoute('RDU↔Dallas', s)
+    expect(p?.left).toBe('Dallas (DFW/DAL)')
+    expect(p?.right).toMatch(/\(RDU\)$/)
+  })
+
+  it('still works with the legacy single home (backward compat)', () => {
+    const p = displayRoute('AUS↔Dallas', S({ home: 'DFW', groupAirports: true }))
+    expect(p?.left).toBe('Dallas (DFW/DAL)')
+    expect(p?.right).toMatch(/\(AUS\)$/)
+  })
 })

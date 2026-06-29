@@ -35,13 +35,15 @@ function arcPath(fromLon: number, fromLat: number, toLon: number, toLat: number)
 /**
  * Improved route map: great-circle arcs only (no heat/choropleth). Arc opacity/width are LOG-scaled
  * so a 2-airline Texas hub doesn't burn out the canvas; airport dots are sqrt-sized by visit count;
- * the home airport gets a ringed anchor. Arcs and dots are clickable (drill into the flight list).
+ * EVERY home airport (date-less union) gets a ringed anchor, with the current/most-recent home
+ * (`primaryKey`) emphasized. Arcs and dots are clickable (drill into the flight list).
  */
-export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mode = 'routes', onRoute, onNode, nameOf }: {
+export function RouteMapV2({ flights, accent, groupAirports = false, homeKeys, primaryKey, mode = 'routes', onRoute, onNode, nameOf }: {
   flights: EnrichedFlight[]
   accent: string
   groupAirports?: boolean
-  homeKey?: string | null
+  homeKeys?: Set<string> | null
+  primaryKey?: string | null
   mode?: 'routes' | 'districts'
   onRoute?: (aKey: string, bKey: string, label: string) => void
   onNode?: (key: string, label: string) => void
@@ -84,7 +86,7 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
     }
     arcs.sort((x, y) => x.count - y.count) // faint arcs first, busy on top
     const maxNode = Math.max(...Array.from(nodeAcc.values()).map((e) => e.count), 1)
-    const dots: { cx: number; cy: number; r: number; key: string; count: number; home: boolean }[] = []
+    const dots: { cx: number; cy: number; r: number; key: string; count: number; home: boolean; primary: boolean }[] = []
     // bounded "district" disks: a fixed ~100mi-radius circle per cluster, colour by intensity only
     // (so Moscow lights a Moscow-sized district, never all of Russia).
     const districts: { cx: number; cy: number; r: number; t: number; key: string; count: number }[] = []
@@ -92,7 +94,8 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
       const c = coordOf(key); if (!c) continue
       const p = projection(c); if (!p) continue
       const r = 1.8 + 5.2 * Math.sqrt(e.count / maxNode) // sqrt area-ish scaling
-      dots.push({ cx: p[0], cy: p[1], r, key, count: e.count, home: homeKey != null && key === homeKey })
+      const isHome = homeKeys != null && homeKeys.has(key)
+      dots.push({ cx: p[0], cy: p[1], r, key, count: e.count, home: isHome, primary: isHome && key === primaryKey })
       const north = projection([c[0], c[1] + 1.449]) // 100mi ≈ 1.449° latitude
       const diskR = north ? Math.max(6, Math.hypot(p[0] - north[0], p[1] - north[1])) : 10
       // sqrt normalization (same shape as the dot sizing): suppresses lone low-visit splotches, real hubs stay hot
@@ -101,7 +104,7 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
     dots.sort((x, y) => x.count - y.count)
     districts.sort((x, y) => x.count - y.count) // faint first, hot on top
     return { arcs, dots, districts, maxRoute, maxNode }
-  }, [flights, groupAirports, homeKey])
+  }, [flights, groupAirports, homeKeys, primaryKey])
 
   const label = (key: string) => (nameOf ? nameOf(key) : key)
 
@@ -130,7 +133,8 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
   }
   const onPointerUp = () => { drag.current = null }
   const zoomed = view.k > 1
-  const baseR = (dot: typeof dots[number]) => (dot.home ? Math.max(dot.r, 5) : dot.r)
+  // The most-recent home (primary) reads biggest; other home members are ringed but slightly smaller.
+  const baseR = (dot: typeof dots[number]) => (dot.primary ? Math.max(dot.r, 6) : dot.home ? Math.max(dot.r, 5) : dot.r)
 
   return (
     <div style={{ position: 'relative' }}>
@@ -163,10 +167,10 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
         {mode === 'routes' && dots.map((dot, i) => (
           <circle key={i} cx={dot.cx} cy={dot.cy} r={baseR(dot) / view.k}
             fill={dot.home ? '#fff' : accent} opacity={dot.home ? 1 : 0.88}
-            stroke={dot.home ? accent : '#fff'} strokeWidth={(dot.home ? 2.5 : 0.7) / view.k}
+            stroke={dot.home ? accent : '#fff'} strokeWidth={(dot.primary ? 3.5 : dot.home ? 2 : 0.7) / view.k}
             style={{ cursor: onNode ? 'pointer' : 'default' }}
             onClick={onNode ? () => onNode(dot.key, label(dot.key)) : undefined}>
-            <title>{`${label(dot.key)} — ${dot.count} visits${dot.home ? ' (home)' : ''}`}</title>
+            <title>{`${label(dot.key)} — ${dot.count} visits${dot.primary ? ' (home)' : dot.home ? ' (former home)' : ''}`}</title>
           </circle>
         ))}
         </g>

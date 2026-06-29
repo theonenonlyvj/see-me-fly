@@ -30,4 +30,25 @@ describe('domestic tier cards', () => {
     render(<>{domesticCountryCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
     expect(screen.getByText(/Within a country/i)).toBeInTheDocument()
   })
+
+  it('single legacy home keeps the single-state title ("Within Texas")', () => {
+    const model = buildModel(csv, { ...DEFAULT_SETTINGS, home: 'DFW' }, '2026-06-25')
+    render(<>{domesticStateCard.render({ model, settings: { ...DEFAULT_SETTINGS, home: 'DFW' } })}</>)
+    expect(screen.getByText(/Within Texas/i)).toBeInTheDocument()
+  })
+
+  it('multiple distinct home-state eras use the multi-era title', () => {
+    // RDU (North Carolina) then DFW (Texas) — two distinct home regions.
+    const s = {
+      ...DEFAULT_SETTINGS,
+      home: null,
+      homeHistory: [
+        { start: '2008-08-18', airports: ['RDU'] },
+        { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+      ],
+    }
+    const model = buildModel(csv, s, '2026-06-25')
+    render(<>{domesticStateCard.render({ model, settings: s })}</>)
+    expect(screen.getByText(/Within your home state\(s\)/i)).toBeInTheDocument()
+  })
 })

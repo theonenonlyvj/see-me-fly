@@ -10,10 +10,29 @@ import type { CardContext, CardDef } from './registry'
 
 type Tier = 'intra-state' | 'intra-country' | 'intra-continent'
 
+/**
+ * Distinct home-state regions across the whole timeline (each era's PRIMARY airport's region,
+ * de-duped), falling back to the legacy single `home`. Drives the intra-state card title:
+ * one distinct region → "Within <region>"; several → "Within your home state(s)".
+ */
+function homeRegions(settings: Settings): string[] {
+  const codes = settings.homeHistory.length > 0
+    ? settings.homeHistory.map((e) => e.airports[0]).filter(Boolean)
+    : settings.home ? [settings.home] : []
+  const regions = new Set<string>()
+  for (const code of codes) {
+    const r = lookupAirport(code)?.region
+    if (r) regions.add(r)
+  }
+  return [...regions]
+}
+
 function labelFor(tier: Tier, settings: Settings): string {
   if (tier === 'intra-state') {
-    const region = settings.home ? lookupAirport(settings.home)?.region : undefined
-    return region ? `Within ${regionName(region)}` : 'Within your home state'
+    const regions = homeRegions(settings)
+    if (regions.length === 1) return `Within ${regionName(regions[0])}`
+    if (regions.length > 1) return 'Within your home state(s)'
+    return 'Within your home state'
   }
   return tier === 'intra-country' ? 'Within a country' : 'Within a continent'
 }

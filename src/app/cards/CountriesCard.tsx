@@ -4,7 +4,7 @@ import type { BarRow } from '../components/charts/BarList'
 import { byCountry } from '../../engine/stats'
 import { flightsByCountry, flightsByRegion } from '../lib/flight-filters'
 import { displayEndpoint } from '../lib/places'
-import { airportKey } from '../../engine/normalize'
+import { hasHome, homeKeys } from '../../engine/home'
 import { regionFlags } from '../../engine/reference'
 import type { CardContext, CardDef } from './registry'
 
@@ -54,8 +54,12 @@ export const countriesCard: CardDef = {
   icon: '🌍',
   render: (ctx: CardContext) => {
     const rows = buildRows(ctx)
-    const homeExcluded = ctx.settings.excludeHomeFromRankings && ctx.settings.home
-      ? displayEndpoint(airportKey(ctx.settings.home, ctx.settings.groupAirports)) : null
+    // Date-aware exclusion: each home endpoint is dropped from country credit only for the era it
+    // was home (handled in `byCountry`). Gate the note on `hasHome` so a populated timeline with a
+    // cleared legacy `home` still explains the exclusion; show the most-recent home for context.
+    const excludeOn = ctx.settings.excludeHomeFromRankings && hasHome(ctx.settings)
+    const homePrimaryKey = excludeOn ? homeKeys(ctx.settings).primaryKey : null
+    const homeExcluded = homePrimaryKey ? displayEndpoint(homePrimaryKey) : null
     return (
       <CardFrame
         title="Countries & states"
@@ -89,9 +93,9 @@ export const countriesCard: CardDef = {
             Split into states — choose which countries (or group them) in Settings.
           </p>
         )}
-        {homeExcluded && (
+        {excludeOn && (
           <p style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
-            Home base ({homeExcluded}) excluded from these counts — toggle in Settings.
+            Home airports{homeExcluded ? ` (currently ${homeExcluded})` : ''} excluded for the years each was home — toggle in Settings.
           </p>
         )}
       </CardFrame>

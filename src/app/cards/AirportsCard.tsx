@@ -3,9 +3,10 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { flagEmoji } from '../lib/format'
 import { groups, lookupAirport } from '../../engine/reference'
-import { homeKeys } from '../../engine/home'
+import { homeKeys, hasHome } from '../../engine/home'
 import { displayEndpoint } from '../lib/places'
 import { flightsByAirportKey } from '../lib/flight-filters'
+import type { Settings } from '../../engine'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#12c08a'
@@ -21,6 +22,26 @@ function flagFor(key: string): string {
   return ap?.country ? flagEmoji(ap.country) : ''
 }
 
+/**
+ * One line per home era for the exclusion pill's hover title:
+ * "RDU — 2008-08-18 to 2013-01-15 (College)", the last era open-ended ("to present").
+ * Falls back to the legacy single `home` when there's no timeline.
+ */
+function homeEraSummary(settings: Settings): string {
+  const eras = [...settings.homeHistory].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
+  if (eras.length === 0) {
+    return settings.home ? `${settings.home} — all dates` : ''
+  }
+  return eras
+    .map((era, i) => {
+      const end = i + 1 < eras.length ? eras[i + 1].start : 'present'
+      const codes = era.airports.join('/')
+      const label = era.label ? ` (${era.label})` : ''
+      return `${codes} — ${era.start} to ${end}${label}`
+    })
+    .join('\n')
+}
+
 export const airportsCard: CardDef = {
   id: 'airports',
   title: 'Most-visited airports',
@@ -33,9 +54,11 @@ export const airportsCard: CardDef = {
     // still surfaces the (most-recent) home: its display key comes from `homeKeys`, and its count is
     // taken from the scoped flights directly (the home airport is no longer in `byAirport` when
     // excluded). Pill shows only when exclusion is on AND a home exists.
-    const homeKey = settings.excludeHomeFromRankings ? homeKeys(settings).primaryKey : null
+    const excludeOn = settings.excludeHomeFromRankings && hasHome(settings)
+    const homeKey = excludeOn ? homeKeys(settings).primaryKey : null
     const homeFlights = homeKey ? flightsByAirportKey(model!.scoped, homeKey, settings) : []
     const homeEntry = homeKey && homeFlights.length > 0 ? { key: homeKey, count: homeFlights.length } : undefined
+    const eraSummary = excludeOn ? homeEraSummary(settings) : ''
     const rows: BarRow[] = model!.byAirport.map((a) => ({ label: `${flagFor(a.key)} ${displayEndpoint(a.key)}`.trim(), value: a.count, id: a.key }))
 
     return (
@@ -59,6 +82,12 @@ export const airportsCard: CardDef = {
         )}
         <BarList rows={rows} max={5} seeAllTitle="Most-visited airports" formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
           onRowClick={(row) => row.id && overlay?.openFlights(`Flights via ${row.label}`, flightsByAirportKey(model!.scoped, row.id, settings))} />
+        {excludeOn && (
+          <p data-home-eras title={eraSummary || undefined}
+            style={{ marginTop: 12, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic', cursor: eraSummary ? 'help' : undefined }}>
+            Home airports excluded for the years each was home — toggle in Settings.
+          </p>
+        )}
       </CardFrame>
     )
   },
