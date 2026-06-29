@@ -23,13 +23,17 @@ export function hasHome(s: Settings): boolean {
 }
 
 /**
- * Local, sanitized copy of `homeHistory`: sorted ascending by `start`, zero-length
- * eras dropped, and duplicate `start`s collapsed (LAST wins). Binary search assumes a
- * strictly-ascending, non-degenerate sequence; this guarantees it without mutating the
- * caller's array. (The loader sanitizes on import too; this keeps the resolver total
- * even if handed a raw array.)
+ * Pure, sanitized copy of `homeHistory`: sorted ascending by `start`, zero-length
+ * (empty-airport) eras dropped, and duplicate `start`s collapsed (LAST wins). Binary
+ * search assumes a strictly-ascending, non-degenerate sequence; this guarantees it
+ * without mutating the caller's array. (The CSV/localStorage loader sanitizes on import
+ * too — see `app/lib/see-me-fly-csv.ts`, which re-uses THIS function — keeping the
+ * resolver total even if handed a raw array.)
+ *
+ * Canonical home-timeline sanitizer. Exported so the app-layer CSV loader can reuse it
+ * (app → engine is an allowed dependency direction; engine must never import from app).
  */
-function sortedEras(homeHistory: HomeEra[]): HomeEra[] {
+export function sanitizeHomeHistory(homeHistory: HomeEra[]): HomeEra[] {
   if (homeHistory.length === 0) return []
   // Stable sort by start; for equal starts the later original index sorts last so
   // "last wins" when we drop earlier duplicates below.
@@ -48,6 +52,9 @@ function sortedEras(homeHistory: HomeEra[]): HomeEra[] {
   }
   return out
 }
+
+/** Internal alias retained for readability at the resolver call sites. */
+const sortedEras = sanitizeHomeHistory
 
 /**
  * Binary-search the sanitized eras for the one whose half-open interval
