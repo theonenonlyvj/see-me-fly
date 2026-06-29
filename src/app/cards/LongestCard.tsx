@@ -43,7 +43,11 @@ function SeeAll({ label, onClick }: { label: string; onClick: () => void }) {
 function LongestFlights(ctx: CardContext) {
   const [metric, setMetric] = useState<Metric>('distance')
   const flights = extremeFlights(ctx.model!.scoped, metric, 'long', 50)
-  const onOpen = (f: EnrichedFlight) => ctx.overlay?.openFlight(f)
+  const title = `Longest by ${metric}`
+  const openDetail = (f: EnrichedFlight) => ctx.overlay?.openFlight(f)
+  const listBody = <Rows flights={flights} metric={metric} onOpen={openDetail} />
+  // inline rows: open the flight WITH the full list beneath it, so Back returns to the list
+  const openWithList = (f: EnrichedFlight) => { ctx.overlay?.openList(title, listBody); ctx.overlay?.openFlight(f) }
 
   return (
     <CardFrame title="Longest flights" eyebrow="Epic hauls" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🛬">
@@ -66,9 +70,9 @@ function LongestFlights(ctx: CardContext) {
         <p style={{ color: 'var(--ink-2)' }}>No data for this view.</p>
       ) : (
         <>
-          <Rows flights={flights.slice(0, 5)} metric={metric} onOpen={onOpen} />
+          <Rows flights={flights.slice(0, 5)} metric={metric} onOpen={openWithList} />
           {flights.length > 5 && (
-            <SeeAll label={`See all (${flights.length}) →`} onClick={() => ctx.overlay?.openList(`Longest by ${metric}`, <Rows flights={flights} metric={metric} onOpen={onOpen} />)} />
+            <SeeAll label={`See all (${flights.length}) →`} onClick={() => ctx.overlay?.openList(title, listBody)} />
           )}
         </>
       )}

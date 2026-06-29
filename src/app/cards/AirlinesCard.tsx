@@ -41,6 +41,7 @@ function AirlineRows({ rows, peak, model, overlay }: {
                   <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
                 </>
               )}
+              {r.airlineCode && <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', flexShrink: 0 }}>({r.airlineCode})</span>}
             </div>
             <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{r.count}</div>
             <div style={{ gridColumn: '1 / -1', height: 10, borderRadius: 999, background: ACCENT_SOFT, overflow: 'hidden' }}>

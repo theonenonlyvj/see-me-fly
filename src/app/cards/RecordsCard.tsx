@@ -119,7 +119,7 @@ export const recordsCard: CardDef = {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {milestones.map(({ ordinal, flight }) => (
                 <div key={ordinal}
-                  onClick={() => ctx.overlay?.openFlight(flight)}
+                  onClick={() => { ctx.overlay?.openFlights('Milestones', milestones.map((m) => m.flight)); ctx.overlay?.openFlight(flight) }}
                   role={ctx.overlay ? 'button' : undefined}
                   style={{
                   background: ACCENT_SOFT,

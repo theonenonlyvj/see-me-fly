@@ -32,7 +32,10 @@ export const delaysCard: CardDef = {
   icon: '😤',
   render: (ctx: CardContext) => {
     const { onTimePct, counted, mostDelayed, canceled, diverted } = delayStats(ctx.model!.scoped)
-    const onOpen = (f: EnrichedFlight) => ctx.overlay?.openFlight(f)
+    const openDetail = (f: EnrichedFlight) => ctx.overlay?.openFlight(f)
+    const listBody = <DelayRows flights={mostDelayed} onOpen={openDetail} />
+    // inline rows: open the flight WITH the full list beneath it, so Back returns to the list
+    const onOpen = (f: EnrichedFlight) => { ctx.overlay?.openList('Most delayed', listBody); ctx.overlay?.openFlight(f) }
 
     return (
       <CardFrame title="Delays" eyebrow="Punctuality report" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="😤">
@@ -59,7 +62,7 @@ export const delaysCard: CardDef = {
             <DelayRows flights={mostDelayed.slice(0, 5)} onOpen={onOpen} />
             {mostDelayed.length > 5 && (
               <button
-                onClick={() => ctx.overlay?.openList('Most delayed', <DelayRows flights={mostDelayed} onOpen={onOpen} />)}
+                onClick={() => ctx.overlay?.openList('Most delayed', listBody)}
                 style={{
                   marginTop: 14, fontSize: 12.5, fontWeight: 800,
                   background: ACCENT_GRAD, WebkitBackgroundClip: 'text', backgroundClip: 'text',
