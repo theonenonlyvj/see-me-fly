@@ -5,7 +5,7 @@ import { countryName, regionName, aircraftFamily, lookupAirport, continentName }
 import { haversineMi } from './distance'
 import { milestones } from './aggregate'
 import { DEFUNCT_AIRLINES, effectiveAirline } from './airline-history'
-import { hasHome, isHomeOn } from './home'
+import { hasHome, isHomeOn, homeAt } from './home'
 import { buildMovements, type Movement } from './ground-links'
 
 /** Convert a 2-letter ISO 3166-1 alpha-2 country code to a regional-indicator emoji pair.
@@ -428,49 +428,137 @@ export function delayStats(flights: EnrichedFlight[]): {
   return { onTimePct, counted, mostDelayed, canceled, diverted }
 }
 
-const HOME = { lat: 32.8968, lon: -97.0380 } // DFW (default home)
+/**
+ * A single geographic extreme: the airport and its `miles`-from-reference. For the
+ * global N/S/E/W block `miles` is unused (home-independent) and carried as 0; for a
+ * per-base farthest it is the great-circle distance from that base's primary.
+ */
+export interface ExtremePoint {
+  airport: Airport
+  miles: number
+}
 
 /**
- * Geographic extremes over the distinct RESOLVED airports touched by all flights.
- * north=max lat, south=min lat, east=max lon, west=min lon.
- * farthest = airport with max haversineMi(home, airport); `home` defaults to DFW.
- * Returns null if no resolved airports found.
+ * Geographic extremes — split into a home-INDEPENDENT global N/S/E/W block and a
+ * PER-HOME-BASE farthest-from-home ranking.
+ *
+ * `global`: north=max lat, south=min lat, east=max lon, west=min lon over the distinct
+ * RESOLVED airports touched by all the passed (all-time) flights. Pure global max/min;
+ * no home reference, unchanged math. `null` when no resolved airports exist.
+ *
+ * `byBase`: one entry per home BASE, ranked by farthest miles descending. Flights are
+ * partitioned by their era-home (`homeAt(f.date)`) and eras are MERGED by their PRIMARY's
+ * `airportKey` (two Dallas eras → one "Dallas" base; the merged base's home-exclusion set
+ * is the UNION of the merged eras' airports; the most-recent era's primary/label wins).
+ * For each base, farthest = great-circle distance from that base's PRIMARY airport coords
+ * (resolved via `lookupAirport`; a base whose primary fails to resolve is SKIPPED), over
+ * that base's flights, EXCLUDING the base's own home airports from the candidate endpoints
+ * (so a 1-flight DFW→AUS base or a local-only era never returns home itself). A base with
+ * no non-home candidate endpoints is dropped. `[]` when `!hasHome(settings)`.
+ *
+ * Always operate over the passed all-time flights (callers pass `model.flown`).
  */
-export function geoExtremes(flights: EnrichedFlight[], home: { lat: number; lon: number } = HOME): {
-  north: Airport
-  south: Airport
-  east: Airport
-  west: Airport
-  farthest: { airport: Airport; miles: number }
-} | null {
+export interface GeoExtremes {
+  global: { north: ExtremePoint; south: ExtremePoint; east: ExtremePoint; west: ExtremePoint } | null
+  byBase: Array<{ baseLabel: string; primaryCode: string; farthest: ExtremePoint; flightCount: number }>
+}
+
+export function geoExtremes(flights: EnrichedFlight[], settings: Settings): GeoExtremes {
+  // ── Global N/S/E/W (home-independent) over the distinct resolved airports. ──
   const airportMap = new Map<string, Airport>()
   for (const f of flights) {
     if (f.from) airportMap.set(f.from.ident, f.from)
     if (f.to && !f.isLocalFlight) airportMap.set(f.to.ident, f.to)
   }
   const airports = [...airportMap.values()]
-  if (airports.length === 0) return null
 
-  let north = airports[0]
-  let south = airports[0]
-  let east = airports[0]
-  let west = airports[0]
-  let farthestAirport = airports[0]
-  let farthestMiles = haversineMi(home.lat, home.lon, airports[0].lat, airports[0].lon)
-
-  for (const ap of airports.slice(1)) {
-    if (ap.lat > north.lat) north = ap
-    if (ap.lat < south.lat) south = ap
-    if (ap.lon > east.lon) east = ap
-    if (ap.lon < west.lon) west = ap
-    const d = haversineMi(home.lat, home.lon, ap.lat, ap.lon)
-    if (d > farthestMiles) {
-      farthestMiles = d
-      farthestAirport = ap
+  let global: GeoExtremes['global'] = null
+  if (airports.length > 0) {
+    let north = airports[0]
+    let south = airports[0]
+    let east = airports[0]
+    let west = airports[0]
+    for (const ap of airports.slice(1)) {
+      if (ap.lat > north.lat) north = ap
+      if (ap.lat < south.lat) south = ap
+      if (ap.lon > east.lon) east = ap
+      if (ap.lon < west.lon) west = ap
+    }
+    global = {
+      north: { airport: north, miles: 0 },
+      south: { airport: south, miles: 0 },
+      east: { airport: east, miles: 0 },
+      west: { airport: west, miles: 0 },
     }
   }
 
-  return { north, south, east, west, farthest: { airport: farthestAirport, miles: farthestMiles } }
+  // ── Per-base farthest-from-home ranking. ──
+  if (!hasHome(settings)) return { global, byBase: [] }
+
+  interface BaseAcc {
+    primaryCode: string
+    label: string
+    rawIndex: number                               // lowest rawIndex over the base's flights (base-order tiebreak)
+    homeKeys: Set<string>                          // union of the merged eras' home airports (key-normalized)
+    flightCount: number
+    endpoints: Array<{ ap: Airport; rawIndex: number }> // candidate far-endpoints (incl. home; filtered below)
+  }
+  // Keyed by the base's primary airportKey so eras sharing a primary merge into one base.
+  const bases = new Map<string, BaseAcc>()
+
+  for (const f of flights) {
+    const home = homeAt(f.date, settings)
+    if (!home) continue
+    const primaryKey = airportKey(home.primary, settings.groupAirports)
+    let acc = bases.get(primaryKey)
+    if (!acc) {
+      acc = { primaryCode: home.primary, label: home.primary, rawIndex: f.rawIndex, homeKeys: new Set(), flightCount: 0, endpoints: [] }
+      bases.set(primaryKey, acc)
+    }
+    // Union this era's home airports into the merged base's exclusion set.
+    for (const a of home.airports) acc.homeKeys.add(airportKey(a, settings.groupAirports))
+    acc.flightCount++
+    acc.rawIndex = Math.min(acc.rawIndex, f.rawIndex)
+    if (f.from) acc.endpoints.push({ ap: f.from, rawIndex: f.rawIndex })
+    if (f.to && !f.isLocalFlight) acc.endpoints.push({ ap: f.to, rawIndex: f.rawIndex })
+  }
+
+  // Most-recent era wins primary/label: walk eras ascending and let the latest era whose
+  // primary key equals a base's key set that base's displayed primary/label.
+  for (const era of [...settings.homeHistory].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))) {
+    if (!era.airports || era.airports.length === 0) continue
+    const acc = bases.get(airportKey(era.airports[0], settings.groupAirports))
+    if (acc) {
+      acc.primaryCode = era.airports[0]
+      acc.label = era.label ?? era.airports[0]
+    }
+  }
+
+  const ranked: Array<{ baseLabel: string; primaryCode: string; farthest: ExtremePoint; flightCount: number; rawIndex: number }> = []
+  for (const acc of bases.values()) {
+    const primaryAp = lookupAirport(acc.primaryCode)
+    if (!primaryAp) continue // primary doesn't resolve → skip this base
+    let farthestAirport: Airport | null = null
+    let farthestMiles = -1
+    let farthestRawIndex = Infinity
+    for (const { ap, rawIndex } of acc.endpoints) {
+      const isHome = acc.homeKeys.has(airportKey(ap.ident, settings.groupAirports)) ||
+        (ap.iata != null && acc.homeKeys.has(airportKey(ap.iata, settings.groupAirports)))
+      if (isHome) continue // exclude the base's own home airports as far-candidates
+      const d = haversineMi(primaryAp.lat, primaryAp.lon, ap.lat, ap.lon)
+      if (d > farthestMiles || (d === farthestMiles && rawIndex < farthestRawIndex)) {
+        farthestMiles = d
+        farthestAirport = ap
+        farthestRawIndex = rawIndex
+      }
+    }
+    if (!farthestAirport) continue // no non-home candidate endpoints → drop the base
+    ranked.push({ baseLabel: acc.label, primaryCode: acc.primaryCode, farthest: { airport: farthestAirport, miles: farthestMiles }, flightCount: acc.flightCount, rawIndex: acc.rawIndex })
+  }
+
+  // Rank by farthest miles descending; deterministic tiebreak by the base's lowest rawIndex.
+  ranked.sort((a, b) => b.farthest.miles - a.farthest.miles || a.rawIndex - b.rawIndex)
+  return { global, byBase: ranked.map(({ baseLabel, primaryCode, farthest, flightCount }) => ({ baseLabel, primaryCode, farthest, flightCount })) }
 }
 
 /**

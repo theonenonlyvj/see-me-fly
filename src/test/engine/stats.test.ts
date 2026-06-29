@@ -517,34 +517,112 @@ describe('delayStats', () => {
 
 // ─── geoExtremes ─────────────────────────────────────────────────────────
 describe('geoExtremes', () => {
-  // AUS: lat~30.2, lon~-97.7; LHR: lat~51.5, lon~-0.45
+  // AUS: lat~30.2, lon~-97.7; LHR: lat~51.5, lon~-0.45; SYD ~ -33.9, 151.2
   const fAus = mkRow({ from: 'AUS', to: 'DFW', date: '2020-01-01' })
   const fLhr = mkRow({ from: 'DFW', to: 'LHR', date: '2020-01-02' })
+  const homeDfw = S({ home: 'DFW' })
 
-  it('returns null for empty flights', () => {
-    expect(geoExtremes([])).toBeNull()
+  it('global is null for empty flights, byBase is []', () => {
+    const result = geoExtremes([], S())
+    expect(result.global).toBeNull()
+    expect(result.byBase).toEqual([])
   })
 
-  it('farthest picks LHR over AUS (from HOME=DFW)', () => {
-    const result = geoExtremes([fAus, fLhr])
-    expect(result).not.toBeNull()
-    expect(result!.farthest.airport.iata).toBe('LHR')
-    expect(result!.farthest.miles).toBeGreaterThan(4000)
-  })
-
-  it('north is LHR (higher lat ~51) vs AUS (~30)', () => {
-    const result = geoExtremes([fAus, fLhr])
-    expect(result!.north.iata).toBe('LHR')
-  })
-
-  it('south is AUS (lower lat ~30) vs LHR (~51)', () => {
-    const result = geoExtremes([fAus, fLhr])
-    expect(result!.south.iata).toBe('AUS')
-  })
-
-  it('returns null when no resolved airports', () => {
+  it('global is null when no resolved airports, byBase []', () => {
     const fUnresolved = mkRow({ from: 'XYZ', to: 'QQQ' })
-    expect(geoExtremes([fUnresolved])).toBeNull()
+    const result = geoExtremes([fUnresolved], homeDfw)
+    expect(result.global).toBeNull()
+    expect(result.byBase).toEqual([])
+  })
+
+  it('global N/S/E/W is home-INDEPENDENT (computed without a home)', () => {
+    const result = geoExtremes([fAus, fLhr], S()) // no home
+    expect(result.global).not.toBeNull()
+    expect(result.global!.north.airport.iata).toBe('LHR') // ~51 > ~30
+    expect(result.global!.south.airport.iata).toBe('AUS') // ~30 < ~51
+    expect(result.byBase).toEqual([]) // !hasHome
+  })
+
+  it('!hasHome → byBase is [] but global is populated', () => {
+    const result = geoExtremes([fAus, fLhr], S({ home: null, homeHistory: [] }))
+    expect(result.global).not.toBeNull()
+    expect(result.byBase).toEqual([])
+  })
+
+  it('empty homeHistory + single home → exactly one base = today single-home farthest', () => {
+    const result = geoExtremes([fAus, fLhr], homeDfw)
+    expect(result.byBase).toHaveLength(1)
+    const base = result.byBase[0]
+    expect(base.primaryCode).toBe('DFW')
+    // LHR is farther from DFW than AUS is
+    expect(base.farthest.airport.iata).toBe('LHR')
+    expect(base.farthest.miles).toBeGreaterThan(4000)
+  })
+
+  it('per-base farthest excludes the base own home airports', () => {
+    // Single DFW→AUS flight, home DFW: AUS is the only non-home candidate → farthest is AUS, not DFW.
+    const onlyShort = mkRow({ from: 'DFW', to: 'AUS', date: '2020-01-01' })
+    const result = geoExtremes([onlyShort], homeDfw)
+    expect(result.byBase).toHaveLength(1)
+    expect(result.byBase[0].farthest.airport.iata).toBe('AUS')
+  })
+
+  it('base with 0 non-home candidate flights is dropped', () => {
+    // A single DFW→DFW would be local; use a flight whose only endpoints are home.
+    const homeOnly = mkRow({ from: 'DFW', to: 'DFW', date: '2020-01-01' }) // local flight, to excluded
+    const result = geoExtremes([homeOnly], homeDfw)
+    // No non-home candidate endpoints anywhere → no base survives.
+    expect(result.byBase).toEqual([])
+  })
+
+  it('partitions flights by era-home and merges eras by PRIMARY airportKey', () => {
+    // Era 1: MKE home (2012); Era 2: DFW home (2013+). A DFW era + DFW era merge into ONE Dallas base.
+    const s = S({
+      homeHistory: [
+        { start: '2008-01-01', airports: ['DFW'] },      // DFW era
+        { start: '2012-07-03', airports: ['MKE'] },      // MKE era
+        { start: '2013-01-15', airports: ['DFW', 'DAL'] }, // DFW era again → merges with first into one Dallas base
+      ],
+    })
+    const fMke = mkRow({ from: 'MKE', to: 'LHR', date: '2012-08-01' }) // MKE era, far
+    const fDfw1 = mkRow({ from: 'DFW', to: 'AUS', date: '2009-01-01' }) // DFW era 1
+    const fDfw2 = mkRow({ from: 'DFW', to: 'LAX', date: '2014-01-01' }) // DFW era 2
+    const result = geoExtremes([fMke, fDfw1, fDfw2], s)
+    const labels = result.byBase.map((b) => b.primaryCode)
+    // Two distinct bases by primary key: MKE and DFW (the two DFW eras merged into one).
+    expect(new Set(labels)).toEqual(new Set(['MKE', 'DFW']))
+    expect(result.byBase).toHaveLength(2)
+    const dfwBase = result.byBase.find((b) => b.primaryCode === 'DFW')!
+    expect(dfwBase.flightCount).toBe(2) // both DFW-era flights credited to one base
+  })
+
+  it('ranks bases by farthest miles descending', () => {
+    const s = S({
+      homeHistory: [
+        { start: '2008-01-01', airports: ['DFW'] },
+        { start: '2012-07-03', airports: ['MKE'] },
+      ],
+    })
+    const fDfwShort = mkRow({ from: 'DFW', to: 'AUS', date: '2009-01-01' }) // DFW base: short reach
+    const fMkeFar = mkRow({ from: 'MKE', to: 'SYD', date: '2012-08-01' })   // MKE base: very far
+    const result = geoExtremes([fDfwShort, fMkeFar], s)
+    expect(result.byBase[0].primaryCode).toBe('MKE') // farther → first
+    expect(result.byBase[1].primaryCode).toBe('DFW')
+    expect(result.byBase[0].farthest.miles).toBeGreaterThan(result.byBase[1].farthest.miles)
+  })
+
+  it('skips a base whose primary fails lookupAirport', () => {
+    const s = S({
+      homeHistory: [
+        { start: '2008-01-01', airports: ['ZZZ'] }, // bogus primary → lookupAirport null → skipped
+        { start: '2012-07-03', airports: ['DFW'] },
+      ],
+    })
+    const fBogus = mkRow({ from: 'ZZZ', to: 'AUS', date: '2009-01-01' }) // ZZZ era
+    const fDfw = mkRow({ from: 'DFW', to: 'LHR', date: '2013-01-01' })   // DFW era
+    const result = geoExtremes([fBogus, fDfw], s)
+    // ZZZ base skipped; only DFW survives.
+    expect(result.byBase.map((b) => b.primaryCode)).toEqual(['DFW'])
   })
 })
 

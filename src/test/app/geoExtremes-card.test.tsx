@@ -27,23 +27,34 @@ const csv = [
 ].join('\n')
 
 describe('geoExtremesCard', () => {
-  it('shows farthest airport name', () => {
+  it('shows the per-base farthest-from-each-home section (DFW default home)', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
-    // SYD (Sydney) should be farthest from DFW (home lat/lon)
-    expect(screen.getByText(/farthest from home/i)).toBeInTheDocument()
+    expect(screen.getByText(/farthest from each home/i)).toBeInTheDocument()
+    // SYD (Sydney) is farthest from DFW; the base label uses the metro convention.
+    expect(screen.getByText(/dallas/i)).toBeInTheDocument()
+    // A flight-count chip is shown for the base (3 flights all from DFW).
+    expect(screen.getByText(/3 flights/i)).toBeInTheDocument()
   })
 
-  it('shows northernmost label', () => {
+  it('shows northernmost label (global block)', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
     expect(screen.getByText(/northernmost/i)).toBeInTheDocument()
   })
 
-  it('shows southernmost label', () => {
+  it('shows southernmost label (global block)', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
     expect(screen.getByText(/southernmost/i)).toBeInTheDocument()
+  })
+
+  it('renders the global block but NO per-base section when there is no home', () => {
+    const noHome = { ...DEFAULT_SETTINGS, home: null, homeHistory: [] }
+    const model = buildModel(csv, noHome, '2026-06-25')
+    render(<>{geoExtremesCard.render({ model, settings: noHome })}</>)
+    expect(screen.getByText(/northernmost/i)).toBeInTheDocument()
+    expect(screen.queryByText(/farthest from each home/i)).not.toBeInTheDocument()
   })
 
   it('renders empty-state when no resolved airports', () => {
