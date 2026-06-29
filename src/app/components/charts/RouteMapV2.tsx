@@ -18,10 +18,11 @@ const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], landCollection)
 const path = geoPath(projection)
 
 function heatColor(t: number): string {
-  if (t < 0.25) return '#fde68a'
-  if (t < 0.5) return '#fbbf24'
-  if (t < 0.75) return '#f97316'
-  return '#dc2626'
+  if (t < 0.2) return '#fca5a5'
+  if (t < 0.45) return '#f87171'
+  if (t < 0.7) return '#ef4444'
+  if (t < 0.88) return '#dc2626'
+  return '#991b1b'
 }
 
 function arcPath(fromLon: number, fromLat: number, toLon: number, toLat: number): string | null {
@@ -109,33 +110,25 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
   const svgRef = useRef<SVGSVGElement | null>(null)
   const drag = useRef<{ sx: number; sy: number; vx: number; vy: number; moved: boolean } | null>(null)
   const clamp = (k: number, x: number, y: number) => ({ k, x: Math.min(0, Math.max(WIDTH * (1 - k), x)), y: Math.min(0, Math.max(HEIGHT * (1 - k), y)) })
-  const toSvg = (clientX: number, clientY: number) => {
-    const r = svgRef.current!.getBoundingClientRect()
-    return { x: ((clientX - r.left) / r.width) * WIDTH, y: ((clientY - r.top) / r.height) * HEIGHT }
-  }
-  const onWheel = (e: React.WheelEvent) => {
-    e.preventDefault()
-    const p = toSvg(e.clientX, e.clientY)
-    setView((v) => {
-      const k = Math.min(8, Math.max(1, v.k * (e.deltaY < 0 ? 1.18 : 1 / 1.18)))
-      if (k === v.k) return v
-      return clamp(k, p.x - ((p.x - v.x) / v.k) * k, p.y - ((p.y - v.y) / v.k) * k)
-    })
-  }
-  const onPointerDown = (e: React.PointerEvent) => {
-    drag.current = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false }
-    e.currentTarget.setPointerCapture(e.pointerId)
-  }
+  // zoom toward the map centre (used by the +/− buttons)
+  const zoomBy = (factor: number) => setView((v) => {
+    const k = Math.min(8, Math.max(1, v.k * factor))
+    if (k === v.k) return v
+    const cx = WIDTH / 2, cy = HEIGHT / 2
+    return clamp(k, cx - ((cx - v.x) / v.k) * k, cy - ((cy - v.y) / v.k) * k)
+  })
+  const onPointerDown = (e: React.PointerEvent) => { drag.current = { sx: e.clientX, sy: e.clientY, vx: view.x, vy: view.y, moved: false } }
   const onPointerMove = (e: React.PointerEvent) => {
     if (!drag.current) return
     const r = svgRef.current!.getBoundingClientRect()
     const dx = ((e.clientX - drag.current.sx) / r.width) * WIDTH
     const dy = ((e.clientY - drag.current.sy) / r.height) * HEIGHT
-    if (Math.abs(dx) + Math.abs(dy) > 2) drag.current.moved = true
-    setView((v) => clamp(v.k, drag.current!.vx + dx, drag.current!.vy + dy))
+    // only START panning (and capture the pointer) once we've moved a bit — so a plain CLICK on a
+    // dot/route still reaches it. Capture is what was stealing clicks before.
+    if (!drag.current.moved && Math.abs(dx) + Math.abs(dy) > 4) { drag.current.moved = true; e.currentTarget.setPointerCapture(e.pointerId) }
+    if (drag.current.moved) setView((v) => clamp(v.k, drag.current!.vx + dx, drag.current!.vy + dy))
   }
   const onPointerUp = () => { drag.current = null }
-  const dragged = () => drag.current?.moved // suppress click that ended a pan
   const zoomed = view.k > 1
   const baseR = (dot: typeof dots[number]) => (dot.home ? Math.max(dot.r, 5) : dot.r)
 
@@ -143,7 +136,7 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
     <div style={{ position: 'relative' }}>
       <svg ref={svgRef} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         style={{ width: '100%', height: 'auto', display: 'block', cursor: zoomed ? 'grab' : 'default', touchAction: 'none' }}
-        onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
         <defs><filter id="rmv2heat" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" /></filter></defs>
         <rect width={WIDTH} height={HEIGHT} fill="#eef2f7" rx={4} />
         <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
@@ -154,7 +147,7 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
         {mode === 'districts' && (
           <g data-districts filter="url(#rmv2heat)">
             {districts.map((di, i) => (
-              <circle key={i} cx={di.cx} cy={di.cy} r={di.r} fill={heatColor(di.t)} opacity={0.45 + 0.45 * di.t}>
+              <circle key={i} cx={di.cx} cy={di.cy} r={di.r} fill={heatColor(di.t)} opacity={0.28 + 0.5 * di.t}>
                 <title>{`${label(di.key)} — ${di.count} visits`}</title>
               </circle>
             ))}
@@ -163,7 +156,7 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
         {mode === 'routes' && arcs.map((arc, i) => (
           <path key={i} data-arc d={arc.d} fill="none" stroke={accent} strokeWidth={arc.sw} strokeOpacity={arc.op} strokeLinecap="round" vectorEffect="non-scaling-stroke"
             style={{ cursor: onRoute ? 'pointer' : 'default' }}
-            onClick={onRoute ? () => { if (!dragged()) onRoute(arc.a, arc.b, `${label(arc.a)} ↔ ${label(arc.b)}`) } : undefined}>
+            onClick={onRoute ? () => onRoute(arc.a, arc.b, `${label(arc.a)} ↔ ${label(arc.b)}`) : undefined}>
             <title>{`${label(arc.a)} ↔ ${label(arc.b)} — ${arc.count} flights`}</title>
           </path>
         ))}
@@ -172,18 +165,17 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
             fill={dot.home ? '#fff' : accent} opacity={dot.home ? 1 : 0.88}
             stroke={dot.home ? accent : '#fff'} strokeWidth={(dot.home ? 2.5 : 0.7) / view.k}
             style={{ cursor: onNode ? 'pointer' : 'default' }}
-            onClick={onNode ? () => { if (!dragged()) onNode(dot.key, label(dot.key)) } : undefined}>
+            onClick={onNode ? () => onNode(dot.key, label(dot.key)) : undefined}>
             <title>{`${label(dot.key)} — ${dot.count} visits${dot.home ? ' (home)' : ''}`}</title>
           </circle>
         ))}
         </g>
       </svg>
-      {zoomed && (
-        <button onClick={() => setView({ k: 1, x: 0, y: 0 })}
-          style={{ position: 'absolute', top: 8, right: 8, fontSize: 11, fontWeight: 800, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', border: '1px solid var(--hair)', borderRadius: 8, padding: '4px 9px', cursor: 'pointer' }}>
-          Reset ⟲
-        </button>
-      )}
+      <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 4 }}>
+        {zoomed && <button onClick={() => setView({ k: 1, x: 0, y: 0 })} style={{ fontSize: 11, fontWeight: 800, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', border: '1px solid var(--hair)', borderRadius: 8, padding: '4px 9px', cursor: 'pointer' }}>Reset ⟲</button>}
+        <button aria-label="Zoom out" onClick={() => zoomBy(1 / 1.4)} style={{ width: 28, height: 28, fontSize: 16, fontWeight: 800, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', border: '1px solid var(--hair)', borderRadius: 8, cursor: 'pointer' }}>−</button>
+        <button aria-label="Zoom in" onClick={() => zoomBy(1.4)} style={{ width: 28, height: 28, fontSize: 16, fontWeight: 800, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', border: '1px solid var(--hair)', borderRadius: 8, cursor: 'pointer' }}>+</button>
+      </div>
       {/* legend */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8, fontSize: 11, color: 'var(--ink-2)', flexWrap: 'wrap' }}>
         {mode === 'routes' ? (<>

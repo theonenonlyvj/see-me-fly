@@ -742,6 +742,9 @@ export function reconstructTrips(flights: EnrichedFlight[], settings: Settings):
     cur = []
   }
   for (const f of ordered) {
+    // A fresh departure FROM home means the previous trip already ended (you got home some other
+    // way — drove, bussed, flew into a different home airport). Close it before starting anew.
+    if (cur.length > 0 && isHome(f.fromCode)) close()
     cur.push(f)
     if (isHome(f.toCode)) close() // arrived home → trip ends
   }
