@@ -1,7 +1,8 @@
 import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
-import { reconstructTrips, type Trip } from '../../engine/stats'
+import { reconstructTrips, tripsForYear, type Trip } from '../../engine/stats'
+import { hasHome } from '../../engine/home'
 import { displayEndpoint } from '../lib/places'
 import type { CardContext, CardDef } from './registry'
 
@@ -28,7 +29,9 @@ export const tripsCard: CardDef = {
   accent: ACCENT,
   icon: '🧳',
   render: ({ model, settings, overlay }: CardContext) => {
-    const trips = reconstructTrips(model!.scoped, settings)
+    // Reconstruct over ALL-TIME flights (cross-year relocations stay one trip), then slice to the
+    // active year-scope. Reconstructing over the year-scoped list would fragment spanning trips.
+    const trips = tripsForYear(reconstructTrips(model!.flown, settings), model!.scopeYear)
       .slice()
       .sort((a, b) => (a.departDate < b.departDate ? 1 : -1)) // most recent first
     const rows: BarRow[] = trips.map((t, i) => ({
@@ -39,7 +42,7 @@ export const tripsCard: CardDef = {
     }))
     return (
       <CardFrame title="Your trips" eyebrow="Journeys, not just legs" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🧳">
-        {!settings.home ? (
+        {!hasHome(settings) ? (
           <p style={{ color: 'var(--ink-2)' }}>Set a home airport in Settings to reconstruct your trips.</p>
         ) : rows.length === 0 ? (
           <p style={{ color: 'var(--ink-2)' }}>No trips in this view.</p>

@@ -1,6 +1,7 @@
 import CardFrame from '../components/CardFrame'
 import StackedColumns from '../components/charts/StackedColumns'
-import { reconstructTrips, tripSummary } from '../../engine/stats'
+import { reconstructTrips, tripsForYear, tripSummary } from '../../engine/stats'
+import { hasHome } from '../../engine/home'
 import { flightsByYear } from '../lib/flight-filters'
 import { fmtInt } from '../lib/format'
 import type { CardContext, CardDef } from './registry'
@@ -16,10 +17,11 @@ export const nightsAwayCard: CardDef = {
   icon: '🛏️',
   accent: ACCENT,
   render: ({ model, settings, overlay }: CardContext) => {
-    const s = tripSummary(reconstructTrips(model!.scoped, settings))
+    // All-time reconstruction, sliced to the active year-scope (keeps cross-year trips whole).
+    const s = tripSummary(tripsForYear(reconstructTrips(model!.flown, settings), model!.scopeYear))
     return (
       <CardFrame title="Nights away from home" eyebrow="The home-presence cost" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🛏️">
-        {!settings.home ? (
+        {!hasHome(settings) ? (
           <p style={{ color: 'var(--ink-2)' }}>Set a home airport in Settings to estimate nights away.</p>
         ) : s.nightsByYear.length === 0 ? (
           <p style={{ color: 'var(--ink-2)' }}>No trips in this view.</p>

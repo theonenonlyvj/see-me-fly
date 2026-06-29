@@ -1,5 +1,6 @@
 import CardFrame from '../components/CardFrame'
-import { reconstructTrips, tripSummary, WEEKDAY_LABELS } from '../../engine/stats'
+import { reconstructTrips, tripsForYear, tripSummary, WEEKDAY_LABELS } from '../../engine/stats'
+import { hasHome } from '../../engine/home'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT = '#0d9488'
@@ -22,10 +23,11 @@ export const commuterCadenceCard: CardDef = {
   accent: ACCENT,
   icon: '🔁',
   render: ({ model, settings }: CardContext) => {
-    const s = tripSummary(reconstructTrips(model!.scoped, settings))
+    // All-time reconstruction, sliced to the active year-scope (keeps cross-year trips whole).
+    const s = tripSummary(tripsForYear(reconstructTrips(model!.flown, settings), model!.scopeYear))
     return (
       <CardFrame title="Commuter cadence" eyebrow="The shape of a trip" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🔁">
-        {!settings.home ? (
+        {!hasHome(settings) ? (
           <p style={{ color: 'var(--ink-2)' }}>Set a home airport in Settings to reconstruct your trips.</p>
         ) : s.tripCount === 0 ? (
           <p style={{ color: 'var(--ink-2)' }}>No trips in this view.</p>

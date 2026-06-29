@@ -2,7 +2,8 @@ import { useState } from 'react'
 import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
-import { reconstructTrips, type Trip } from '../../engine/stats'
+import { reconstructTrips, tripsForYear, type Trip } from '../../engine/stats'
+import { hasHome } from '../../engine/home'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT = '#0891b2'
@@ -38,12 +39,13 @@ const SORTS: [Sort, string, (t: Trip) => number, (t: Trip) => string][] = [
 function TripsExplorerView({ model, settings, overlay }: CardContext) {
   const [sort, setSort] = useState<Sort>('nights')
   const cfg = SORTS.find((s) => s[0] === sort)!
-  const trips = reconstructTrips(model!.scoped, settings).slice().sort((a, b) => cfg[2](a) - cfg[2](b))
+  // All-time reconstruction, sliced to the active year-scope (keeps cross-year trips whole).
+  const trips = tripsForYear(reconstructTrips(model!.flown, settings), model!.scopeYear).slice().sort((a, b) => cfg[2](a) - cfg[2](b))
   const valueOf = sort === 'legs' ? (t: Trip) => t.flights.length : sort === 'nights' ? (t: Trip) => t.nights : sort === 'distance' ? tripMiles : (t: Trip) => t.flights.length
   const rows: BarRow[] = trips.map((t, i) => ({ label: `${when(t)} · ${routePath(t)}`, value: valueOf(t), sub: cfg[3](t), id: String(i) }))
   return (
     <CardFrame title="Trips explorer" eyebrow="Sort your journeys" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🧭">
-      {!settings.home ? (
+      {!hasHome(settings) ? (
         <p style={{ color: 'var(--ink-2)' }}>Set a home airport in Settings to reconstruct your trips.</p>
       ) : rows.length === 0 ? (
         <p style={{ color: 'var(--ink-2)' }}>No trips in this view.</p>

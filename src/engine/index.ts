@@ -35,6 +35,10 @@ export function buildModel(csvText: string, settings: Settings, today: string, s
     all,
     flown,
     scoped,
+    // The active year-scope (undefined = all-time). Exposed so cards that must reconstruct over
+    // ALL-TIME flights (trips) can re-slice their own result by the scope year — they receive the
+    // model, not the App's `scope` state.
+    scopeYear: scopeYear ?? null,
     unresolved,
     years,
     totals: totals(scoped, settings),

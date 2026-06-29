@@ -5,6 +5,8 @@ import { countryName, regionName, aircraftFamily, lookupAirport, continentName }
 import { haversineMi } from './distance'
 import { milestones } from './aggregate'
 import { DEFUNCT_AIRLINES, effectiveAirline } from './airline-history'
+import { hasHome, isHomeOn } from './home'
+import { buildMovements, type Movement } from './ground-links'
 
 /** Convert a 2-letter ISO 3166-1 alpha-2 country code to a regional-indicator emoji pair.
  *  Returns '' if code is not exactly 2 ASCII alpha characters. */
@@ -715,42 +717,144 @@ export interface Trip {
 }
 
 /**
- * Group chronological flights into trips bracketed by home. A trip accumulates legs until one
- * ARRIVES home, then closes. Needs a home airport; returns [] without one. Best-effort across
- * data gaps (a leg that doesn't start from home simply extends the current trip).
+ * Group chronological movements (flights + ground links) into trips bracketed by a
+ * DATE-AWARE home, over ALL-TIME flights (callers pass `model.flown`; the year dropdown
+ * slices the result via `tripsForYear`). A trip accumulates flight legs; ground links
+ * BRIDGE a gap to a new away-location (extending an open trip) or CLOSE it when they land
+ * at a home airport. Rules (spec §"Trip Reconstruction"):
+ *  - Home per movement via `isHomeOn(endpoint, mvmt.date)` (set-membership, boundary-aware).
+ *  - Arrive-home CLOSES, UNLESS the next movement redeparts the SAME airport within
+ *    `layoverMaxHours` (a connection — e.g. a co-home hub on a layover), which keeps it open.
+ *  - A ground link to home closes; a link to a non-home bridges (never closes).
+ *  - A fresh depart-from-home closes any still-open prior trip.
+ *  - Inferred boundaries: a trip that left home with no recorded return/link closes at its
+ *    last recorded leg's date with `estimated:{boundary:'end'}`; a lone homeward leg
+ *    (no prior departure) is a 0-night trip with `estimated:{boundary:'start'}`.
+ * Needs some home (`hasHome`); returns [] otherwise. Only `kind:'flight'` movements
+ * populate a trip's flight list/stats — links are bridges only.
  */
 export function reconstructTrips(flights: EnrichedFlight[], settings: Settings): Trip[] {
-  const homeKey = settings.home ? airportKey(settings.home, settings.groupAirports) : null
-  if (homeKey == null) return []
+  if (!hasHome(settings)) return []
   const k = (c: string) => airportKey(c, settings.groupAirports)
-  const isHome = (c: string) => k(c) === homeKey
-  const sortMs = (f: EnrichedFlight) => (f.depUtcMs ?? (Date.parse(f.date) || 0))
-  const ordered = flights.filter((f) => f.resolved && !f.isLocalFlight).sort((a, b) => sortMs(a) - sortMs(b) || a.rawIndex - b.rawIndex)
+  const maxGapMs = settings.layoverMaxHours * 3_600_000
+
+  const usable = flights.filter((f) => f.resolved && !f.isLocalFlight)
+  const movements = buildMovements(usable, settings.groundLinks)
+
+  // The arrival date a movement lands on (for the home check): a link can arrive a later day.
+  const arriveDateOf = (m: Movement) => (m.kind === 'link' ? (m.link.arriveDate ?? m.date) : m.date)
+  // The absolute arrival instant, for the connection (layover) exception. Links rarely carry one.
+  const arrInstant = (m: Movement): number | null => {
+    if (m.kind === 'flight') return m.flight.arrUtcMs
+    if (m.link.arriveDate || m.link.arriveTime) {
+      const d = m.link.arriveDate ?? m.date
+      const t = Date.parse(`${d}T00:00:00Z`)
+      if (!Number.isFinite(t)) return null
+      const mm = m.link.arriveTime ? /^(\d{1,2}):(\d{2})/.exec(m.link.arriveTime) : null
+      return t + (mm ? (Number(mm[1]) * 60 + Number(mm[2])) * 60_000 : 0)
+    }
+    return null
+  }
 
   const trips: Trip[] = []
+  // `cur` = the flight legs of the open trip; `bridged` flags a link extended it (so it's not
+  // a phantom empty trip); `startInferred` flags a trip that opened on a homeward leg.
   let cur: EnrichedFlight[] = []
-  const close = () => {
-    if (!cur.length) return
-    const first = cur[0], last = cur[cur.length - 1]
-    const nights = Math.max(0, Math.round((Date.parse(last.date) - Date.parse(first.date)) / 86_400_000))
+  let open = false
+  let startInferred = false
+  let lastArrive = '' // arrival date of the last movement added to the open trip
+
+  const close = (boundary?: 'start' | 'end') => {
+    if (!open) return
+    open = false
+    if (!cur.length) { startInferred = false; lastArrive = ''; return }
+    const first = cur[0]
+    const last = cur[cur.length - 1]
+    // The trip's return date is when the LAST movement landed (a closing link can land later
+    // than the last flight). For an inferred end we collapse to the last recorded leg's date.
+    const returnDate = boundary === 'end' ? last.date : (lastArrive || last.date)
+    const nights = Math.max(0, Math.round((Date.parse(returnDate) - Date.parse(first.date)) / 86_400_000))
     const dests = new Set<string>()
-    for (const f of cur) if (!isHome(f.toCode)) dests.add(k(f.toCode))
+    for (const f of cur) if (!isHomeOn(f.toCode, f.date, settings)) dests.add(k(f.toCode))
+    const estimated = boundary ? { boundary } : (startInferred ? { boundary: 'start' as const } : undefined)
     trips.push({
-      flights: cur, departDate: first.date, returnDate: last.date, nights, year: first.year,
-      outboundWeekday: weekdayMonFirst(first.date) ?? 0, returnWeekday: weekdayMonFirst(last.date) ?? 0,
-      roundTrip: isHome(last.toCode), destinations: [...dests],
+      flights: cur, departDate: first.date, returnDate, nights, year: first.year,
+      outboundWeekday: weekdayMonFirst(first.date) ?? 0, returnWeekday: weekdayMonFirst(returnDate) ?? 0,
+      // A trip closed by reaching home (flight or link) round-trips; an inferred-end one doesn't.
+      roundTrip: boundary !== 'end',
+      destinations: [...dests],
+      ...(estimated ? { estimated } : {}),
     })
     cur = []
+    startInferred = false
+    lastArrive = ''
   }
-  for (const f of ordered) {
-    // A fresh departure FROM home means the previous trip already ended (you got home some other
-    // way — drove, bussed, flew into a different home airport). Close it before starting anew.
-    if (cur.length > 0 && isHome(f.fromCode)) close()
-    cur.push(f)
-    if (isHome(f.toCode)) close() // arrived home → trip ends
+
+  // Is movement `j` a connection redeparture of movement `j-1`? (prev landed exactly where this
+  // departs, and re-departed within `layoverMaxHours`). A connection through a co-home hub must
+  // NOT read as a fresh "depart-from-home" (that would split a layover at e.g. ORD/MKE).
+  const isConnectionFrom = (prev: Movement | undefined, m: Movement): boolean => {
+    if (!prev || prev.toCode !== m.fromCode) return false
+    const a = arrInstant(prev)
+    const d = m.kind === 'flight' ? m.flight.depUtcMs : m.sortMs
+    if (a == null || d == null) return false
+    const gap = d - a
+    return gap > 0 && gap <= maxGapMs
   }
-  close()
+
+  for (let i = 0; i < movements.length; i++) {
+    const m = movements[i]
+    const departHome = isHomeOn(m.fromCode, m.date, settings)
+    const arriveHome = isHomeOn(m.toCode, arriveDateOf(m), settings)
+    const connectionIn = isConnectionFrom(movements[i - 1], m)
+
+    // A fresh departure FROM home means any still-open prior trip ended some other way
+    // (you got home, then left again). Close it (inferred end) before opening anew — UNLESS this
+    // is a connection redeparture of the previous leg (a layover at a co-home hub), which keeps
+    // the trip open.
+    if (open && departHome && !connectionIn) close('end')
+
+    if (!open) {
+      // Opening a new trip. If the very first movement lands home (a lone homeward leg with no
+      // recorded departure), it's a 0-night inferred-start blip.
+      open = true
+      startInferred = !departHome && arriveHome
+    }
+
+    if (m.kind === 'flight') cur.push(m.flight) // links are bridges only — not in the flight list
+    lastArrive = arriveDateOf(m)
+
+    if (arriveHome) {
+      // Arrived a home airport. Close UNLESS the next movement is a connection: it redeparts the
+      // SAME airport within `layoverMaxHours` (a co-home hub on a layover must not split the trip).
+      const next = movements[i + 1]
+      let isConnection = false
+      if (next && next.fromCode === m.toCode) {
+        const a = arrInstant(m)
+        const d = next.kind === 'flight' ? next.flight.depUtcMs : next.sortMs
+        if (a != null && d != null) {
+          const gap = d - a
+          if (gap > 0 && gap <= maxGapMs) isConnection = true
+        }
+      }
+      if (!isConnection) close()
+    }
+    // A link to a NON-home airport bridges (extends the open trip); nothing to do — it already
+    // updated `lastArrive` and the loop continues with the trip still open.
+  }
+  close('end') // any trip still open at the end had no recorded return → inferred end
   return trips
+}
+
+/**
+ * Slice an all-time `Trip[]` by year. `null` (or undefined) = all-time (no slice); otherwise
+ * keep trips whose departure year (`Trip.year`) matches. Reconstruction runs once over all-time
+ * flights (so a cross-year relocation stays one trip); this attributes each trip to its
+ * departure year, exactly as the year dropdown scopes everything else.
+ */
+export function tripsForYear(trips: Trip[], year: number | null): Trip[] {
+  if (year == null) return trips
+  return trips.filter((t) => t.year === year)
 }
 
 const modeOf = (arr: number[]): number | null => {
