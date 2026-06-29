@@ -31,6 +31,7 @@ interface HomeEra {
 ```
 - Ordered ascending by `start`. Each era runs `[start, nextEra.start)` (half-open); the last era runs to the present.
 - `airports` may hold several co-home codes (e.g. `['MKE','ORD','MDW']` — drove to Chicago for fares). `airports[0]` is the **primary**.
+- **One base per era** (confirmed): an era lists co-located airports for one base; two *separate* simultaneous home regions are out of scope.
 - Empty `homeHistory` ⇒ fall back to the single `Settings.home` (backward compat).
 
 **Serialized as `see-me-fly_homes.csv`:**
@@ -104,6 +105,12 @@ Home is **RDU through the move**. The journey: `MCO→IAD→FRA→ISL→…→MU
 - The **drive IAH→MKE closes the trip** (rule 2: a ground link lands you at a home airport — MKE is home from the move), at the ~Jul 5 arrival. The Jun 22 IAH flight is just the last flight leg.
 - **Result: one ~40-night relocation trip** (left RDU → Europe → Houston wedding → Milwaukee). Relocation trips are their own shape: they open at the old home and close at the **new** home, and any long in-between stay (the wedding) is part of the single trip by design. The trip's start mirrors its close — it opens at the RDU departure (a flight or a ground link); absent either, it starts at the first recorded leg. Splitting a move into "trip + move" is a possible later knob.
 
+### Inferred boundaries (no link)
+When a trip can't be cleanly bracketed and no ground link resolves it, collapse the **unknown** boundary to the nearest **known** leg and **flag** the trip so the user can add a link:
+- **Left home, no recorded return and no link** → assume you returned home on the date of the trip's **last recorded leg** (keep real away-nights up to that leg; add none beyond). Prevents an open trip from absorbing the next one.
+- **Only a homeward leg** (e.g. `SFO→DFW` with no preceding departure-from-home) → the trip **started that same day** — a 0-night blip, not a phantom beginning weeks earlier.
+- Such trips carry `estimated: true` (with which boundary was guessed). Their **conservative** nights/counts **still feed aggregate totals**, but the trip shows an **"estimated" badge** and is **filterable as "needs a link."** Adding a ground link or a real flight replaces the guess.
+
 ---
 
 ## Consumers to Migrate (date-aware home)
@@ -112,7 +119,7 @@ Thread `homeAt(flight.date, settings)` where `settings.home` is read today:
 - `src/engine/stats.ts`: `domesticTierOf` (region uses era `primary`), `geoExtremes` (distance from era `primary`; its hardcoded DFW `HOME` constant becomes per-flight), `homeDistanceTiers`, `reconstructTrips`, `byCountry` (home-endpoint exclusion → date-aware).
 - `src/engine/index.ts`: `byAirport` home exclusion → date-aware.
 - `src/app/lib/places.ts`: `homeKey` → era-aware `homeKeys` for home-first route ordering.
-- Cards: HowFarFromHome, NightsAway, CommuterCadence, GeoExtremes, MapV2/RouteMapV2 (anchor + home rings), Airports (home-pill), Countries/SuperDomestic (region exclusion + title).
+- Cards: HowFarFromHome, NightsAway, CommuterCadence, GeoExtremes, MapV2/RouteMapV2 (all-time view rings ALL historical homes with the current one emphasized; per-era anchor otherwise), Airports (home-pill), Countries/SuperDomestic (region exclusion + title).
 
 ### Date-aware home exclusion (rankings)
 The `excludeHomeFromRankings` toggle stays a single boolean. When ON, a flight's endpoint is excluded from a ranking only when that endpoint was home **on that flight's date**:
