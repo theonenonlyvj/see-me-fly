@@ -7,11 +7,14 @@ import groupsRaw from '../reference/airport-groups.json'
 import classesRaw from '../reference/aircraft-classes.json'
 import regionFlagsRaw from '../reference/region-flags.json'
 import airlineLogosRaw from '../reference/airline-logos.json'
+import allianceLogosRaw from '../reference/alliance-logos.json'
 
 /** ISO-region code → state-flag data-URI (bundled subset; not all subdivisions covered) */
 export const regionFlags = regionFlagsRaw as Record<string, string>
 /** airline ICAO → logo data-URI (curated bundled subset; monogram fallback otherwise) */
 export const airlineLogos = airlineLogosRaw as Record<string, string>
+/** alliance key (star/oneworld/skyteam) → logo data-URI */
+export const allianceLogos = allianceLogosRaw as Record<string, string>
 
 const records = airportsRaw as Airport[]
 

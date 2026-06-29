@@ -1,4 +1,4 @@
-export interface Segment { label: string; value: number; color: string; id?: string }
+export interface Segment { label: string; value: number; color: string; id?: string; iconUrl?: string }
 
 /**
  * A single full-width 100%-stacked horizontal proportion bar with a legend.
@@ -40,7 +40,9 @@ export default function ProportionBar({
             onClick={onSegment ? () => onSegment(s) : undefined}
             style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 9, cursor: onSegment ? 'pointer' : 'default' }}
           >
-            <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+            {s.iconUrl
+              ? <img src={s.iconUrl} alt="" style={{ height: 16, width: 'auto', maxWidth: 64, objectFit: 'contain', objectPosition: 'left center', flexShrink: 0 }} />
+              : <span style={{ width: 11, height: 11, borderRadius: 3, background: s.color, flexShrink: 0 }} />}
             <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)' }}>{s.label}</span>
             <span style={{ fontSize: 13.5, fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
               {formatValue(s.value)} <span style={{ color: 'var(--ink-2)', fontWeight: 600 }}>· {((s.value / total) * 100).toFixed(0)}%</span>
