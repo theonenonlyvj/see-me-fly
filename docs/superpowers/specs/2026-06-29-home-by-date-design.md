@@ -1,10 +1,10 @@
 # Home-by-Date — Design Spec
 
-**Status:** design approved in collaborative brainstorming (2026-06-29); pre-implementation. Built on the `home-by-date` branch; main is frozen at tag `v1.0.0`.
+**Status:** design approved in collaborative brainstorming (2026-06-29); revised after an adversarial multi-lens review (verdict: important-revisions, now folded in). Pre-implementation. Built on the `home-by-date` branch; main is frozen at tag `v1.0.0`.
 
 **Goal:** Replace the single `Settings.home` with a *time-aware* home so every home-relative statistic reflects where you actually lived **on each flight's date** — without changing any flight totals.
 
-**Architecture:** A user-owned home timeline + a user-owned set of significant ground segments, both stored as branded CSVs in localStorage (downloadable; account-syncable later). A single `homeAt(date)` resolver threads date-aware home through ~14 existing consumers. Trip reconstruction gains ground-segment gap-closing. Nothing about any individual's life is hard-coded in the app.
+**Architecture:** A user-owned home timeline + a user-owned set of significant ground segments, both stored as branded CSVs in localStorage (downloadable; account-syncable later). A single, **total** `homeAt(date)` resolver threads date-aware home through the consumers listed below. Trip reconstruction runs **once over all-time flights** (sliced by year afterward) and gains ground-segment gap-closing. Nothing about any individual's life is hard-coded in the app.
 
 ---
 
@@ -12,10 +12,11 @@
 
 1. **Flight COUNTS and DISTANCE TOTALS never change.** Home-by-date only affects *home-relative* outputs (farthest-from-home, nights-away, the close-to-home splits, trip reconstruction, map home-anchor, and home exclusion from rankings).
 2. **No personal data in the app.** The app ships generic and empty. The home timeline and ground segments are USER DATA in localStorage, never in the repo or source.
-3. **Branded filenames:** `see-me-fly_homes.csv`, `see-me-fly_links.csv`. Export button label: "Download my see-me-fly data" (date-stamped).
+3. **Branded filenames:** `see-me-fly_homes.csv`, `see-me-fly_links.csv`, each carrying a `schema_version`. Export button label: "Download my see-me-fly data" (date-stamped).
 4. **Date-resolved, not year-resolved.** A single calendar year may contain multiple homes (2012 = RDU → Europe → Milwaukee). Home is keyed to the exact flight date. The year-scope dropdown stays independent of home.
-5. **Backward compatible.** An empty home timeline behaves exactly like today's single `Settings.home`.
-6. Stays offline / single-file / under the existing build conventions. Bundle-size budget is suspended by user direction until the app is "final."
+5. **Backward compatible.** An empty home timeline behaves exactly like today's single `Settings.home`. `homeAt` is **total** (never silently null while any home info exists — see Home Resolution).
+6. **Trips reconstruct once over the all-time list, then slice by year.** `reconstructTrips` runs over `model.flown` (all-time, global filters only — NOT the year-scoped list), and the year dropdown slices the resulting `Trip[]` by `Trip.year`. Reconstructing over year-scoped flights would fragment every cross-year relocation trip and drop ground links that bridge into another year.
+7. Stays offline / single-file / under the existing build conventions. Bundle-size budget is suspended by user direction until the app is "final."
 
 ---
 
@@ -31,16 +32,19 @@ interface HomeEra {
 ```
 - Ordered ascending by `start`. Each era runs `[start, nextEra.start)` (half-open); the last era runs to the present.
 - `airports` may hold several co-home codes (e.g. `['MKE','ORD','MDW']` — drove to Chicago for fares). `airports[0]` is the **primary**.
-- **One base per era** (confirmed): an era lists co-located airports for one base; two *separate* simultaneous home regions are out of scope.
+- **One base per era** (confirmed): an era lists co-located airports for one base; two *separate* simultaneous home regions are out of scope. Validation should **warn** if one era's airports span more than one distinct `airportKey` group when grouping is ON (e.g. an era mixing Chicago and Milwaukee group keys is suspicious).
+- **Normalization:** all membership/dedup comparisons run on `airportKey(code, settings.groupAirports)`, never raw codes — with grouping ON, `ORD`+`MDW` collapse to one Chicago key while `MKE` stays separate.
 - Empty `homeHistory` ⇒ fall back to the single `Settings.home` (backward compat).
 
-**Serialized as `see-me-fly_homes.csv`:**
+`DEFAULT_SETTINGS` (`engine/index.ts:8`) **must gain** `homeHistory: []` and `groundLinks: []` so the `{...DEFAULT_SETTINGS, ...stored}` merge-on-load gives old localStorage blobs defined arrays. Loader coerces both to arrays defensively.
+
+**Serialized as `see-me-fly_homes.csv`** (RFC-4180, header row, `schema_version`):
 ```
-start_date,home_airports,label
-2008-08-18,RDU,College — Durham
-2009-05-15,DFW/DAL,Summer — Dallas
-2012-07-03,MKE/ORD/MDW,Moved to Milwaukee
-2013-01-15,DFW/DAL,Back to Dallas (present)
+schema_version,start_date,home_airports,label
+1,2008-08-18,RDU,College — Durham
+1,2009-05-15,DFW/DAL,Summer — Dallas
+1,2012-07-03,MKE/ORD/MDW,Moved to Milwaukee
+1,2013-01-15,DFW/DAL,Back to Dallas (present)
 ```
 `home_airports` is slash-joined; first = primary. Each row starts an era; the last runs to present.
 
@@ -52,7 +56,7 @@ interface GroundLink {
   toAirport: string        // nearest airport code at destination (CORE)
   mode: string             // 'drive' | 'bus' | 'train' | 'ferry' | 'other' (CORE)
   // optional record fields — captured if known, "useful later", never required:
-  arriveDate?: string      // for multi-day drives / overnight buses
+  arriveDate?: string      // for multi-day drives / overnight buses; used for the home check
   fromPlace?: string       // the real, possibly non-airport origin (stop / hotel / city)
   toPlace?: string
   departTime?: string
@@ -68,9 +72,11 @@ interface GroundLink {
 ```
 **Place↔airport model:** `fromPlace`/`toPlace` are the *truth* (a downtown bus stop, a hotel, a foreign city). `fromAirport`/`toAirport` are the **nearest airport the user tags** so the segment plugs into the airport-based flight graph. The editor autocompletes a nearby airport from a typed place.
 
-**Serialized as `see-me-fly_links.csv`** with one column per field above (core first, then optional; blanks allowed).
+**Serialized as `see-me-fly_links.csv`** (RFC-4180 quoting via Papa.unparse/parse `header:true`, `schema_version` column, blanks allowed). Free-text fields (`fromPlace`, `toPlace`, `operator`, `label`) WILL contain commas/quotes ("Cambridge, MA"; "RedCoach, Inc.") — naive comma-split is forbidden; a round-trip test must cover embedded commas/quotes and leading-zero refs.
 
-**Role of ground links (Phase A):** they ONLY help **close trip gaps** in reconstruction. They do **not** add to any flight stat (counts, miles, airlines, etc.). "Can filter into stats later" is an explicit future phase.
+**`price`/`currency` rule:** `price` parses as `Number` only after RFC-4180 unquoting (strip thousands separators); a `price` with blank `currency` is left **uninterpreted and never summed**; editor validation requires `currency` when `price` is set.
+
+**Role of ground links (Phase A):** they ONLY help **close trip gaps** in reconstruction (see the unified movement type below). They do **not** add to any flight stat (counts, miles, airlines, etc.). "Can filter into stats later" is an explicit future phase.
 
 ---
 
@@ -78,76 +84,99 @@ interface GroundLink {
 
 A small `src/engine/home.ts`:
 ```ts
-interface ResolvedHome { airports: string[]; primary: string }
+interface ResolvedHome { airports: string[]; primary: string }   // airports[0] === primary
 function homeAt(date: string, settings: Settings): ResolvedHome | null
+function hasHome(settings: Settings): boolean                     // homeHistory non-empty || settings.home != null
 ```
-- Binary-search `homeHistory` for the era containing `date` (half-open intervals). Return `{ airports, primary: airports[0] }`.
-- If `homeHistory` is empty, return `{ airports: [home], primary: home }` from `Settings.home` (or `null` if no home set at all).
-- A flight ON a move date resolves to the NEW home (half-open `[start, …)`).
+- Binary-search `homeHistory` (assumed strictly ascending, de-duped — guaranteed by the loader, below) for the era containing `date` via half-open `[start, nextStart)`.
+- **Totality (must-fix):** a flight dated **before** `homeHistory[0].start` clamps to the **first** era (your earliest known home), NOT null. `homeAt` returns null **only** when there is no home info at all (`!hasHome`). Empty `homeHistory` ⇒ resolve from `Settings.home`. There is a unit test for the pre-first-era case.
+- **Boundary date (move day):** half-open intervals put a flight ON a move date under the NEW home. To keep a same-day relocation *departure* from the old home able to close the prior trip, the **from-endpoint / ground-link arrival** check treats an endpoint as "home" if it matches EITHER the closing prior era OR the opening new era on that boundary date. Ground-link home checks use `arriveDate ?? date`.
+
+**`hasHome(settings)` replaces every `!settings.home` gate.** Five sites gate on the scalar today (the four trip cards + `reconstructTrips`); with a populated `homeHistory` but the legacy `Settings.home` cleared they would wrongly show "set a home" / zero trips. All five must use `hasHome`.
 
 **"At home" semantics:**
-- **Set membership** — an endpoint is "home" if its metro key matches ANY airport in that date's `ResolvedHome.airports` (compared via `airportKey(code, settings.groupAirports)`). Used for: trip boundaries, home-exclusion from rankings, the map home-anchor (ring all of that era's home dots), home-first route ordering, the Airports home-pill.
-- **Single reference = `primary`** — for the two stats that need one point: `domesticTierOf` intra-state region (uses `primary`'s region) and `geoExtremes` farthest-from-home (distance from `primary`'s lat/lon).
+- **Set membership** — an endpoint is "home" if `airportKey(code, groupAirports)` matches ANY airport (also key-normalized) in that date's `ResolvedHome.airports`. Used for: trip boundaries, home-exclusion from rankings, the map home-anchor, home-first route ordering, the Airports home-pill.
+- **Single reference = `primary`** — for the two stats that need one point: `domesticTierOf` intra-state region and `geoExtremes` farthest-from-home.
+
+**Date-less consumers (structural):** route ordering (`places.ts`), the map anchor, and the SuperDomestic title operate on **aggregated, date-less keys** — there is no single flight date to resolve. For these, define **`homeKeys(settings)`** = the **set-union** of every era's `airportKey`-normalized home airports (plus `Settings.home`), with a deterministic tiebreak = the **most-recent era's primary**. A route flown in two eras whose far end was home in one of them orders as home via the union.
 
 ---
 
-## Trip Reconstruction (with ground links)
+## Trip Reconstruction (all-time, with ground links)
 
-`reconstructTrips` today closes a trip when a leg ARRIVES home, and (recent fix) when a fresh leg DEPARTS from home. With home-by-date + links:
+`reconstructTrips` runs over **`model.flown`** (Constraint 6) and today closes a trip when a leg ARRIVES home and when a fresh leg DEPARTS home. Changes:
 
-1. "Home" is evaluated per-leg via `homeAt(leg.date)` (set membership).
-2. **A ground link lands you home** → close the trip. After a leg arrives at airport X, if the traveler's next recorded movement is a `GroundLink` from X to a `toAirport` that is home on the link's date, the trip closes at that link's arrival. User-entered links are authoritative bridges, so **no tight proximity window is required** — an 11-day gap between the arriving flight and a deliberately-entered drive still bridges.
-3. **Connection vs arrival:** a same-day onward connection through a home airport (e.g. a connection at ORD during the Milwaukee era) must NOT close the trip. Reuse the existing layover detection (land-then-redepart within `layoverMaxHours`) — a quick redeparture is a connection, not "home."
+### Unified movement stream
+Ground links lack the fields `reconstructTrips` iterates (`depUtcMs`, `resolved`, `fromCode`, …), so reconstruction iterates a **`Movement`** union, not raw flights:
+```ts
+type Movement =
+  | { kind: 'flight'; sortMs: number; date: string; fromCode: string; toCode: string; flight: EnrichedFlight }
+  | { kind: 'link';   sortMs: number; date: string; fromCode: string; toCode: string; link: GroundLink }
+```
+- Flights and links merge into one chronologically-sorted stream; `sortMs` for a link derives from `date` (+`departTime` if present). **Deterministic tiebreak** for same-instant items (define: flights before links, then original index).
+- Only `kind: 'flight'` movements contribute to trip *flight* lists / stats; links are bridges only.
 
-**Worked example — the 2012 post-college relocation (RDU → Milwaukee):**
-Home is **RDU through the move**. The journey: `MCO→IAD→FRA→ISL→…→MUC→IAD→ORD→IAH` (May 26 – Jun 22), an ~11-day Houston wedding gap, then a `drive IAH→MKE` link departing **2012-07-03**, arriving ~Jul 5.
-- You left RDU and never returned, so the trip stays **OPEN the entire time** — Europe *and* the Houston gap — because you don't touch a home airport again until Milwaukee. (ORD on Jun 22 is a same-day connection to IAH, not a home arrival.)
-- The **drive IAH→MKE closes the trip** (rule 2: a ground link lands you at a home airport — MKE is home from the move), at the ~Jul 5 arrival. The Jun 22 IAH flight is just the last flight leg.
-- **Result: one ~40-night relocation trip** (left RDU → Europe → Houston wedding → Milwaukee). Relocation trips are their own shape: they open at the old home and close at the **new** home, and any long in-between stay (the wedding) is part of the single trip by design. The trip's start mirrors its close — it opens at the RDU departure (a flight or a ground link); absent either, it starts at the first recorded leg. Splitting a move into "trip + move" is a possible later knob.
+### Close / bridge rules
+1. **Home** is evaluated per movement via `homeAt(mvmt.date)` set-membership (with the boundary-date rule for the from-endpoint).
+2. **Arrive-home closes — unless it's a connection.** A movement arriving at a home airport closes the trip, **except** when the next movement redeparts the *same* airport within `layoverMaxHours` (a connection, not an arrival). This precondition must gate the existing unconditional close-on-arrive-home trigger (`stats.ts:744-750`), or a same-day co-home-hub connection (ORD during the Milwaukee era) would wrongly split the relocation trip.
+3. **Ground link to home closes; link to non-home bridges.** Selection: the **earliest** link with `fromAirport == lastArrival` and `(arriveDate ?? date) >= arrivalDate`. If its `toAirport` is home on the link date → close at the link's arrival. If not home → the link **bridges** (extends the open trip to a new away-location) but never closes.
+4. **Fresh depart-from-home** still closes any still-open prior trip.
+
+### Worked example — the 2012 post-college relocation (RDU → Milwaukee)
+Home is **RDU through the move**. Journey: `MCO→IAD→FRA→ISL→…→MUC→IAD→ORD→IAH` (May 26 – Jun 22), an ~11-day Houston wedding gap, then a `drive IAH→MKE` link departing **2012-07-03**, arriving ~Jul 5.
+- You left RDU and never returned, so the trip stays **OPEN the entire time** — Europe *and* the Houston gap — because you don't touch a home airport again until Milwaukee. (ORD on Jun 22 is a same-day connection to IAH per rule 2, not a home arrival.)
+- The **drive IAH→MKE closes the trip** (rule 3: a ground link lands you at a home airport — MKE is home from the move), at the ~Jul 5 arrival. The Jun 22 IAH flight is just the last flight leg.
+- **Result: one ~40-night relocation trip.** Reconstruction over all-time flights (Constraint 6) is what lets it span late-May → July as one trip; year-scoped reconstruction would have split it at the year boundary (it doesn't here, but a Dec→Jan move would). Relocation trips open at the old home and close at the **new** home; the in-between wedding is part of the single trip by design.
 
 ### Inferred boundaries (no link)
-When a trip can't be cleanly bracketed and no ground link resolves it, collapse the **unknown** boundary to the nearest **known** leg and **flag** the trip so the user can add a link:
-- **Left home, no recorded return and no link** → assume you returned home on the date of the trip's **last recorded leg** (keep real away-nights up to that leg; add none beyond). Prevents an open trip from absorbing the next one.
-- **Only a homeward leg** (e.g. `SFO→DFW` with no preceding departure-from-home) → the trip **started that same day** — a 0-night blip, not a phantom beginning weeks earlier.
-- Such trips carry `estimated: true` (with which boundary was guessed). Their **conservative** nights/counts **still feed aggregate totals**, but the trip shows an **"estimated" badge** and is **filterable as "needs a link."** Adding a ground link or a real flight replaces the guess.
+When a trip can't be cleanly bracketed and no link resolves it, collapse the **unknown** boundary to the nearest **known** leg and **flag** it:
+- **Left home, no recorded return and no link** → assume you returned home on the date of the trip's **last recorded leg** (keep real away-nights up to that leg; add none beyond). Prevents an open trip absorbing the next one.
+- **Only a homeward leg** (`SFO→DFW`, no preceding departure) → the trip **started that same day** (a 0-night blip).
+- Such trips carry `estimated: true` (with which boundary was guessed). Their **conservative** nights/counts **still feed aggregate totals**, but the trip shows an **"estimated" badge** and is **filterable as "needs a link."**
+- **Year attribution:** nights credit to `Trip.year` (departure year) as today; because reconstruction is all-time (Constraint 6), a year-spanning trip no longer vanishes under a later-year scope — it slices to its departure year. (`estimated` is a derived field on `Trip`, not persisted.)
 
 ---
 
-## Consumers to Migrate (date-aware home)
+## Consumers to Migrate (corrected locations + structural fixes)
 
-Thread `homeAt(flight.date, settings)` where `settings.home` is read today:
-- `src/engine/stats.ts`: `domesticTierOf` (region uses era `primary`), `geoExtremes` (distance from era `primary`; its hardcoded DFW `HOME` constant becomes per-flight), `homeDistanceTiers`, `reconstructTrips`, `byCountry` (home-endpoint exclusion → date-aware).
-- `src/engine/index.ts`: `byAirport` home exclusion → date-aware.
-- `src/app/lib/places.ts`: `homeKey` → era-aware `homeKeys` for home-first route ordering.
-- Cards: HowFarFromHome, NightsAway, CommuterCadence, GeoExtremes, MapV2/RouteMapV2 (all-time view rings ALL historical homes with the current one emphasized; per-era anchor otherwise), Airports (home-pill), Countries/SuperDomestic (region exclusion + title).
+Thread `homeAt(flight.date, settings)` / `homeKeys(settings)` / `hasHome(settings)` where the single home is read today:
+
+- **`geoExtremes` (`stats.ts:444-448`) — restructure.** It dedupes flights into an airport **Set**, so "distance from era primary, per-flight" is structurally impossible there and not even unique per airport. Compute **farthest-from-home by iterating FLIGHTS**: `max over flights of haversine(homeAt(f.date).primary, far endpoint)`. Keep N/S/E/W extremes on the airport set. Replace the hardcoded DFW `HOME` constant with an explicit **no-home branch** (skip the metric when `!hasHome`).
+- **`byAirport` (`aggregate.ts:15`) + `AirportsCard.tsx:31-34` — relocate + rework.** `byAirport` has NO home logic; the real exclusion is a **card-level post-filter on all-time `settings.home` over deduped counts**. Move exclusion into `byAirport` as a **per-flight** drop via `homeAt(f.date)` set-membership; `AirportsCard` consumes that instead of post-filtering. (Spec previously mislocated this to `index.ts`.)
+- **`domesticTierOf` (`stats.ts:174-180`).** Today checks only `f.from.region` against the single home region. Credit **intra-state only when the route's region equals `homeAt(f.date).primary`'s region**; define both-endpoint behavior. Test: `DFW→AUS` in 2012 with home = MKE must be **intra-country, not intra-state**.
+- **`byCountry` (`stats.ts`) home-endpoint exclusion → date-aware**, set-membership, with the boundary-date rule. A pure connection through a co-home hub is **not** excluded (mirror trip rule 2).
+- **`homeDistanceTiers`, `reconstructTrips`** → date-aware (per above).
+- **`places.ts` `homeKey`/`displayRoute`** → date-less: use `homeKeys` set-union for home-first route ordering.
+- **Cards:** HowFarFromHome, NightsAway, CommuterCadence, GeoExtremes, Airports (home-pill), Countries, **SuperDomestic** (region exclusion **and** the `Within <home state>` title `SuperDomesticCard.tsx:15` → multi-era copy, e.g. "Within your home state(s)").
+- **`RouteMapV2` anchor:** all-time view rings the `homeKeys` union with the **current/most-recent** home emphasized; a year-scoped view emphasizes that era's home.
+- **Guards:** the four trip cards + `reconstructTrips` `!settings.home` gates → `hasHome`.
+- **Tests:** the four test `Settings` factories that enumerate fields (don't spread `DEFAULT_SETTINGS`) must add `homeHistory`/`groundLinks` — list them as consumers so they don't break on the new fields.
 
 ### Date-aware home exclusion (rankings)
-The `excludeHomeFromRankings` toggle stays a single boolean. When ON, a flight's endpoint is excluded from a ranking only when that endpoint was home **on that flight's date**:
-- RDU during college → excluded; RDU visited in 2020 → counts.
-- ORD during the Milwaukee era → excluded; ORD as a 2020 connection → counts.
-- `DFW→ORD` in 2012 credits Texas (ORD was home); the same route in 2020 credits Illinois (DFW was home). Never inflates the then-current home region.
-- This also fixes a latent issue: today a single home is excluded *all-time*; date-aware means briefly-home hubs (ORD, LHR) aren't unfairly excluded across all history.
+The `excludeHomeFromRankings` toggle stays a single boolean. When ON, an endpoint is excluded from a ranking only when it was home **on that flight's date** (and not merely a connection through a co-home hub):
+- RDU during college → excluded; RDU visited in 2020 → counts. ORD during the Milwaukee era → excluded; ORD as a 2020 connection → counts.
+- `DFW→ORD` in 2012 credits Texas (ORD home); in 2020 credits Illinois (DFW home). Never inflates the then-current home region.
+- Fixes a latent issue: a single home is excluded *all-time* today; date-aware means briefly-home hubs (ORD, LHR) aren't unfairly excluded across all history.
 - **Pill copy:** "Home airports excluded for the years each was home" (hover → era list).
 
 ---
 
-## Editor UI (Settings)
+## Editor UI + Import/Export (Settings)
 
-A home-history + ground-links editor in `src/app/components/SettingsPanel.tsx`:
-- **Homes:** add/remove/reorder eras (start date + airport multiselect with one marked primary + label). Live validation (ascending dates, ≥1 airport).
-- **Ground links:** add/remove rows; type a place → autocomplete nearest airport; mode dropdown; optional fields collapsed by default.
-- **Import / Export:** "Download my see-me-fly data" (date-stamped CSVs), and import to restore. Stored in localStorage alongside the flight CSV; account-sync is a later phase.
-- Ships EMPTY. Existing behavior (single `Settings.home`) remains the default when no eras are defined.
+In `src/app/components/SettingsPanel.tsx`:
+- **Homes:** add/remove/reorder eras (start date + airport multiselect with one primary + label). Live validation: ascending dates, ≥1 airport, warn on multi-group era.
+- **Ground links:** add/remove rows; type a place → autocomplete nearest airport; mode dropdown; currency-if-price; optional fields collapsed.
+- **Loader hardening (must-fix):** the CSV/localStorage **loader** — not just the editor — must **sort, de-dup (define the winner = last wins), and reject/merge zero-length or out-of-order eras**, because binary search assumes strictly-ascending non-degenerate intervals. On malformed import, fall back to `Settings.home` and **surface an error**, never silently mis-resolve.
+- **Import/Export:** "Download my see-me-fly data" (date-stamped, `schema_version`ed CSVs). Import is **per-file and idempotent** with a **post-import summary** (rows added/updated, errors). Stored in localStorage alongside the flight CSV; account-sync is later.
+- Ships EMPTY; single-`home` behavior remains the default when no eras exist.
 
 ---
 
 ## Phasing
 
-- **Phase A (this build):** data model, `homeAt` resolver, `see-me-fly_homes.csv` + `see-me-fly_links.csv` (import/export/editor), era-correct migration of all consumers, date-aware exclusion + pill, ground-link gap-closing in trips. Vijay's own `homes.csv`/`links.csv` are DRAFTED BY CLAUDE from his history as importable files (his data, not the repo).
-- **Phase B (assist — later):** help a generic user *generate* their data:
-  - **Home-base detector** — finds the depart-from/return-to anchor over each stretch; a sustained anchor shift proposes an era boundary → a draft `homes.csv` to confirm.
-  - **Gap / missing-link finder** — flags every spot where you land at one airport and your next flight departs a different one (not a quick connection), plus trips that won't "close" → a checklist of candidate ground links to confirm a mode or dismiss.
-- **Phase C (later):** ground links *filter into stats*; account sync of all three data layers; a *nights-spent* (time-on-ground) heatmap reimagining (the current heat mode is parked — every shading scheme so far just re-shows visit frequency).
+- **Phase A (this build):** data model + `DEFAULT_SETTINGS`/versioning, `homeAt`/`hasHome`/`homeKeys`, the two branded CSVs (import/export/editor + loader hardening), all-time trip reconstruction with the unified movement stream + ground-link bridging/closing, era-correct migration of every consumer above, date-aware exclusion + pill. Vijay's own CSVs are DRAFTED BY CLAUDE from his history as importable files (his data, not the repo).
+- **Phase B (assist — later):** **home-base detector** (anchor-shift → proposed eras) and **gap / missing-link finder** (arrival≠next-departure non-connections + non-closing trips → a checklist of candidate links). These *generate* a draft for a generic user to confirm.
+- **Phase C (later):** ground links *filter into stats*; account sync; a *nights-spent* (time-on-ground) heatmap reimagining (the current heat mode is parked — every shading scheme so far just re-shows visit frequency).
 
 ---
 
@@ -155,10 +184,16 @@ A home-history + ground-links editor in `src/app/components/SettingsPanel.tsx`:
 
 - No change to flight counts, miles, durations, or any non-home-relative card.
 - Ground links do not contribute to flight stats in Phase A.
-- No automatic inference of homes or links in Phase A (that is Phase B's assist).
-- No backend/account in Phase A (localStorage only; download/import is the portability path).
+- No automatic inference of homes or links in Phase A (Phase B).
+- No backend/account in Phase A (localStorage; download/import is the portability path).
+- Home-by-date leaves **local flights** (RPJ skydiving, `isLocalFlight`) untouched; a local flight at a then-home airport is date-aware-excluded from country credit only for its home era (one explicit behavior line).
 
 ## Open Items (resolve while seeding Vijay's data, not blocking the build)
 
 - Vijay's exact era boundary dates (college terms, summers, Madrid summer, London fall, MKE 2012-07-03, back-to-Dallas 2013) — TBC against his flight data; the old seed in lifecoach `00-profile.md §8` is reference only.
-- The few near-airport choices for non-airport ground stops (e.g. Megabus NYC stop → LGA/EWR/JFK?).
+- Near-airport choices for non-airport ground stops (e.g. Megabus NYC stop → LGA/EWR/JFK?).
+
+## Residual minor review notes (handle in-build, not blocking)
+
+- A tiny export manifest (export date + flight-row count + `schema_version`) would let a future column change anchor a migration and catch stale partial imports; optional in Phase A.
+- Document explicitly that a `price` with no `currency` is never summed (already in the price/currency rule).
