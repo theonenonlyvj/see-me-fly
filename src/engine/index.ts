@@ -11,6 +11,8 @@ export const DEFAULT_SETTINGS: Settings = {
   includeCanceled: false,
   excludeBeforeDate: null,
   home: 'DFW',
+  homeHistory: [],
+  groundLinks: [],
   excludeHomeFromRankings: true,
   layoverMaxHours: 5,
   excludeDayTrips: true,

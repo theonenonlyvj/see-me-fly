@@ -711,6 +711,7 @@ export interface Trip {
   returnWeekday: number
   roundTrip: boolean        // ended back at home
   destinations: string[]    // distinct non-home airport keys touched
+  estimated?: { boundary: 'start' | 'end' }  // set when a trip boundary was inferred (no recorded leg/link); derived, not persisted
 }
 
 /**

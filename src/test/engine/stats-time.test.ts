@@ -19,7 +19,7 @@ const rowT = (date: string, time: string, tail: string, airline = 'AAL', from = 
   mk(`${date},${airline},1,${from},${to},,,,,false,,${date}T${time},,,,,,,,Boeing 737-800,${tail},,,,,,,,,,,,`)
 
 const S = (over: Partial<Settings> = {}): Settings => ({
-  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: 'DFW', excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], distanceEdges: [300, 700, 1500, 3000, 6000], mergeDefunctAirlines: false, duration: C, ...over,
+  groupAirports: false, explicitlyUnique: false, includeCanceled: false, excludeBeforeDate: null, home: 'DFW', homeHistory: [], groundLinks: [], excludeHomeFromRankings: false, layoverMaxHours: 5, excludeDayTrips: true, splitCountriesByState: [], distanceEdges: [300, 700, 1500, 3000, 6000], mergeDefunctAirlines: false, duration: C, ...over,
 })
 
 describe('time/behavioral aggregators', () => {

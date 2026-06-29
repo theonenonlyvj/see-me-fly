@@ -19,6 +19,10 @@ export function loadSettings(storage?: Storage): Settings {
     return {
       ...DEFAULT_SETTINGS,
       ...stored,
+      // Coerce the home-by-date arrays defensively: an old localStorage blob (or a malformed
+      // edit) may carry these as undefined/non-array, which would break array consumers.
+      homeHistory: Array.isArray(stored.homeHistory) ? stored.homeHistory : [],
+      groundLinks: Array.isArray(stored.groundLinks) ? stored.groundLinks : [],
       duration: { ...DEFAULT_SETTINGS.duration, ...(stored.duration ?? {}) },
     }
   } catch {
