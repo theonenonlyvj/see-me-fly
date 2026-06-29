@@ -139,3 +139,19 @@ for (let pass = 0; pass < 4 && pending.length; pass++) {
 writeFileSync('src/reference/airline-logos.json', JSON.stringify(logos) + '\n')
 console.log(`airline logos: ${Object.keys(logos).length} of ${Object.keys(AIRLINE_LOGO_FILES).length} carriers`)
 if (pending.length) console.log('  still missing (check filenames):', pending.map(([c]) => c).join(' '))
+
+// Alliance logos (Star Alliance / Oneworld / SkyTeam) — keyed by alliance key, with candidate fallbacks.
+const ALLIANCE_LOGO_FILES = {
+  star: ['Star Alliance logo 2010.svg', 'Star Alliance Logo.svg', 'Staralliance logo.svg', 'Star Alliance logo.svg'],
+  oneworld: ['Oneworld logo.svg', 'Oneworld Logo.svg', 'OneWorld logo.svg', 'Logo der Oneworld.svg'],
+  skyteam: ['SkyTeam logo.svg', 'Skyteam logo.svg', 'SkyTeam Logo.svg', 'Skyteam.svg'],
+}
+const allianceLogos = {}
+for (const [key, candidates] of Object.entries(ALLIANCE_LOGO_FILES)) {
+  for (const file of candidates) {
+    const uri = await fetchImage(enFilePath(file), LOGO_PX)
+    if (uri) { allianceLogos[key] = uri; break }
+  }
+}
+writeFileSync('src/reference/alliance-logos.json', JSON.stringify(allianceLogos) + '\n')
+console.log(`alliance logos: ${Object.keys(allianceLogos).length} of 3`)
