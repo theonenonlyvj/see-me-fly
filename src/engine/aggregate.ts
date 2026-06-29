@@ -1,6 +1,7 @@
 import type { EnrichedFlight, Settings } from './types'
 import { airportKey, routeKey } from './normalize'
 import { effectiveAirline } from './airline-history'
+import { hasHome, isHomeOn } from './home'
 
 function countMap<T>(items: T[], keyOf: (t: T) => string | null): Map<string, number> {
   const m = new Map<string, number>()
@@ -13,13 +14,22 @@ function countMap<T>(items: T[], keyOf: (t: T) => string | null): Map<string, nu
 }
 
 export function byAirport(flights: EnrichedFlight[], settings: Settings): { key: string; count: number }[] {
+  // DATE-AWARE home exclusion lives HERE (per-flight) rather than as a card-level post-filter, so a
+  // briefly-home hub (e.g. ORD during a Chicago era) is dropped only for the years it was home and
+  // still ranks for other-year visits. Gated on `excludeHomeFromRankings` + `hasHome`; an empty
+  // home timeline / disabled toggle credits both endpoints exactly as before.
+  // PHASE-A SIMPLIFICATION: no connection detection — a same-era pass-through through a co-home hub
+  // is treated as home (within an era the hub genuinely IS home); connection-vs-arrival nuance is
+  // handled only in trip reconstruction (Task 4), not duplicated in this per-flight aggregation.
+  const excludeHome = settings.excludeHomeFromRankings && hasHome(settings)
   const m = new Map<string, number>()
   for (const f of flights) {
     if (!f.resolved) continue
-    const keys = f.isLocalFlight
-      ? [airportKey(f.fromCode, settings.groupAirports)]
-      : [airportKey(f.fromCode, settings.groupAirports), airportKey(f.toCode, settings.groupAirports)]
-    for (const k of keys) m.set(k, (m.get(k) ?? 0) + 1)
+    const codes = f.isLocalFlight ? [f.fromCode] : [f.fromCode, f.toCode]
+    for (const code of codes) {
+      if (excludeHome && isHomeOn(code, f.date, settings)) continue // drop the home endpoint for its home era
+      m.set(airportKey(code, settings.groupAirports), (m.get(airportKey(code, settings.groupAirports)) ?? 0) + 1)
+    }
   }
   return [...m].map(([key, count]) => ({ key, count })).sort((a, b) => b.count - a.count)
 }

@@ -27,7 +27,14 @@ describe.skipIf(!existsSync(path))('real Flighty export smoke test', () => {
   it('produces no negative durations', () => {
     expect(m.flown.every((f) => f.durationMin === null || f.durationMin >= 0)).toBe(true)
   })
-  it('Dallas is the top airport group', () => {
-    expect(m.byAirport[0].key).toBe('Dallas')
+  it('Dallas is the top airport group with home-exclusion off (most-visited overall)', () => {
+    const incHome = buildModel(csv, { ...DEFAULT_SETTINGS, excludeHomeFromRankings: false }, TODAY)
+    expect(incHome.byAirport[0].key).toBe('Dallas')
+  })
+  it('with home-exclusion on (default), Dallas is dropped from the ranking and a non-home airport leads', () => {
+    // DEFAULT_SETTINGS has home DFW + excludeHomeFromRankings: byAirport now drops the home
+    // endpoint per-flight (date-aware), so Dallas no longer appears in the ranking.
+    expect(m.byAirport.some((a) => a.key === 'Dallas')).toBe(false)
+    expect(m.byAirport[0].key).not.toBe('Dallas')
   })
 })

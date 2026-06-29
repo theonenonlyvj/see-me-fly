@@ -3,7 +3,7 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { flagEmoji } from '../lib/format'
 import { groups, lookupAirport } from '../../engine/reference'
-import { airportKey } from '../../engine/normalize'
+import { homeKeys } from '../../engine/home'
 import { displayEndpoint } from '../lib/places'
 import { flightsByAirportKey } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
@@ -28,11 +28,15 @@ export const airportsCard: CardDef = {
   accent: ACCENT,
   icon: '📍',
   render: ({ model, settings, overlay }: CardContext) => {
-    const homeMetro = settings.excludeHomeFromRankings && settings.home
-      ? airportKey(settings.home, settings.groupAirports) : null
-    const homeEntry = homeMetro ? model!.byAirport.find((a) => a.key === homeMetro) : undefined
-    const ranked = homeEntry ? model!.byAirport.filter((a) => a.key !== homeMetro) : model!.byAirport
-    const rows: BarRow[] = ranked.map((a) => ({ label: `${flagFor(a.key)} ${displayEndpoint(a.key)}`.trim(), value: a.count, id: a.key }))
+    // Home exclusion now happens DATE-AWARE inside `byAirport`, so `model.byAirport` already omits
+    // each home airport for the years it was home — no card-level post-filter. The "Home base" pill
+    // still surfaces the (most-recent) home: its display key comes from `homeKeys`, and its count is
+    // taken from the scoped flights directly (the home airport is no longer in `byAirport` when
+    // excluded). Pill shows only when exclusion is on AND a home exists.
+    const homeKey = settings.excludeHomeFromRankings ? homeKeys(settings).primaryKey : null
+    const homeFlights = homeKey ? flightsByAirportKey(model!.scoped, homeKey, settings) : []
+    const homeEntry = homeKey && homeFlights.length > 0 ? { key: homeKey, count: homeFlights.length } : undefined
+    const rows: BarRow[] = model!.byAirport.map((a) => ({ label: `${flagFor(a.key)} ${displayEndpoint(a.key)}`.trim(), value: a.count, id: a.key }))
 
     return (
       <CardFrame title="Most-visited airports" eyebrow="Where you land" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="📍"

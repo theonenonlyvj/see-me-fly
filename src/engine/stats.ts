@@ -46,10 +46,15 @@ export function byCountry(flights: EnrichedFlight[], settings: Settings): Countr
   const regionFlightIds = new Map<string, Map<string, Set<string>>>()
 
   // Optionally don't credit the HOME endpoint, so a flight counts only toward where you WENT
-  // (DFW→ORD credits Illinois, not Texas-via-Dallas). Home matched by metro key.
-  const homeMetro = settings.excludeHomeFromRankings && settings.home
-    ? airportKey(settings.home, settings.groupAirports) : null
-  const isHome = (code: string) => homeMetro !== null && airportKey(code, settings.groupAirports) === homeMetro
+  // (DFW→ORD credits Illinois, not Texas-via-Dallas). DATE-AWARE: an endpoint is "home" only on
+  // the dates it was actually home (`isHomeOn`), so a DFW→ORD flight credits Texas in the era ORD
+  // was home and Illinois in the era DFW was home. Gated on `hasHome` so an empty timeline behaves
+  // as before. Both endpoints use the flight's own `f.date` (flights are single-day).
+  // PHASE-A SIMPLIFICATION: no connection detection — within a home era a co-home hub genuinely IS
+  // home, so a same-era pass-through is excluded; connection-vs-arrival is left to trip
+  // reconstruction (Task 4) and is intentionally not duplicated here.
+  const excludeHome = settings.excludeHomeFromRankings && hasHome(settings)
+  const isHome = (code: string, date: string) => excludeHome && isHomeOn(code, date, settings)
 
   const creditRegion = (country: string, region: string, id: string) => {
     if (!REGION_COUNTRIES.has(country)) return
@@ -61,8 +66,8 @@ export function byCountry(flights: EnrichedFlight[], settings: Settings): Countr
 
   for (const f of flights) {
     if (!f.resolved || !f.from || !f.to) continue
-    const fromHome = isHome(f.fromCode)
-    const toHome = isHome(f.toCode)
+    const fromHome = isHome(f.fromCode, f.date)
+    const toHome = isHome(f.toCode, f.date)
 
     // Collect distinct countries this flight touches (skipping the home endpoint)
     const countries = new Set<string>()
@@ -176,8 +181,16 @@ const DOMESTIC_TIERS: Array<'intra-state' | 'intra-country' | 'intra-continent'>
 export function domesticTierOf(f: EnrichedFlight, settings: Settings): 'intra-state' | 'intra-country' | 'intra-continent' | null {
   let cls = classifyRoute(f)
   if (!cls || cls === 'intercontinental') return null
-  const homeRegion = settings.home ? (lookupAirport(settings.home)?.region ?? null) : null
-  if (cls === 'intra-state' && homeRegion && f.from && f.from.region !== homeRegion) cls = 'intra-country'
+  // intra-state is scoped to the era-home region: a same-state route in a state that was NOT your
+  // home on that flight's date is just same-country. DATE-AWARE — the home reference is the primary
+  // of the era containing `f.date` (resolved to a region via the airport reference). An intra-state
+  // route already has `f.from.region === f.to.region` (see classifyRoute), so one endpoint suffices.
+  // Gated on `hasHome`; with no home info we can't narrow, so a true intra-state route stays as-is.
+  if (cls === 'intra-state' && hasHome(settings) && f.from) {
+    const home = homeAt(f.date, settings)
+    const homeRegion = home ? (lookupAirport(home.primary)?.region ?? null) : null
+    if (homeRegion && f.from.region !== homeRegion) cls = 'intra-country'
+  }
   return cls
 }
 
