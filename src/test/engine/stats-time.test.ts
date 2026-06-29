@@ -84,6 +84,13 @@ describe('time/behavioral aggregators', () => {
     expect(merged[0]).toMatchObject({ name: 'American Airlines', count: 2 })
   })
 
+  it('does NOT merge carriers that merely ceased (Aloha stays Aloha, not American)', () => {
+    const flights = [row('2007-01-01', 'HNL', 'OGG', 'AAH'), row('2018-01-01', 'DFW', 'AUS', 'AAL')]
+    const merged = byAirline(flights, true)
+    expect(merged.length).toBe(2) // Aloha (ceased, no successor) kept separate from American
+    expect(merged.some((a) => /Aloha/i.test(a.name))).toBe(true)
+  })
+
   it('airlineByYear credits a merged defunct carrier to its survivor when enabled', () => {
     const flights = [row('2010-01-01', 'DFW', 'PHX', 'AWE'), row('2018-01-01', 'DFW', 'AUS', 'AAL')]
     const aa = airlineByYear(flights, 2, true).series.find((s) => s.name === 'American Airlines')

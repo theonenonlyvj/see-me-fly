@@ -11,17 +11,17 @@ export const DEFUNCT_AIRLINES: Record<string, string> = {
   KFR: 'ceased operations, 2012',
   JLL: 'folded into Jet Airways, 2012',
   NWA: 'merged into Delta, 2010',
-  AAH: 'merged into US Airways, 2005',
+  AAH: 'ceased operations, 2008', // Aloha Airlines (Hawaii inter-island) — ceased, NOT merged
 }
 
-/** Defunct carrier ICAO → SURVIVING carrier ICAO (mergers only; ceased airlines are absent). */
+/** Defunct carrier ICAO → SURVIVING carrier ICAO (mergers ONLY; ceased airlines like Aloha/Jet Airways/
+ *  Kingfisher are deliberately absent — they have no successor to roll into). */
 export const DEFUNCT_SUCCESSOR: Record<string, string> = {
   AWE: 'AAL', // US Airways → American
   COA: 'UAL', // Continental → United
   TRS: 'SWA', // AirTran → Southwest
   VRD: 'ASA', // Virgin America → Alaska
   NWA: 'DAL', // Northwest → Delta
-  AAH: 'AWE', // America West → US Airways (→ American; resolved transitively below)
 }
 
 /**
