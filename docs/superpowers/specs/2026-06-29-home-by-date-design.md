@@ -95,13 +95,14 @@ function homeAt(date: string, settings: Settings): ResolvedHome | null
 `reconstructTrips` today closes a trip when a leg ARRIVES home, and (recent fix) when a fresh leg DEPARTS from home. With home-by-date + links:
 
 1. "Home" is evaluated per-leg via `homeAt(leg.date)` (set membership).
-2. **A ground link lands you home** → close the trip. After a leg arrives at airport X, if a `GroundLink` with `fromAirport == X` (date ≥ that leg's date, within a small window) leads to a `toAirport` that is home on that date, the trip closes at the link.
+2. **A ground link lands you home** → close the trip. After a leg arrives at airport X, if the traveler's next recorded movement is a `GroundLink` from X to a `toAirport` that is home on the link's date, the trip closes at that link's arrival. User-entered links are authoritative bridges, so **no tight proximity window is required** — an 11-day gap between the arriving flight and a deliberately-entered drive still bridges.
 3. **Connection vs arrival:** a same-day onward connection through a home airport (e.g. a connection at ORD during the Milwaukee era) must NOT close the trip. Reuse the existing layover detection (land-then-redepart within `layoverMaxHours`) — a quick redeparture is a connection, not "home."
 
-**Worked example — the 2012 post-college Euro trip → move:**
-`MCO→IAD→FRA→ISL→…→MUC→IAD→ORD→IAH` (May 26 – Jun 22), then a `drive IAH→MKE` link on **2012-07-03** (after a Houston wedding gap).
-- The whole flight chain is one open trip (no home endpoint en route; ORD on Jun 22 is a same-day connection to IAH, not a close).
-- The trip closes at IAH (last flight, Jun 22). The `IAH→MKE` drive on Jul 3 is a separate ground segment that moves home to Milwaukee — it does not retroactively fold into the flight trip. (A continuous fly-then-immediately-drive-home case WOULD close via rule 2.)
+**Worked example — the 2012 post-college relocation (RDU → Milwaukee):**
+Home is **RDU through the move**. The journey: `MCO→IAD→FRA→ISL→…→MUC→IAD→ORD→IAH` (May 26 – Jun 22), an ~11-day Houston wedding gap, then a `drive IAH→MKE` link departing **2012-07-03**, arriving ~Jul 5.
+- You left RDU and never returned, so the trip stays **OPEN the entire time** — Europe *and* the Houston gap — because you don't touch a home airport again until Milwaukee. (ORD on Jun 22 is a same-day connection to IAH, not a home arrival.)
+- The **drive IAH→MKE closes the trip** (rule 2: a ground link lands you at a home airport — MKE is home from the move), at the ~Jul 5 arrival. The Jun 22 IAH flight is just the last flight leg.
+- **Result: one ~40-night relocation trip** (left RDU → Europe → Houston wedding → Milwaukee). Relocation trips are their own shape: they open at the old home and close at the **new** home, and any long in-between stay (the wedding) is part of the single trip by design. The trip's start mirrors its close — it opens at the RDU departure (a flight or a ground link); absent either, it starts at the first recorded leg. Splitting a move into "trip + move" is a possible later knob.
 
 ---
 
