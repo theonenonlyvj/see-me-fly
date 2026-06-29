@@ -1,6 +1,39 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { groups, airportToGroup, lookupAirport } from '../../engine/reference'
-import type { Settings, EnrichedFlight } from '../../engine'
+import type { Settings, EnrichedFlight, HomeEra, GroundLink } from '../../engine'
+import HomeHistoryEditor from './home/HomeHistoryEditor'
+import GroundLinksEditor from './home/GroundLinksEditor'
+import {
+  serializeHomesCsv,
+  serializeLinksCsv,
+  parseHomesCsv,
+  parseLinksCsv,
+  sanitizeHomeHistory,
+} from '../lib/see-me-fly-csv'
+
+/** Trigger a client-side download of `text` as `filename`. No server round-trip. */
+function downloadText(filename: string, text: string, mime = 'text/csv') {
+  const blob = new Blob([text], { type: `${mime};charset=utf-8` })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+/** YYYY-MM-DD for date-stamped export filenames. */
+function todayStamp(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+interface ImportSummary {
+  kind: 'homes' | 'links'
+  count: number
+  errors: string[]
+}
 
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
@@ -20,6 +53,39 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
 }) {
   const [showGroups, setShowGroups] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showHomeTimeline, setShowHomeTimeline] = useState(
+    settings.homeHistory.length > 0 || settings.groundLinks.length > 0,
+  )
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null)
+  const homesInputRef = useRef<HTMLInputElement>(null)
+  const linksInputRef = useRef<HTMLInputElement>(null)
+
+  function exportData() {
+    const stamp = todayStamp()
+    downloadText(`see-me-fly_homes_${stamp}.csv`, serializeHomesCsv(settings.homeHistory))
+    downloadText(`see-me-fly_links_${stamp}.csv`, serializeLinksCsv(settings.groundLinks))
+  }
+
+  function importHomes(file: File) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const { eras, errors } = parseHomesCsv(String(reader.result ?? ''))
+      const clean = sanitizeHomeHistory(eras)
+      update({ homeHistory: clean }) // per-file, idempotent: replaces the homes list
+      setImportSummary({ kind: 'homes', count: clean.length, errors })
+    }
+    reader.readAsText(file)
+  }
+
+  function importLinks(file: File) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const { links, errors } = parseLinksCsv(String(reader.result ?? ''))
+      update({ groundLinks: links }) // per-file, idempotent: replaces the links list
+      setImportSummary({ kind: 'links', count: links.length, errors })
+    }
+    reader.readAsText(file)
+  }
 
   // active groups = those with >=1 member airport present in the loaded+filtered set
   const present = new Set<string>()
@@ -79,6 +145,93 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
         </select>
         <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>(routes lead with home; sets farthest-from-home)</span>
       </label>
+
+      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'grid', gap: 10 }}>
+        <button
+          onClick={() => setShowHomeTimeline((v) => !v)}
+          style={{ justifySelf: 'start', background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: 'var(--radius-sm)', padding: '3px 10px' }}
+        >
+          {showHomeTimeline ? 'Hide home timeline & ground links' : 'Home timeline & ground links (optional, advanced)'}
+        </button>
+
+        {showHomeTimeline && (
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 14 }}>Home timeline</h4>
+              <HomeHistoryEditor
+                homeHistory={settings.homeHistory}
+                groupAirports={settings.groupAirports}
+                onChange={(eras: HomeEra[]) => update({ homeHistory: eras })}
+              />
+            </div>
+
+            <div>
+              <h4 style={{ margin: '0 0 4px', fontSize: 14 }}>Ground links</h4>
+              <GroundLinksEditor
+                groundLinks={settings.groundLinks}
+                onChange={(links: GroundLink[]) => update({ groundLinks: links })}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gap: 8 }}>
+              <h4 style={{ margin: 0, fontSize: 14 }}>Your see-me-fly data</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  onClick={exportData}
+                  style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: 'var(--radius-sm)', padding: '4px 10px' }}
+                >
+                  Download my see-me-fly data
+                </button>
+                <span style={{ color: 'var(--text-dim)', fontSize: 12 }}>(two date-stamped CSVs: homes + links)</span>
+              </div>
+
+              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: 13 }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 2, color: 'var(--text-dim)' }}>
+                  Import homes CSV
+                  <input
+                    ref={homesInputRef}
+                    data-testid="import-homes"
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) importHomes(f); e.target.value = '' }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 2, color: 'var(--text-dim)' }}>
+                  Import links CSV
+                  <input
+                    ref={linksInputRef}
+                    data-testid="import-links"
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) importLinks(f); e.target.value = '' }}
+                  />
+                </label>
+              </div>
+
+              {importSummary && (
+                <div
+                  role="status"
+                  style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 8, fontSize: 13, display: 'grid', gap: 4 }}
+                >
+                  <strong>
+                    Imported {importSummary.count}{' '}
+                    {importSummary.kind === 'homes' ? 'home era' : 'ground link'}
+                    {importSummary.count === 1 ? '' : 's'}.
+                  </strong>
+                  {importSummary.errors.length > 0 ? (
+                    <ul style={{ margin: 0, paddingLeft: 18, color: 'var(--warn, #c80)' }}>
+                      {importSummary.errors.map((err, i) => <li key={i}>{err}</li>)}
+                    </ul>
+                  ) : (
+                    <span style={{ color: 'var(--text-dim)' }}>No issues.</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       <Toggle label="Exclude home from rankings (Airports pill + don't credit home in Countries)" checked={settings.excludeHomeFromRankings} onChange={(v) => update({ excludeHomeFromRankings: v })} />
 
       <Toggle label="Treat A→B and B→A as different routes (explicitly unique)" checked={settings.explicitlyUnique} onChange={(v) => update({ explicitlyUnique: v })} />
