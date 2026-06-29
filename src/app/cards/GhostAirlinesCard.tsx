@@ -1,5 +1,6 @@
 import CardFrame from '../components/CardFrame'
 import { ghostAirlines } from '../../engine/stats'
+import { airlineLogos } from '../../engine/reference'
 import { flightsByAirline } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
@@ -27,8 +28,12 @@ export const ghostAirlinesCard: CardDef = {
                 role={overlay ? 'button' : undefined}
                 style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, alignItems: 'baseline', cursor: overlay ? 'pointer' : 'default', borderBottom: '1px solid var(--hair-2)', paddingBottom: 9 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)' }}>{g.name}</div>
-                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>{g.fate} · last flown {g.last}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    {airlineLogos[g.code] && <img src={airlineLogos[g.code]} alt={g.name} title={g.name} style={{ height: 18, width: 'auto', maxWidth: 120, objectFit: 'contain', objectPosition: 'left center', flexShrink: 0 }} />}
+                    <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{g.name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ink-2)', flexShrink: 0 }}>({g.code})</span>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic', marginTop: 3 }}>{g.fate} · last flown {g.last}</div>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: ACCENT, fontVariantNumeric: 'tabular-nums' }}>{g.count}×</div>
               </div>

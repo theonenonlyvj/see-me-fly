@@ -111,7 +111,7 @@ const AIRLINE_LOGO_FILES = {
   UZB: 'Uzbekistan Airways logo.svg', COA: 'Continental Airlines Logo.svg', KFR: 'Fly kingfisher logo 2011.png',
   BEL: 'Brussels airlines logo 2021.svg', RYR: 'Ryanair.svg', WZZ: 'Wizz Air logo 2015.svg', JBU: 'JetBlue Airways Logo.svg',
   THY: 'Turkish Airlines logo 2019 compact.svg', AIC: 'Air India 2023.svg', NOZ: 'Norse.svg', AFL: 'Aeroflot Logo en.svg',
-  JSX: 'Logo of JSX.svg', AEE: 'Aegean Airlines Logo 2020.svg', EWG: 'Eurowings Logo.svg', LAN: 'LAN Airlines logo.svg',
+  JSX: 'Logo of JSX.svg', AEE: 'Aegean Airlines Logo 2020.svg', EWG: 'Eurowings Logo.svg', LAN: 'Latam-logo -v (Indigo).svg', // LAN rebranded to LATAM (2016)
   AMX: 'Aeroméxico_Logo_2024_-_Navy.svg', ASA: 'Alaska Airlines logo with tagline.svg',
   // other major world carriers (resolved from Wikipedia infoboxes; broad coverage for other users)
   AFR: 'Air France Logo.svg', VIR: 'Virgin Atlantic logo 2018.svg', SWR: 'Swiss International Air Lines Logo 2011.svg',
