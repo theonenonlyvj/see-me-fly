@@ -15,16 +15,18 @@ export const ghostAirlinesCard: CardDef = {
   accent: ACCENT,
   icon: '🪦',
   render: ({ model, overlay }: CardContext) => {
-    const ghosts = ghostAirlines(model!.scoped)
+    // All-time, not year-scoped: defunct carriers are a lifetime fact, so they shouldn't vanish
+    // when you narrow to a recent year that postdates their demise.
+    const ghosts = ghostAirlines(model!.flown)
     return (
       <CardFrame title="Ghosts of airlines past" eyebrow="Carriers that no longer exist" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🪦">
         {ghosts.length === 0 ? (
-          <p style={{ color: 'var(--ink-2)' }}>No defunct carriers in this view — you flew survivors.</p>
+          <p style={{ color: 'var(--ink-2)' }}>No defunct carriers in your history — you only flew survivors.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
             {ghosts.map((g) => (
               <div key={g.code}
-                onClick={overlay ? () => overlay.openFlights(g.name, flightsByAirline(model!.scoped, g.name)) : undefined}
+                onClick={overlay ? () => overlay.openFlights(g.name, flightsByAirline(model!.flown, g.name)) : undefined}
                 role={overlay ? 'button' : undefined}
                 style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 6, alignItems: 'baseline', cursor: overlay ? 'pointer' : 'default', borderBottom: '1px solid var(--hair-2)', paddingBottom: 9 }}>
                 <div style={{ minWidth: 0 }}>

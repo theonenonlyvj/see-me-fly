@@ -3,7 +3,6 @@ import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { reconstructTrips, type Trip } from '../../engine/stats'
-import { displayEndpoint } from '../lib/places'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT = '#0891b2'
@@ -12,21 +11,36 @@ const SOFT = '#d8f3fb'
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const when = (t: Trip) => `${MONTHS[Number(t.departDate.slice(5, 7)) - 1] ?? ''} ${t.departDate.slice(0, 4)}`
-const dest = (t: Trip) => (t.destinations.slice(0, 3).map(displayEndpoint).join(', ') + (t.destinations.length > 3 ? ` +${t.destinations.length - 3}` : '')) || 'local'
+const fmtMi = (n: number) => Math.round(n).toLocaleString()
+const tripMiles = (t: Trip) => t.flights.reduce((s, f) => s + (f.distanceMi ?? 0), 0)
 
-type Sort = 'recent' | 'nights' | 'legs'
+// Readable routing: one airport per stop; "/" marks a ground switch (arrived LGA, left from JFK).
+export const routePath = (t: Trip): string => {
+  const fs = t.flights
+  if (fs.length === 0) return 'local'
+  const parts = [fs[0].fromCode]
+  for (let i = 0; i < fs.length; i++) {
+    const arr = fs[i].toCode
+    const nextDep = i < fs.length - 1 ? fs[i + 1].fromCode : null
+    parts.push(nextDep && nextDep !== arr ? `${arr}/${nextDep}` : arr)
+  }
+  return parts.join('-')
+}
+
+type Sort = 'recent' | 'nights' | 'legs' | 'distance'
 const SORTS: [Sort, string, (t: Trip) => number, (t: Trip) => string][] = [
   ['recent', 'Recent', (t) => -Date.parse(t.departDate), (t) => `${t.nights} night${t.nights === 1 ? '' : 's'}`],
   ['nights', 'Most nights', (t) => -t.nights, (t) => `${t.nights} night${t.nights === 1 ? '' : 's'}`],
   ['legs', 'Most legs', (t) => -t.flights.length, (t) => `${t.flights.length} legs`],
+  ['distance', 'Farthest', (t) => -tripMiles(t), (t) => `${fmtMi(tripMiles(t))} mi`],
 ]
 
 function TripsExplorerView({ model, settings, overlay }: CardContext) {
   const [sort, setSort] = useState<Sort>('nights')
   const cfg = SORTS.find((s) => s[0] === sort)!
   const trips = reconstructTrips(model!.scoped, settings).slice().sort((a, b) => cfg[2](a) - cfg[2](b))
-  const valueOf = sort === 'legs' ? (t: Trip) => t.flights.length : sort === 'nights' ? (t: Trip) => t.nights : (t: Trip) => t.flights.length
-  const rows: BarRow[] = trips.map((t, i) => ({ label: `${when(t)} · ${dest(t)}`, value: valueOf(t), sub: cfg[3](t), id: String(i) }))
+  const valueOf = sort === 'legs' ? (t: Trip) => t.flights.length : sort === 'nights' ? (t: Trip) => t.nights : sort === 'distance' ? tripMiles : (t: Trip) => t.flights.length
+  const rows: BarRow[] = trips.map((t, i) => ({ label: `${when(t)} · ${routePath(t)}`, value: valueOf(t), sub: cfg[3](t), id: String(i) }))
   return (
     <CardFrame title="Trips explorer" eyebrow="Sort your journeys" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🧭">
       {!settings.home ? (
@@ -43,9 +57,9 @@ function TripsExplorerView({ model, settings, overlay }: CardContext) {
               </button>
             ))}
           </div>
-          <BarList rows={rows} max={10} seeAllTitle="Trips explorer" formatValue={(n) => sort === 'legs' ? `${n} legs` : `${n}`}
+          <BarList rows={rows} max={10} seeAllTitle="Trips explorer" formatValue={(n) => sort === 'legs' ? `${n} legs` : sort === 'distance' ? `${fmtMi(n)} mi` : `${n}`}
             accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT}
-            onRowClick={(row) => { const t = trips[Number(row.id)]; if (t) overlay?.openFlights(`Trip · ${when(t)} → ${dest(t)}`, t.flights) }} />
+            onRowClick={(row) => { const t = trips[Number(row.id)]; if (t) overlay?.openFlights(`Trip · ${when(t)} · ${routePath(t)}`, t.flights) }} />
           <p style={{ marginTop: 14, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>Sort and tap a trip to see it on the map.</p>
         </>
       )}

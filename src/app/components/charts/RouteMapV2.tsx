@@ -84,7 +84,6 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
     }
     arcs.sort((x, y) => x.count - y.count) // faint arcs first, busy on top
     const maxNode = Math.max(...Array.from(nodeAcc.values()).map((e) => e.count), 1)
-    const logMaxNode = Math.log(maxNode + 1)
     const dots: { cx: number; cy: number; r: number; key: string; count: number; home: boolean }[] = []
     // bounded "district" disks: a fixed ~100mi-radius circle per cluster, colour by intensity only
     // (so Moscow lights a Moscow-sized district, never all of Russia).
@@ -96,7 +95,8 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
       dots.push({ cx: p[0], cy: p[1], r, key, count: e.count, home: homeKey != null && key === homeKey })
       const north = projection([c[0], c[1] + 1.449]) // 100mi ≈ 1.449° latitude
       const diskR = north ? Math.max(6, Math.hypot(p[0] - north[0], p[1] - north[1])) : 10
-      districts.push({ cx: p[0], cy: p[1], r: diskR, t: logMaxNode > 0 ? Math.log(e.count + 1) / logMaxNode : 0, key, count: e.count })
+      // sqrt normalization (same shape as the dot sizing): suppresses lone low-visit splotches, real hubs stay hot
+      districts.push({ cx: p[0], cy: p[1], r: diskR, t: Math.sqrt(e.count / maxNode), key, count: e.count })
     }
     dots.sort((x, y) => x.count - y.count)
     districts.sort((x, y) => x.count - y.count) // faint first, hot on top
@@ -147,7 +147,7 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mo
         {mode === 'districts' && (
           <g data-districts filter="url(#rmv2heat)">
             {districts.map((di, i) => (
-              <circle key={i} cx={di.cx} cy={di.cy} r={di.r} fill={heatColor(di.t)} opacity={0.28 + 0.5 * di.t}>
+              <circle key={i} cx={di.cx} cy={di.cy} r={di.r} fill={heatColor(di.t)} opacity={0.32 + 0.56 * di.t}>
                 <title>{`${label(di.key)} — ${di.count} visits`}</title>
               </circle>
             ))}
