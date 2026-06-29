@@ -5,6 +5,7 @@ import { DEFAULT_DURATION_CONSTANTS } from '../../engine/constants'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
 import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines, reconstructTrips, tripSummary } from '../../engine/stats'
 import { byAirline } from '../../engine/aggregate'
+import { byAlliance } from '../../engine/alliances'
 import type { Settings } from '../../engine'
 
 const C = DEFAULT_DURATION_CONSTANTS
@@ -96,6 +97,22 @@ describe('time/behavioral aggregators', () => {
     const aa = airlineByYear(flights, 2, true).series.find((s) => s.name === 'American Airlines')
     expect(aa).toBeTruthy()
     expect(aa!.counts.reduce((a, b) => a + b, 0)).toBe(2)
+  })
+
+  it('byAlliance buckets by today\'s alliance; defunct carriers via successor; rest unaligned', () => {
+    const flights = [
+      row('2018-01-01', 'DFW', 'AUS', 'AAL'), // American → Oneworld
+      row('2018-01-02', 'DFW', 'ORD', 'UAL'), // United → Star
+      row('2018-01-03', 'DFW', 'ATL', 'DAL'), // Delta → SkyTeam
+      row('2018-01-04', 'DAL', 'HOU', 'SWA'), // Southwest → Unaligned
+      row('2010-01-01', 'DFW', 'PHX', 'AWE'), // US Airways → American → Oneworld
+      row('2009-01-01', 'DFW', 'IAH', 'COA'), // Continental → United → Star
+    ]
+    const m = Object.fromEntries(byAlliance(flights).map((r) => [r.alliance, r.count]))
+    expect(m.oneworld).toBe(2) // AAL + AWE(→American)
+    expect(m.star).toBe(2)     // UAL + COA(→United)
+    expect(m.skyteam).toBe(1)  // DAL
+    expect(m.none).toBe(1)     // SWA
   })
 
   it('ghostAirlines surfaces defunct carriers with count + last flown', () => {

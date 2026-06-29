@@ -2,6 +2,7 @@ import type { EnrichedFlight, Settings } from '../../engine'
 import { airportKey, routeKey } from '../../engine/normalize'
 import { domesticTierOf } from '../../engine/stats'
 import { aircraftBrand, aircraftFamily } from '../../engine/reference'
+import { allianceForFlight, type AllianceKey } from '../../engine/alliances'
 
 /** Most-recent-first ordering for flight lists. */
 export function sortRecent(flights: EnrichedFlight[]): EnrichedFlight[] {
@@ -128,4 +129,9 @@ export function flightsByAircraftFamily(flights: EnrichedFlight[], family: strin
 }
 export function flightsByAircraftType(flights: EnrichedFlight[], type: string): EnrichedFlight[] {
   return flights.filter((f) => f.aircraftType === type)
+}
+
+/** Flights whose airline belongs to a given alliance (or 'none' = unaligned), as of today. */
+export function flightsByAlliance(flights: EnrichedFlight[], alliance: AllianceKey): EnrichedFlight[] {
+  return flights.filter((f) => f.airlineName !== 'Unknown airline' && f.airlineCode && allianceForFlight(f) === alliance)
 }

@@ -14,7 +14,7 @@ const SECTIONS: { title: string; ids: string[] }[] = [
   { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes', 'howFarFromHome'] },
   { title: 'How far you go', ids: ['distance', 'topRouteHero', 'shortest', 'longest'] },
   { title: 'Your routes & trips', ids: ['routes', 'layovers', 'commuterCadence', 'nightsAway', 'domesticState', 'domesticCountry', 'domesticContinent', 'intercontinental'] },
-  { title: 'How you fly', ids: ['airlines', 'ghostAirlines', 'aircraft', 'aircraftClass', 'aircraftClassBar', 'sameMetal', 'fleet', 'delays'] },
+  { title: 'How you fly', ids: ['airlines', 'alliances', 'ghostAirlines', 'aircraft', 'aircraftClass', 'aircraftClassBar', 'sameMetal', 'fleet', 'delays'] },
   { title: 'When you fly', ids: ['whenYouFly', 'whenYouFlyOverlay', 'dayOfWeek', 'redEyes', 'intensity', 'records'] },
 ]
 
