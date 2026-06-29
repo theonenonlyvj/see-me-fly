@@ -3,6 +3,7 @@ import { airportKey, routeKey } from '../../engine/normalize'
 import { domesticTierOf } from '../../engine/stats'
 import { aircraftBrand, aircraftFamily } from '../../engine/reference'
 import { allianceForFlight, type AllianceKey } from '../../engine/alliances'
+import { effectiveAirline } from '../../engine/airline-history'
 
 /** Most-recent-first ordering for flight lists. */
 export function sortRecent(flights: EnrichedFlight[]): EnrichedFlight[] {
@@ -134,4 +135,17 @@ export function flightsByAircraftType(flights: EnrichedFlight[], type: string): 
 /** Flights whose airline belongs to a given alliance (or 'none' = unaligned), as of today. */
 export function flightsByAlliance(flights: EnrichedFlight[], alliance: AllianceKey): EnrichedFlight[] {
   return flights.filter((f) => f.airlineName !== 'Unknown airline' && f.airlineCode && allianceForFlight(f) === alliance)
+}
+
+/** Flights for an EFFECTIVE airline name (successor-merged, so AirTran rolls into Southwest). */
+export function flightsByEffectiveAirline(flights: EnrichedFlight[], name: string): EnrichedFlight[] {
+  return flights.filter((f) => f.airlineName !== 'Unknown airline' && effectiveAirline(f, true).name === name)
+}
+
+/** Unaligned flights EXCEPT the carriers already broken out into their own slice. */
+export function flightsOtherUnaligned(flights: EnrichedFlight[], excludeNames: string[]): EnrichedFlight[] {
+  const ex = new Set(excludeNames)
+  return flights.filter((f) =>
+    f.airlineName !== 'Unknown airline' && f.airlineCode &&
+    allianceForFlight(f) === 'none' && !ex.has(effectiveAirline(f, true).name))
 }
