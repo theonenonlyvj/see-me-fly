@@ -2,7 +2,7 @@ import CardFrame from '../components/CardFrame'
 import ProportionBar from '../components/charts/ProportionBar'
 import BarList from '../components/charts/BarList'
 import { WorldMap } from '../components/charts/WorldMap'
-import { airlineGroups, airlinesInAlliance, type Alliance } from '../../engine/alliances'
+import { airlineGroups, airlinesInAlliance, airlinesUnalignedOther, type Alliance } from '../../engine/alliances'
 import { airlineLogos, allianceLogos } from '../../engine/reference'
 import { flightsByAlliance, flightsByEffectiveAirline, flightsOtherUnaligned } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
@@ -33,17 +33,16 @@ export const alliancesCard: CardDef = {
       iconUrl: g.kind === 'alliance' ? allianceLogos[g.key] : g.kind === 'airline' && g.code ? airlineLogos[g.code] : undefined,
     }))
 
-    // Clicking an alliance → a popup with a map of that alliance's flights + the airlines you flew in it.
-    const openAlliance = (alliance: Alliance, label: string) => {
+    // A popup with a map of the group's flights + the airlines you flew in it (clickable).
+    const openAirlines = (label: string, flights: ReturnType<typeof flightsByAlliance>, airlines: { name: string; code: string; count: number }[], color: string) => {
       if (!overlay) return
-      const flights = flightsByAlliance(model!.scoped, alliance)
-      const rows = airlinesInAlliance(model!.scoped, alliance).map((a) => ({ label: a.name, value: a.count, id: a.name, iconUrl: airlineLogos[a.code], iconWide: true }))
+      const rows = airlines.map((a) => ({ label: a.name, value: a.count, id: a.name, iconUrl: airlineLogos[a.code], iconWide: true }))
       overlay.openList(`${label} — your airlines`, (
         <div>
           {flights.some((f) => f.resolved && !f.isLocalFlight) && (
             <div style={{ marginBottom: 14, borderRadius: 12, overflow: 'hidden' }}><WorldMap flights={flights} accent="var(--accent-4)" fit /></div>
           )}
-          <BarList rows={rows} max={rows.length} formatValue={(n) => `${n}`} accent={ALLIANCE_COLOR[alliance]}
+          <BarList rows={rows} max={rows.length} formatValue={(n) => `${n}`} accent={color}
             onRowClick={(row) => overlay.openFlights(`${row.label} flights`, flightsByEffectiveAirline(model!.scoped, row.label))} />
         </div>
       ))
@@ -60,9 +59,12 @@ export const alliancesCard: CardDef = {
             onSegment={(s) => {
               if (!overlay) return
               const g = groups.find((x) => x.key === s.id)!
-              if (g.kind === 'alliance') openAlliance(g.alliance as Alliance, s.label)
-              else if (g.kind === 'other') overlay.openFlights(s.label, flightsOtherUnaligned(model!.scoped, promotedNames))
-              else overlay.openFlights(`${s.label} flights`, flightsByEffectiveAirline(model!.scoped, g.label))
+              if (g.kind === 'alliance') {
+                const a = g.alliance as Alliance
+                openAirlines(s.label, flightsByAlliance(model!.scoped, a), airlinesInAlliance(model!.scoped, a), ALLIANCE_COLOR[a])
+              } else if (g.kind === 'other') {
+                openAirlines(s.label, flightsOtherUnaligned(model!.scoped, promotedNames), airlinesUnalignedOther(model!.scoped, promotedNames), OTHER_COLOR)
+              } else overlay.openFlights(`${s.label} flights`, flightsByEffectiveAirline(model!.scoped, g.label))
             }}
           />
         )}

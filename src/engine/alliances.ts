@@ -55,18 +55,28 @@ export interface AirlineGroup {
   code?: string               // representative ICAO, present when kind === 'airline' (for its logo)
 }
 
-/** Airlines you flew within a given alliance, by effective/successor name, sorted by count desc. */
-export function airlinesInAlliance(flights: EnrichedFlight[], alliance: Alliance): { name: string; code: string; count: number }[] {
+function airlinesWhere(flights: EnrichedFlight[], pred: (name: string, code: string) => boolean): { name: string; code: string; count: number }[] {
   const m = new Map<string, { count: number; code: string }>()
   for (const f of flights) {
     if (!f.airlineCode || f.airlineName === 'Unknown airline') continue
     const eff = effectiveAirline(f, true)
-    if (((AIRLINE_ALLIANCE[eff.code] as Alliance | undefined) ?? 'none') !== alliance) continue
+    if (!pred(eff.name, eff.code)) continue
     const cur = m.get(eff.name) ?? { count: 0, code: eff.code }
     cur.count += 1
     m.set(eff.name, cur)
   }
   return [...m.entries()].map(([name, v]) => ({ name, code: v.code, count: v.count })).sort((a, b) => b.count - a.count)
+}
+
+/** Airlines you flew within a given alliance, by effective/successor name, sorted by count desc. */
+export function airlinesInAlliance(flights: EnrichedFlight[], alliance: Alliance): { name: string; code: string; count: number }[] {
+  return airlinesWhere(flights, (_name, code) => ((AIRLINE_ALLIANCE[code] as Alliance | undefined) ?? 'none') === alliance)
+}
+
+/** Unaligned airlines NOT already promoted to their own slice (i.e. what's inside "Other (unaligned)"). */
+export function airlinesUnalignedOther(flights: EnrichedFlight[], excludeNames: string[]): { name: string; code: string; count: number }[] {
+  const ex = new Set(excludeNames)
+  return airlinesWhere(flights, (name, code) => ((AIRLINE_ALLIANCE[code] as Alliance | undefined) ?? 'none') === 'none' && !ex.has(name))
 }
 
 /**

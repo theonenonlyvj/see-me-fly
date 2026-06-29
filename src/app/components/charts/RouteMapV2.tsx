@@ -17,6 +17,13 @@ const HEIGHT = 500
 const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], landCollection)
 const path = geoPath(projection)
 
+function heatColor(t: number): string {
+  if (t < 0.25) return '#fde68a'
+  if (t < 0.5) return '#fbbf24'
+  if (t < 0.75) return '#f97316'
+  return '#dc2626'
+}
+
 function arcPath(fromLon: number, fromLat: number, toLon: number, toLat: number): string | null {
   const it = geoInterpolate([fromLon, fromLat], [toLon, toLat])
   const coords: [number, number][] = []
@@ -29,16 +36,17 @@ function arcPath(fromLon: number, fromLat: number, toLon: number, toLat: number)
  * so a 2-airline Texas hub doesn't burn out the canvas; airport dots are sqrt-sized by visit count;
  * the home airport gets a ringed anchor. Arcs and dots are clickable (drill into the flight list).
  */
-export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, onRoute, onNode, nameOf }: {
+export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, mode = 'routes', onRoute, onNode, nameOf }: {
   flights: EnrichedFlight[]
   accent: string
   groupAirports?: boolean
   homeKey?: string | null
+  mode?: 'routes' | 'districts'
   onRoute?: (aKey: string, bKey: string, label: string) => void
   onNode?: (key: string, label: string) => void
   nameOf?: (key: string) => string
 }) {
-  const { arcs, dots, maxRoute, maxNode } = useMemo(() => {
+  const { arcs, dots, districts, maxRoute, maxNode } = useMemo(() => {
     const nodeAcc = new Map<string, { latSum: number; lonSum: number; n: number; count: number }>()
     const routeMap = new Map<string, { a: string; b: string; count: number }>()
     const keyOf = (code: string) => (groupAirports ? airportKey(code, true) : code)
@@ -75,15 +83,23 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, on
     }
     arcs.sort((x, y) => x.count - y.count) // faint arcs first, busy on top
     const maxNode = Math.max(...Array.from(nodeAcc.values()).map((e) => e.count), 1)
+    const logMaxNode = Math.log(maxNode + 1)
     const dots: { cx: number; cy: number; r: number; key: string; count: number; home: boolean }[] = []
+    // bounded "district" disks: a fixed ~100mi-radius circle per cluster, colour by intensity only
+    // (so Moscow lights a Moscow-sized district, never all of Russia).
+    const districts: { cx: number; cy: number; r: number; t: number; key: string; count: number }[] = []
     for (const [key, e] of nodeAcc) {
       const c = coordOf(key); if (!c) continue
       const p = projection(c); if (!p) continue
       const r = 1.8 + 5.2 * Math.sqrt(e.count / maxNode) // sqrt area-ish scaling
       dots.push({ cx: p[0], cy: p[1], r, key, count: e.count, home: homeKey != null && key === homeKey })
+      const north = projection([c[0], c[1] + 1.449]) // 100mi ≈ 1.449° latitude
+      const diskR = north ? Math.max(6, Math.hypot(p[0] - north[0], p[1] - north[1])) : 10
+      districts.push({ cx: p[0], cy: p[1], r: diskR, t: logMaxNode > 0 ? Math.log(e.count + 1) / logMaxNode : 0, key, count: e.count })
     }
     dots.sort((x, y) => x.count - y.count)
-    return { arcs, dots, maxRoute, maxNode }
+    districts.sort((x, y) => x.count - y.count) // faint first, hot on top
+    return { arcs, dots, districts, maxRoute, maxNode }
   }, [flights, groupAirports, homeKey])
 
   const label = (key: string) => (nameOf ? nameOf(key) : key)
@@ -128,20 +144,30 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, on
       <svg ref={svgRef} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         style={{ width: '100%', height: 'auto', display: 'block', cursor: zoomed ? 'grab' : 'default', touchAction: 'none' }}
         onWheel={onWheel} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
+        <defs><filter id="rmv2heat" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" /></filter></defs>
         <rect width={WIDTH} height={HEIGHT} fill="#eef2f7" rx={4} />
         <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
         {countriesCollection.features.map((feat: Feature<Geometry>, i: number) => {
           const d = path(feat); if (!d) return null
           return <path key={i} data-country d={d} fill="#dce5ee" stroke="#b8c5d4" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />
         })}
-        {arcs.map((arc, i) => (
+        {mode === 'districts' && (
+          <g data-districts filter="url(#rmv2heat)">
+            {districts.map((di, i) => (
+              <circle key={i} cx={di.cx} cy={di.cy} r={di.r} fill={heatColor(di.t)} opacity={0.45 + 0.45 * di.t}>
+                <title>{`${label(di.key)} — ${di.count} visits`}</title>
+              </circle>
+            ))}
+          </g>
+        )}
+        {mode === 'routes' && arcs.map((arc, i) => (
           <path key={i} data-arc d={arc.d} fill="none" stroke={accent} strokeWidth={arc.sw} strokeOpacity={arc.op} strokeLinecap="round" vectorEffect="non-scaling-stroke"
             style={{ cursor: onRoute ? 'pointer' : 'default' }}
             onClick={onRoute ? () => { if (!dragged()) onRoute(arc.a, arc.b, `${label(arc.a)} ↔ ${label(arc.b)}`) } : undefined}>
             <title>{`${label(arc.a)} ↔ ${label(arc.b)} — ${arc.count} flights`}</title>
           </path>
         ))}
-        {dots.map((dot, i) => (
+        {mode === 'routes' && dots.map((dot, i) => (
           <circle key={i} cx={dot.cx} cy={dot.cy} r={baseR(dot) / view.k}
             fill={dot.home ? '#fff' : accent} opacity={dot.home ? 1 : 0.88}
             stroke={dot.home ? accent : '#fff'} strokeWidth={(dot.home ? 2.5 : 0.7) / view.k}
@@ -158,11 +184,17 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKey, on
           Reset ⟲
         </button>
       )}
-      {/* arc-width legend */}
+      {/* legend */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 8, fontSize: 11, color: 'var(--ink-2)', flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke={accent} strokeWidth={0.6} strokeOpacity={0.5} /></svg>1 flight</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke={accent} strokeWidth={3.1} strokeOpacity={0.8} /></svg>{maxRoute}× (busiest)</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="16" height="16"><circle cx="8" cy="8" r="6.5" fill={accent} opacity={0.85} /></svg>dot size = visits (up to {maxNode})</span>
+        {mode === 'routes' ? (<>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke={accent} strokeWidth={0.6} strokeOpacity={0.5} /></svg>1 flight</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke={accent} strokeWidth={3.1} strokeOpacity={0.8} /></svg>{maxRoute}× (busiest)</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="16" height="16"><circle cx="8" cy="8" r="6.5" fill={accent} opacity={0.85} /></svg>dot size = visits (up to {maxNode})</span>
+        </>) : (<>
+          <span>Each ~100-mile district, shaded by how often you visit:</span>
+          {[0.1, 0.4, 0.7, 0.95].map((t) => <span key={t} style={{ width: 16, height: 12, borderRadius: 3, background: heatColor(t) }} />)}
+          <span>more →</span>
+        </>)}
       </div>
     </div>
   )
