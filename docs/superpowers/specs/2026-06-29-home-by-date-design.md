@@ -204,3 +204,15 @@ In `src/app/components/SettingsPanel.tsx`:
 
 - A tiny export manifest (export date + flight-row count + `schema_version`) would let a future column change anchor a migration and catch stale partial imports; optional in Phase A.
 - Document explicitly that a `price` with no `currency` is never summed (already in the price/currency rule).
+
+### Deferred Phase-A debt (from the whole-branch review, 2026-06-29 — verdict fix-then-ship; the 3 must-fix + 2 should-fix landed in `cd462d7`, these remain)
+- **Perf:** `reconstructTrips(model.flown)` is recomputed in each of the four trip cards every render. Compute once in `buildModel` and expose `model.trips`; cards just `tripsForYear(model.trips, model.scopeYear)`. (Correctness fine; CPU-only.)
+- **geoExtremes** per-base candidate home-exclusion has a dead `airportKey(ap.ident,…)` branch (ICAO ident never matches an IATA-built home key) and a latent null-IATA gap; spec §geoExtremes said compare on raw `f.fromCode/f.toCode`. Push raw codes onto each endpoint and test membership with `airportKey(code,…)`.
+- **geoExtremes** returns `baseLabel` (most-recent era label) that the card never renders (it derives the label from `primaryCode`). Drop the field or surface it.
+- **geoExtremes** move-day boundary: a flight exactly on a move date is attributed to the new base but the old home isn't in that base's exclusion set, so it could be picked as "farthest." Boundary-date only; union the prior era's airports when `f.date === era.start` if tightened.
+- **reconstructTrips:** a same-day home→home intra-metro leg (e.g. `DFW→DAL`, non-local) opens+closes a phantom 0-night trip, slightly inflating trip/round-trip counts. Optional guard: `if departHome && arriveHome && !open → skip`.
+- **reconstructTrips:** `startInferred` can mislabel a cleanly-bracketed trip as `estimated:{boundary:'start'}` when its first movement arrives home but is a connection. Gate `startInferred` on the opening homeward movement actually closing the trip.
+- **byCountry / byAirport** do NOT exempt a pure connection through a co-home hub from exclusion (intentional Phase-A simplification; documented in-code). Spec §154/§163's connection-exemption is **downgraded to Phase-B for these two aggregations** — trip reconstruction still handles connections.
+- **AirportPicker** has no keyboard/ARIA combobox semantics (mouse-only) — a11y debt for the optional editor; add Up/Down/Enter/Escape + roles.
+- **GroundLinksEditor** price input uses `Number(v)` directly (NaN risk on pasted `1,200`); reuse the CSV path's `parsePrice` normalization.
+- **RouteMapV2** home ring renders only in `routes` mode, not `districts` (pre-existing single-home behavior, NOT a regression).
