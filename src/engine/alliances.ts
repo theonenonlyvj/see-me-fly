@@ -45,3 +45,44 @@ export function byAlliance(flights: EnrichedFlight[]): { alliance: AllianceKey; 
   const order: AllianceKey[] = ['star', 'oneworld', 'skyteam', 'none']
   return order.map((a) => ({ alliance: a, count: counts[a] })).filter((x) => x.count > 0)
 }
+
+export interface AirlineGroup {
+  key: string                 // alliance key, an effective airline name, or 'other-unaligned'
+  label: string
+  count: number
+  kind: 'alliance' | 'airline' | 'other'
+  alliance?: AllianceKey      // present when kind === 'alliance'
+}
+
+/**
+ * Alliance breakdown that PROMOTES any big unaligned carrier to its own slice instead of burying it
+ * in "Unaligned" (Southwest is ~a third of Vijay's flying). The 3 alliances stay aggregated; an
+ * unaligned airline (by its effective/successor name, so AirTran rolls into Southwest) gets its own
+ * group when it's >= 20% of the unaligned total (and >= 5 flights); the rest become "Other (unaligned)".
+ * Returned sorted by count desc.
+ */
+export function airlineGroups(flights: EnrichedFlight[]): AirlineGroup[] {
+  const allianceCounts: Record<Alliance, number> = { star: 0, oneworld: 0, skyteam: 0 }
+  const unaligned = new Map<string, number>() // effective airline name → count
+  for (const f of flights) {
+    if (!f.airlineCode || f.airlineName === 'Unknown airline') continue
+    const eff = effectiveAirline(f, true)
+    const a: AllianceKey = (AIRLINE_ALLIANCE[eff.code] as Alliance | undefined) ?? 'none'
+    if (a === 'none') unaligned.set(eff.name, (unaligned.get(eff.name) ?? 0) + 1)
+    else allianceCounts[a] += 1
+  }
+  const unalignedTotal = [...unaligned.values()].reduce((s, x) => s + x, 0)
+  const threshold = Math.max(unalignedTotal * 0.2, 5)
+
+  const groups: AirlineGroup[] = []
+  for (const a of ['star', 'oneworld', 'skyteam'] as Alliance[]) {
+    if (allianceCounts[a] > 0) groups.push({ key: a, label: ALLIANCE_LABEL[a], count: allianceCounts[a], kind: 'alliance', alliance: a })
+  }
+  let otherCount = 0
+  for (const [name, count] of [...unaligned.entries()].sort((x, y) => y[1] - x[1])) {
+    if (count >= threshold) groups.push({ key: name, label: name, count, kind: 'airline' })
+    else otherCount += count
+  }
+  if (otherCount > 0) groups.push({ key: 'other-unaligned', label: 'Other (unaligned)', count: otherCount, kind: 'other' })
+  return groups.sort((a, b) => b.count - a.count)
+}

@@ -5,7 +5,7 @@ import { DEFAULT_DURATION_CONSTANTS } from '../../engine/constants'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
 import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines, reconstructTrips, tripSummary } from '../../engine/stats'
 import { byAirline } from '../../engine/aggregate'
-import { byAlliance } from '../../engine/alliances'
+import { byAlliance, airlineGroups } from '../../engine/alliances'
 import type { Settings } from '../../engine'
 
 const C = DEFAULT_DURATION_CONSTANTS
@@ -113,6 +113,23 @@ describe('time/behavioral aggregators', () => {
     expect(m.star).toBe(2)     // UAL + COA(→United)
     expect(m.skyteam).toBe(1)  // DAL
     expect(m.none).toBe(1)     // SWA
+  })
+
+  it('airlineGroups promotes a big unaligned carrier to its own slice, tails into Other', () => {
+    const f = []
+    for (let i = 0; i < 10; i++) f.push(row(`2018-01-${String(i + 1).padStart(2, '0')}`, 'DAL', 'HOU', 'SWA'))
+    f.push(row('2018-02-01', 'DFW', 'AUS', 'AAL')) // oneworld
+    f.push(row('2018-02-02', 'DFW', 'ORD', 'UAL')) // star
+    f.push(row('2018-02-03', 'DFW', 'XNA', 'IGO')) // small unaligned (IndiGo)
+    const g = airlineGroups(f)
+    const sw = g.find((x) => /Southwest/.test(x.label))
+    expect(sw?.kind).toBe('airline')
+    expect(sw?.count).toBe(10)
+    expect(g.find((x) => x.key === 'other-unaligned')?.count).toBe(1) // IndiGo below threshold
+    expect(g.find((x) => x.key === 'oneworld')?.count).toBe(1)
+    expect(g.find((x) => x.key === 'star')?.count).toBe(1)
+    expect(g[0].label).toMatch(/Southwest/) // sorted desc → Southwest first
+    expect(g[0].count).toBe(10)
   })
 
   it('ghostAirlines surfaces defunct carriers with count + last flown', () => {
