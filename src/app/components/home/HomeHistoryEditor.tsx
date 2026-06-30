@@ -48,7 +48,7 @@ function eraIssues(eras: HomeEra[], i: number, groupAirports: boolean): EraIssue
       : `Start dates must be in ascending order (this era starts on/before the one above).`
   }
   // Warn (non-blocking) if one era's airports span more than one airportKey group when
-  // grouping is on — one base per era is the model (e.g. mixing Milwaukee + Chicago keys).
+  // grouping is on — one base per era is the model (e.g. mixing Denver + Seattle keys).
   if (groupAirports && era.airports && era.airports.length > 1) {
     const keys = new Set(era.airports.map((a) => airportKey(a, groupAirports)))
     if (keys.size > 1) {

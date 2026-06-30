@@ -12,8 +12,8 @@ import type { CardContext, CardDef } from './registry'
  * The home key to EMPHASIZE on the map's primary dot (SHOULD-FIX 5). For an all-time view it's the
  * most-recent home (`homePrimaryKeys().currentKey`). When the view is scoped to a single year,
  * emphasize THAT year's home instead — `homeAt('<year>-07-01')?.primary`, key-normalized — so
- * scoping to 2012 highlights the 2012-era home (MKE) rather than today's DFW. Only PRIMARY metros
- * are ringed (co-home secondaries like ORD/MDW are membership-only); this picks which primary is
+ * scoping to 2019 highlights the 2019-era home (DEN) rather than today's DFW. Only PRIMARY metros
+ * are ringed (co-home secondaries like SEA/PAE are membership-only); this picks which primary is
  * emphasized. Falls back to the all-time primary if a scoped year can't resolve a home (e.g. no
  * timeline) so the legacy single `home` still emphasizes.
  */
@@ -32,7 +32,7 @@ const ACCENT_SOFT = 'color-mix(in srgb, var(--accent-4) 10%, white)'
 function MapV2View({ model, settings, overlay }: CardContext) {
   const [mode, setMode] = useState<'routes' | 'districts'>('routes')
   // Ring ONLY the displayed home BASES — the distinct PRIMARY metros (`homePrimaryKeys().keys`),
-  // covering the legacy single `home` too. Co-home secondaries (e.g. ORD/MDW under a Milwaukee era)
+  // covering the legacy single `home` too. Co-home secondaries (e.g. SEA/PAE under a Denver era)
   // are membership-only and must NOT light up as their own base. Then emphasize the home of the
   // ACTIVE year-scope (SHOULD-FIX 5): under a 2012 scope the 2012-era primary is highlighted, not
   // today's. All-time falls back to the most-recent primary.

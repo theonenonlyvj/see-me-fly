@@ -22,8 +22,8 @@ const S = (over: Partial<Settings> = {}): Settings => ({
 // Sample multi-era timeline: a college home → a relocation → a later move.
 const ERAS: HomeEra[] = [
   { start: '2008-08-18', airports: ['RDU'] },
-  { start: '2012-07-03', airports: ['MKE', 'ORD', 'MDW'] },
-  { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+  { start: '2019-06-01', airports: ['DEN', 'SEA', 'PAE'] },
+  { start: '2021-02-04', airports: ['DFW', 'DAL'] },
 ]
 
 // Helpers to read a country / region count out of a byCountry result.
@@ -33,55 +33,55 @@ const regionCount = (res: ReturnType<typeof byCountry>, region: string) =>
   usRegions(res).find((r) => r.region === region)?.count ?? 0
 
 describe('byCountry — date-aware home exclusion', () => {
-  it('DFW→ORD in 2012 (ORD home) credits Texas, not Illinois', () => {
+  it('DFW→SEA in 2019 (SEA home) credits Texas, not Washington', () => {
     const s = S({ homeHistory: ERAS })
-    const res = byCountry([route('DFW', 'ORD', '2012-09-01')], s)
+    const res = byCountry([route('DFW', 'SEA', '2019-09-01')], s)
     expect(regionCount(res, 'US-TX')).toBe(1) // DFW credited
-    expect(regionCount(res, 'US-IL')).toBe(0) // ORD was home → skipped
+    expect(regionCount(res, 'US-WA')).toBe(0) // SEA was home → skipped
   })
 
-  it('the SAME route in 2020 (DFW home) credits Illinois, not Texas', () => {
+  it('the SAME route in 2022 (DFW home) credits Washington, not Texas', () => {
     const s = S({ homeHistory: ERAS })
-    const res = byCountry([route('DFW', 'ORD', '2020-09-01')], s)
-    expect(regionCount(res, 'US-IL')).toBe(1) // ORD credited
+    const res = byCountry([route('DFW', 'SEA', '2022-09-01')], s)
+    expect(regionCount(res, 'US-WA')).toBe(1) // SEA credited
     expect(regionCount(res, 'US-TX')).toBe(0) // DFW was home → skipped
   })
 
   it('only the date-correct endpoint is excluded across both eras combined', () => {
     const s = S({ homeHistory: ERAS })
     const res = byCountry([
-      route('DFW', 'ORD', '2012-09-01'), // ORD home → Texas credited
-      route('DFW', 'ORD', '2020-09-01'), // DFW home → Illinois credited
+      route('DFW', 'SEA', '2019-09-01'), // SEA home → Texas credited
+      route('DFW', 'SEA', '2022-09-01'), // DFW home → Washington credited
     ], s)
     expect(regionCount(res, 'US-TX')).toBe(1)
-    expect(regionCount(res, 'US-IL')).toBe(1)
+    expect(regionCount(res, 'US-WA')).toBe(1)
   })
 
   it('with exclusion off, both endpoints are always credited', () => {
     const s = S({ homeHistory: ERAS, excludeHomeFromRankings: false })
-    const res = byCountry([route('DFW', 'ORD', '2012-09-01')], s)
+    const res = byCountry([route('DFW', 'SEA', '2019-09-01')], s)
     expect(regionCount(res, 'US-TX')).toBe(1)
-    expect(regionCount(res, 'US-IL')).toBe(1)
+    expect(regionCount(res, 'US-WA')).toBe(1)
   })
 
   it('single-home fallback still excludes the legacy home all-time', () => {
     const s = S({ home: 'DFW' })
-    const res = byCountry([route('DFW', 'ORD', '2020-09-01')], s)
+    const res = byCountry([route('DFW', 'SEA', '2022-09-01')], s)
     expect(regionCount(res, 'US-TX')).toBe(0) // DFW home all-time → skipped
-    expect(regionCount(res, 'US-IL')).toBe(1)
+    expect(regionCount(res, 'US-WA')).toBe(1)
   })
 })
 
 describe('domesticTierOf — date-aware intra-state', () => {
-  it('DFW→AUS in 2012 with MKE-era home is intra-country, not intra-state', () => {
+  it('DFW→AUS in 2019 with DEN-era home is intra-country, not intra-state', () => {
     const s = S({ homeHistory: ERAS })
-    // 2012-09-01 falls in the MKE/Wisconsin era; the route is in Texas (US-TX) → not home state.
-    expect(domesticTierOf(route('DFW', 'AUS', '2012-09-01'), s)).toBe('intra-country')
+    // 2019-09-01 falls in the DEN/Colorado era; the route is in Texas (US-TX) → not home state.
+    expect(domesticTierOf(route('DFW', 'AUS', '2019-09-01'), s)).toBe('intra-country')
   })
 
-  it('DFW→AUS in 2020 with DFW-era home is intra-state', () => {
+  it('DFW→AUS in 2022 with DFW-era home is intra-state', () => {
     const s = S({ homeHistory: ERAS })
-    expect(domesticTierOf(route('DFW', 'AUS', '2020-09-01'), s)).toBe('intra-state')
+    expect(domesticTierOf(route('DFW', 'AUS', '2022-09-01'), s)).toBe('intra-state')
   })
 
   it('single-home fallback: DFW home keeps DFW→AUS intra-state', () => {
@@ -103,17 +103,17 @@ describe('byAirport — date-aware home exclusion', () => {
     const s = S({ homeHistory: ERAS })
     const res = byAirport([
       route('RDU', 'DFW', '2010-03-01'), // RDU home era → RDU dropped
-      route('RDU', 'DFW', '2020-03-01'), // RDU just a visited airport → counts
+      route('RDU', 'DFW', '2022-03-01'), // RDU just a visited airport → counts
     ], s)
-    expect(find(res, 'RDU')).toBe(1) // only the 2020 flight credits RDU
-    expect(find(res, 'DFW')).toBe(1) // 2010 DFW (not home then) + 2020 DFW (home → dropped) = 1
+    expect(find(res, 'RDU')).toBe(1) // only the 2022 flight credits RDU
+    expect(find(res, 'DFW')).toBe(1) // 2010 DFW (not home then) + 2022 DFW (home → dropped) = 1
   })
 
   it('with exclusion off, RDU counts in every year', () => {
     const s = S({ homeHistory: ERAS, excludeHomeFromRankings: false })
     const res = byAirport([
       route('RDU', 'DFW', '2010-03-01'),
-      route('RDU', 'DFW', '2020-03-01'),
+      route('RDU', 'DFW', '2022-03-01'),
     ], s)
     expect(find(res, 'RDU')).toBe(2)
   })

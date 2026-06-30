@@ -579,21 +579,21 @@ describe('geoExtremes', () => {
   })
 
   it('partitions flights by era-home and merges eras by PRIMARY airportKey', () => {
-    // Era 1: MKE home (2012); Era 2: DFW home (2013+). A DFW era + DFW era merge into ONE Dallas base.
+    // Era 1: DEN home (2019); Era 2: DFW home (2021+). A DFW era + DFW era merge into ONE Dallas base.
     const s = S({
       homeHistory: [
         { start: '2008-01-01', airports: ['DFW'] },      // DFW era
-        { start: '2012-07-03', airports: ['MKE'] },      // MKE era
-        { start: '2013-01-15', airports: ['DFW', 'DAL'] }, // DFW era again → merges with first into one Dallas base
+        { start: '2019-06-01', airports: ['DEN'] },      // DEN era
+        { start: '2021-02-04', airports: ['DFW', 'DAL'] }, // DFW era again → merges with first into one Dallas base
       ],
     })
-    const fMke = mkRow({ from: 'MKE', to: 'LHR', date: '2012-08-01' }) // MKE era, far
+    const fDen = mkRow({ from: 'DEN', to: 'LHR', date: '2019-08-01' }) // DEN era, far
     const fDfw1 = mkRow({ from: 'DFW', to: 'AUS', date: '2009-01-01' }) // DFW era 1
-    const fDfw2 = mkRow({ from: 'DFW', to: 'LAX', date: '2014-01-01' }) // DFW era 2
-    const result = geoExtremes([fMke, fDfw1, fDfw2], s)
+    const fDfw2 = mkRow({ from: 'DFW', to: 'LAX', date: '2022-01-01' }) // DFW era 2
+    const result = geoExtremes([fDen, fDfw1, fDfw2], s)
     const labels = result.byBase.map((b) => b.primaryCode)
-    // Two distinct bases by primary key: MKE and DFW (the two DFW eras merged into one).
-    expect(new Set(labels)).toEqual(new Set(['MKE', 'DFW']))
+    // Two distinct bases by primary key: DEN and DFW (the two DFW eras merged into one).
+    expect(new Set(labels)).toEqual(new Set(['DEN', 'DFW']))
     expect(result.byBase).toHaveLength(2)
     const dfwBase = result.byBase.find((b) => b.primaryCode === 'DFW')!
     expect(dfwBase.flightCount).toBe(2) // both DFW-era flights credited to one base
@@ -603,13 +603,13 @@ describe('geoExtremes', () => {
     const s = S({
       homeHistory: [
         { start: '2008-01-01', airports: ['DFW'] },
-        { start: '2012-07-03', airports: ['MKE'] },
+        { start: '2019-06-01', airports: ['DEN'] },
       ],
     })
     const fDfwShort = mkRow({ from: 'DFW', to: 'AUS', date: '2009-01-01' }) // DFW base: short reach
-    const fMkeFar = mkRow({ from: 'MKE', to: 'SYD', date: '2012-08-01' })   // MKE base: very far
-    const result = geoExtremes([fDfwShort, fMkeFar], s)
-    expect(result.byBase[0].primaryCode).toBe('MKE') // farther → first
+    const fDenFar = mkRow({ from: 'DEN', to: 'SYD', date: '2019-08-01' })   // DEN base: very far
+    const result = geoExtremes([fDfwShort, fDenFar], s)
+    expect(result.byBase[0].primaryCode).toBe('DEN') // farther → first
     expect(result.byBase[1].primaryCode).toBe('DFW')
     expect(result.byBase[0].farthest.miles).toBeGreaterThan(result.byBase[1].farthest.miles)
   })
@@ -618,11 +618,11 @@ describe('geoExtremes', () => {
     const s = S({
       homeHistory: [
         { start: '2008-01-01', airports: ['ZZZ'] }, // bogus primary → lookupAirport null → skipped
-        { start: '2012-07-03', airports: ['DFW'] },
+        { start: '2019-06-01', airports: ['DFW'] },
       ],
     })
     const fBogus = mkRow({ from: 'ZZZ', to: 'AUS', date: '2009-01-01' }) // ZZZ era
-    const fDfw = mkRow({ from: 'DFW', to: 'LHR', date: '2013-01-01' })   // DFW era
+    const fDfw = mkRow({ from: 'DFW', to: 'LHR', date: '2020-01-01' })   // DFW era
     const result = geoExtremes([fBogus, fDfw], s)
     // ZZZ base skipped; only DFW survives.
     expect(result.byBase.map((b) => b.primaryCode)).toEqual(['DFW'])

@@ -62,7 +62,7 @@ const HOMES_HEADER = ['schema_version', 'start_date', 'home_airports', 'label'] 
 
 /**
  * Serialize a home timeline to `see-me-fly_homes.csv` text. `home_airports` is
- * slash-joined (`MKE/ORD/MDW`); the first code is the PRIMARY. A missing `label`
+ * slash-joined (`DEN/SEA/PAE`); the first code is the PRIMARY. A missing `label`
  * serializes as an empty field.
  */
 export function serializeHomesCsv(eras: HomeEra[]): string {

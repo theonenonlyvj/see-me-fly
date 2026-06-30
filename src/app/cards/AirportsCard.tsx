@@ -73,8 +73,8 @@ function homeEraRanges(settings: Settings): Map<string, string> {
  * bucketing each by the home base that was actually home on that flight's date (the metro key of
  * `homeAt(f.date).primary`). Because the pills count exactly the occurrences `byAirport` excluded,
  * the pill totals and the ranked bars PARTITION the scoped endpoint occurrences with zero overlap:
- * a 2012 DFW flight (DFW not yet home in 2012) stays a ranked bar, while a 2012 MKE endpoint (MKE
- * home in 2012) is dropped from the bars and shows under the Milwaukee pill. `flights` is the set of
+ * a 2019 DFW flight (DFW not yet home in 2019) stays a ranked bar, while a 2019 DEN endpoint (DEN
+ * home in 2019) is dropped from the bars and shows under the Denver pill. `flights` is the set of
  * scoped flights touching that base on a home date (deduped) for click-through.
  */
 interface HomePill { key: string; count: number; flights: EnrichedFlight[] }

@@ -15,7 +15,7 @@ function countMap<T>(items: T[], keyOf: (t: T) => string | null): Map<string, nu
 
 export function byAirport(flights: EnrichedFlight[], settings: Settings): { key: string; count: number }[] {
   // DATE-AWARE home exclusion lives HERE (per-flight) rather than as a card-level post-filter, so a
-  // briefly-home hub (e.g. ORD during a Chicago era) is dropped only for the years it was home and
+  // briefly-home hub (e.g. SEA during a Seattle era) is dropped only for the years it was home and
   // still ranks for other-year visits. Gated on `excludeHomeFromRankings` + `hasHome`; an empty
   // home timeline / disabled toggle credits both endpoints exactly as before.
   // PHASE-A SIMPLIFICATION: no connection detection — a same-era pass-through through a co-home hub

@@ -41,11 +41,11 @@ const S = (over: Partial<Settings> = {}): Settings => ({
   ...over,
 })
 
-// RDU-college → MKE-move → DFW-back, ascending eras
+// RDU-college → DEN-move → DFW-back, ascending eras
 const ERAS: HomeEra[] = [
   { start: '2008-08-18', airports: ['RDU'] },
-  { start: '2012-07-03', airports: ['MKE', 'ORD', 'MDW'] },
-  { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+  { start: '2019-06-01', airports: ['DEN', 'SEA', 'PAE'] },
+  { start: '2021-02-04', airports: ['DFW', 'DAL'] },
 ]
 
 describe('buildMovements', () => {
@@ -73,23 +73,23 @@ describe('buildMovements', () => {
 })
 
 describe('reconstructTrips — all-time home-by-date', () => {
-  it('relocation: RDU→…→IAH then drive IAH→MKE closes as ONE spanning trip; ORD connection does not split', () => {
+  it('relocation: RDU→…→COS then drive COS→DEN closes as ONE spanning trip; SEA connection does not split', () => {
     seq = 0
     const home = S({ home: null, homeHistory: ERAS })
-    // Leave RDU-era home; long Europe trip, then ORD same-day connection to IAH, then drive to MKE (now home).
+    // Leave RDU-era home; long Europe trip, then SEA same-day connection to COS, then drive to DEN (now home).
     const flights = [
-      FL({ date: '2012-05-26', fromCode: 'MCO', toCode: 'IAD' }),
-      FL({ date: '2012-05-26', fromCode: 'IAD', toCode: 'FRA', depUtcMs: ms('2012-05-26', 14), arrUtcMs: ms('2012-05-27', 4) }),
-      FL({ date: '2012-06-22', fromCode: 'MUC', toCode: 'IAD', depUtcMs: ms('2012-06-22', 6), arrUtcMs: ms('2012-06-22', 12) }),
-      // ORD is a co-home hub for the MKE era — but on 2012-06-22 home is still RDU; regardless this is a connection.
-      FL({ date: '2012-06-22', fromCode: 'IAD', toCode: 'ORD', depUtcMs: ms('2012-06-22', 13), arrUtcMs: ms('2012-06-22', 15) }),
-      FL({ date: '2012-06-22', fromCode: 'ORD', toCode: 'IAH', depUtcMs: ms('2012-06-22', 16), arrUtcMs: ms('2012-06-22', 18) }),
+      FL({ date: '2019-05-26', fromCode: 'MCO', toCode: 'IAD' }),
+      FL({ date: '2019-05-26', fromCode: 'IAD', toCode: 'FRA', depUtcMs: ms('2019-05-26', 14), arrUtcMs: ms('2019-05-27', 4) }),
+      FL({ date: '2019-06-22', fromCode: 'MUC', toCode: 'IAD', depUtcMs: ms('2019-06-22', 6), arrUtcMs: ms('2019-06-22', 12) }),
+      // SEA is a co-home hub for the DEN era — but on 2019-06-22 home is still RDU; regardless this is a connection.
+      FL({ date: '2019-06-22', fromCode: 'IAD', toCode: 'SEA', depUtcMs: ms('2019-06-22', 13), arrUtcMs: ms('2019-06-22', 15) }),
+      FL({ date: '2019-06-22', fromCode: 'SEA', toCode: 'COS', depUtcMs: ms('2019-06-22', 16), arrUtcMs: ms('2019-06-22', 18) }),
     ]
-    const links = [LK({ date: '2012-07-03', arriveDate: '2012-07-05', fromAirport: 'IAH', toAirport: 'MKE' })]
+    const links = [LK({ date: '2019-07-03', arriveDate: '2019-07-05', fromAirport: 'COS', toAirport: 'DEN' })]
     const trips = reconstructTrips(flights, { ...home, groundLinks: links })
     expect(trips).toHaveLength(1)
     const t = trips[0]
-    expect(t.departDate).toBe('2012-05-26')
+    expect(t.departDate).toBe('2019-05-26')
     expect(t.flights).toHaveLength(5) // all five flight legs; the link is a bridge, not a flight
     expect(t.estimated).toBeUndefined()
     expect(t.roundTrip).toBe(true) // closed by a ground link arriving home
@@ -97,36 +97,36 @@ describe('reconstructTrips — all-time home-by-date', () => {
     expect(t.nights).toBeGreaterThan(35)
   })
 
-  it('connection-not-close: ORD→IAH same-day within layoverMaxHours does not close at ORD', () => {
+  it('connection-not-close: SEA→DEN same-day within layoverMaxHours does not close at SEA', () => {
     seq = 0
     const home = S({ home: null, homeHistory: ERAS })
-    // During MKE era; ORD is a co-home airport. A same-day ORD connection must NOT close the trip.
+    // During DEN era; SEA is a co-home airport. A same-day SEA connection must NOT close the trip.
     const flights = [
-      FL({ date: '2012-08-01', fromCode: 'MKE', toCode: 'DEN', depUtcMs: ms('2012-08-01', 8), arrUtcMs: ms('2012-08-01', 10) }),
-      FL({ date: '2012-08-05', fromCode: 'DEN', toCode: 'ORD', depUtcMs: ms('2012-08-05', 8), arrUtcMs: ms('2012-08-05', 10) }),
-      FL({ date: '2012-08-05', fromCode: 'ORD', toCode: 'MKE', depUtcMs: ms('2012-08-05', 12), arrUtcMs: ms('2012-08-05', 13) }),
+      FL({ date: '2019-08-01', fromCode: 'DEN', toCode: 'AUS', depUtcMs: ms('2019-08-01', 8), arrUtcMs: ms('2019-08-01', 10) }),
+      FL({ date: '2019-08-05', fromCode: 'AUS', toCode: 'SEA', depUtcMs: ms('2019-08-05', 8), arrUtcMs: ms('2019-08-05', 10) }),
+      FL({ date: '2019-08-05', fromCode: 'SEA', toCode: 'DEN', depUtcMs: ms('2019-08-05', 12), arrUtcMs: ms('2019-08-05', 13) }),
     ]
     const trips = reconstructTrips(flights, home)
     expect(trips).toHaveLength(1)
     expect(trips[0].flights).toHaveLength(3)
-    expect(trips[0].roundTrip).toBe(true) // ends back at MKE
+    expect(trips[0].roundTrip).toBe(true) // ends back at DEN
     expect(trips[0].nights).toBe(4)
   })
 
-  it('closes at ORD when the redeparture is NOT a connection (gap too long)', () => {
+  it('closes at SEA when the redeparture is NOT a connection (gap too long)', () => {
     seq = 0
     const home = S({ home: null, homeHistory: ERAS })
-    // ORD is home in the MKE era; landing there and NOT redeparting within layoverMaxHours closes.
+    // SEA is home in the DEN era; landing there and NOT redeparting within layoverMaxHours closes.
     const flights = [
-      FL({ date: '2012-08-01', fromCode: 'MKE', toCode: 'DEN', depUtcMs: ms('2012-08-01', 8), arrUtcMs: ms('2012-08-01', 10) }),
-      FL({ date: '2012-08-05', fromCode: 'DEN', toCode: 'ORD', depUtcMs: ms('2012-08-05', 8), arrUtcMs: ms('2012-08-05', 10) }),
-      // re-departs ORD 2 days later → a real arrival home, then a fresh trip
-      FL({ date: '2012-08-07', fromCode: 'ORD', toCode: 'MKE', depUtcMs: ms('2012-08-07', 12), arrUtcMs: ms('2012-08-07', 13) }),
+      FL({ date: '2019-08-01', fromCode: 'DEN', toCode: 'AUS', depUtcMs: ms('2019-08-01', 8), arrUtcMs: ms('2019-08-01', 10) }),
+      FL({ date: '2019-08-05', fromCode: 'AUS', toCode: 'SEA', depUtcMs: ms('2019-08-05', 8), arrUtcMs: ms('2019-08-05', 10) }),
+      // re-departs SEA 2 days later → a real arrival home, then a fresh trip
+      FL({ date: '2019-08-07', fromCode: 'SEA', toCode: 'DEN', depUtcMs: ms('2019-08-07', 12), arrUtcMs: ms('2019-08-07', 13) }),
     ]
     const trips = reconstructTrips(flights, home)
     expect(trips).toHaveLength(2)
     expect(trips[0].roundTrip).toBe(true)
-    expect(trips[0].flights.map((f) => f.toCode)).toEqual(['DEN', 'ORD'])
+    expect(trips[0].flights.map((f) => f.toCode)).toEqual(['AUS', 'SEA'])
   })
 
   it('link to non-home BRIDGES: extends the open trip without closing', () => {

@@ -61,12 +61,12 @@ describe('HomeHistoryEditor', () => {
     const onChange = vi.fn()
     render(
       <HomeHistoryEditor
-        homeHistory={[{ start: '2012-07-03', airports: ['MKE', 'ORD'] }]}
+        homeHistory={[{ start: '2019-06-01', airports: ['DEN', 'SEA'] }]}
         groupAirports={true}
         onChange={onChange}
       />,
     )
-    // MKE (Milwaukee) and ORD (Chicago) are different airportKey groups → warn
+    // DEN (Denver) and SEA (Seattle) are different airportKey groups → warn
     expect(screen.getByText(/more than one|multiple|different.*group/i)).toBeInTheDocument()
   })
 
@@ -95,7 +95,7 @@ describe('GroundLinksEditor', () => {
     const onChange = vi.fn()
     render(
       <GroundLinksEditor
-        groundLinks={[{ date: '2012-07-03', fromAirport: 'IAH', toAirport: 'MKE', mode: 'drive', price: 120 }]}
+        groundLinks={[{ date: '2019-06-01', fromAirport: 'COS', toAirport: 'DEN', mode: 'drive', price: 120 }]}
         onChange={onChange}
       />,
     )
@@ -106,7 +106,7 @@ describe('GroundLinksEditor', () => {
     const onChange = vi.fn()
     render(
       <GroundLinksEditor
-        groundLinks={[{ date: '2012-07-03', fromAirport: 'IAH', toAirport: 'MKE', mode: 'drive' }]}
+        groundLinks={[{ date: '2019-06-01', fromAirport: 'COS', toAirport: 'DEN', mode: 'drive' }]}
         onChange={onChange}
       />,
     )
@@ -127,9 +127,9 @@ describe('serializers (export source)', () => {
     const homes = serializeHomesCsv([{ start: '2008-08-18', airports: ['RDU'], label: 'College' }])
     expect(homes).toContain('start_date')
     expect(homes).toContain('RDU')
-    const links = serializeLinksCsv([{ date: '2012-07-03', fromAirport: 'IAH', toAirport: 'MKE', mode: 'drive' }])
+    const links = serializeLinksCsv([{ date: '2019-06-01', fromAirport: 'COS', toAirport: 'DEN', mode: 'drive' }])
     expect(links).toContain('from_airport')
-    expect(links).toContain('IAH')
+    expect(links).toContain('COS')
   })
 })
 
@@ -236,9 +236,9 @@ describe('AirportPicker — external value resync', () => {
     const input = screen.getByLabelText('home airport') as HTMLInputElement
     expect(input.value).toBe(airportLabel('DFW'))
     // External change (e.g. an import swapped the stored code) — the input must follow.
-    rerender(<AirportPicker value="MKE" onChange={() => {}} ariaLabel="home airport" />)
-    expect(input.value).toBe(airportLabel('MKE'))
-    expect(input.value).toMatch(/MKE/)
+    rerender(<AirportPicker value="DEN" onChange={() => {}} ariaLabel="home airport" />)
+    expect(input.value).toBe(airportLabel('DEN'))
+    expect(input.value).toMatch(/DEN/)
   })
 
   it('clears the input when `value` is reset to empty externally', () => {

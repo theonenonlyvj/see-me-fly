@@ -55,43 +55,43 @@ describe('airportsCard', () => {
   })
 
   // MUST-FIX 1: the "Home base" pill must be DATE-AWARE and per-era. Under a prior-year scope it
-  // names the home of THAT era (MKE), and a same-year flight through the most-recent home metro
+  // names the home of THAT era (DEN), and a same-year flight through the most-recent home metro
   // (DFW) stays a ranked bar — never double-counted as both the pill and a bar.
   describe('date-aware home pill (multi-era)', () => {
-    // Eras: MKE (2012-07-03) → DFW/DAL (2013-01-15). In 2012, MKE is home; DFW is NOT yet home.
+    // Eras: DEN (2019-06-01) → DFW/DAL (2021-02-04). In 2019, DEN is home; DFW is NOT yet home.
     const eraCsv = [REQUIRED_COLUMNS.join(','),
-      // 2012: a flight through MKE (the 2012 home) and a flight through DFW (a normal destination in 2012).
-      '2012-08-01,AAL,10,MKE,AUS,,,,,false,,2012-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
-      '2012-09-01,AAL,11,DFW,AUS,,,,,false,,2012-09-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+      // 2019: a flight through DEN (the 2019 home) and a flight through DFW (a normal destination in 2019).
+      '2019-08-01,AAL,10,DEN,AUS,,,,,false,,2019-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+      '2019-09-01,AAL,11,DFW,AUS,,,,,false,,2019-09-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
     ].join('\n')
     const eraSettings = {
       ...DEFAULT_SETTINGS,
       home: null,
       excludeHomeFromRankings: true,
       homeHistory: [
-        { start: '2012-07-03', airports: ['MKE'] },
-        { start: '2013-01-15', airports: ['DFW', 'DAL'] },
+        { start: '2019-06-01', airports: ['DEN'] },
+        { start: '2021-02-04', airports: ['DFW', 'DAL'] },
       ],
     }
 
-    it('under 2012 scope the pill names the 2012 home (Milwaukee), not the most-recent home (DFW)', () => {
-      const model = buildModel(eraCsv, eraSettings, '2026-06-25', 2012)
+    it('under 2019 scope the pill names the 2019 home (Denver), not the most-recent home (DFW)', () => {
+      const model = buildModel(eraCsv, eraSettings, '2026-06-25', 2019)
       render(<>{airportsCard.render({ model, settings: eraSettings })}</>)
       // The pill region carries the "Home base" eyebrow.
       const pillEyebrow = screen.getByText(/Home base/)
       const pill = pillEyebrow.closest('div')!
-      // The pill names Milwaukee (the 2012 era's home), with its code.
-      expect(pill.textContent).toMatch(/Milwaukee \(MKE\)/)
-      // It does NOT name Dallas (DFW only became home in 2013).
+      // The pill names Denver (the 2019 era's home), with its code.
+      expect(pill.textContent).toMatch(/Denver \(DEN\)/)
+      // It does NOT name Dallas (DFW only became home in 2021).
       expect(pill.textContent).not.toMatch(/Dallas/)
     })
 
     it('ALL-TIME collapses the multi-era home bases into ONE cohesive "Home bases" row (no swarm)', () => {
-      // All-time: a 2012 MKE flight (MKE home then) AND a 2014 DFW flight (DFW home by 2013) → two
+      // All-time: a 2019 DEN flight (DEN home then) AND a 2022 DFW flight (DFW home by 2021) → two
       // distinct excluded home bases that must collapse into ONE cohesive row, not two pills.
       const allTimeCsv = [REQUIRED_COLUMNS.join(','),
-        '2012-08-01,AAL,10,MKE,AUS,,,,,false,,2012-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
-        '2014-08-01,AAL,12,DFW,AUS,,,,,false,,2014-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+        '2019-08-01,AAL,10,DEN,AUS,,,,,false,,2019-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+        '2022-08-01,AAL,12,DFW,AUS,,,,,false,,2022-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
       ].join('\n')
       const model = buildModel(allTimeCsv, eraSettings, '2026-06-25')
       render(<>{airportsCard.render({ model, settings: eraSettings })}</>)
@@ -102,14 +102,14 @@ describe('airportsCard', () => {
       const row = eyebrows[0].closest('div')!.parentElement!
       // The current (most-recent) base leads; the earlier base is listed compactly in the same row.
       expect(row.textContent).toMatch(/Dallas/)     // current home leads
-      expect(row.textContent).toMatch(/Milwaukee/)  // earlier home listed
+      expect(row.textContent).toMatch(/Denver/)     // earlier home listed
       expect(row.textContent).toMatch(/earlier/)    // compact "+ earlier:" listing
     })
 
     it('clicking the cohesive "Home bases" chip EXPANDS to reveal EVERY home base (not a merged list)', () => {
       const allTimeCsv = [REQUIRED_COLUMNS.join(','),
-        '2012-08-01,AAL,10,MKE,AUS,,,,,false,,2012-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
-        '2014-08-01,AAL,12,DFW,AUS,,,,,false,,2014-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+        '2019-08-01,AAL,10,DEN,AUS,,,,,false,,2019-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+        '2022-08-01,AAL,12,DFW,AUS,,,,,false,,2022-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
       ].join('\n')
       const model = buildModel(allTimeCsv, eraSettings, '2026-06-25')
       const opened: { title: string; flights: typeof model.flown }[] = []
@@ -124,34 +124,34 @@ describe('airportsCard', () => {
       // Expanded: BOTH bases are now listed as their own rows (metro labels), with the current marked.
       // Dallas also appears in the chip header, so it shows more than once once expanded.
       expect(screen.getAllByText(/Dallas \(DFW\/DAL\)/).length).toBeGreaterThanOrEqual(2)
-      expect(screen.getByText(/Milwaukee \(MKE\)/)).toBeInTheDocument()
+      expect(screen.getByText(/Denver \(DEN\)/)).toBeInTheDocument()
       expect(screen.getByText(/^current$/i)).toBeInTheDocument()
 
       // Clicking ONE base's row opens THAT base's home flights only.
-      fireEvent.click(screen.getByText(/Milwaukee \(MKE\)/).closest('[role="button"]')!)
+      fireEvent.click(screen.getByText(/Denver \(DEN\)/).closest('[role="button"]')!)
       expect(opened).toHaveLength(1)
-      expect(opened[0].title).toMatch(/Milwaukee/)
-      expect(opened[0].flights.every((f) => f.fromCode === 'MKE' || f.toCode === 'MKE')).toBe(true)
+      expect(opened[0].title).toMatch(/Denver/)
+      expect(opened[0].flights.every((f) => f.fromCode === 'DEN' || f.toCode === 'DEN')).toBe(true)
 
       // A second header click collapses the list (the per-base rows disappear).
       fireEvent.click(header)
       expect(screen.queryByText(/^current$/i)).toBeNull()
     })
 
-    it('DFW stays a ranked bar in 2012 (not pulled into the pill) — no double-count', () => {
-      const model = buildModel(eraCsv, eraSettings, '2026-06-25', 2012)
-      // byAirport (ranked bars) must still contain the Dallas group for the 2012 DFW flight.
+    it('DFW stays a ranked bar in 2019 (not pulled into the pill) — no double-count', () => {
+      const model = buildModel(eraCsv, eraSettings, '2026-06-25', 2019)
+      // byAirport (ranked bars) must still contain the Dallas group for the 2019 DFW flight.
       const dallasBar = model.byAirport.find((a) => a.key === 'Dallas')
       expect(dallasBar?.count).toBe(1)
-      // MKE must be excluded from the ranked bars (it's the 2012 home).
-      expect(model.byAirport.find((a) => a.key === 'MKE')).toBeUndefined()
-      // Exactly one pill renders (the single excluded era-home), and it is Milwaukee with count 1.
+      // DEN must be excluded from the ranked bars (it's the 2019 home).
+      expect(model.byAirport.find((a) => a.key === 'DEN')).toBeUndefined()
+      // Exactly one pill renders (the single excluded era-home), and it is Denver with count 1.
       render(<>{airportsCard.render({ model, settings: eraSettings })}</>)
       const eyebrows = screen.getAllByText(/^Home base$/)
       expect(eyebrows).toHaveLength(1)
       const pill = eyebrows[0].closest('div')!
-      expect(pill.textContent).toMatch(/Milwaukee \(MKE\)/)
-      // pill count = 1 (the single 2012 MKE endpoint that byAirport dropped)
+      expect(pill.textContent).toMatch(/Denver \(DEN\)/)
+      // pill count = 1 (the single 2019 DEN endpoint that byAirport dropped)
       expect(pill.textContent).toMatch(/\b1\b/)
     })
   })

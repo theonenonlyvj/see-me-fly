@@ -46,9 +46,9 @@ export function byCountry(flights: EnrichedFlight[], settings: Settings): Countr
   const regionFlightIds = new Map<string, Map<string, Set<string>>>()
 
   // Optionally don't credit the HOME endpoint, so a flight counts only toward where you WENT
-  // (DFW→ORD credits Illinois, not Texas-via-Dallas). DATE-AWARE: an endpoint is "home" only on
-  // the dates it was actually home (`isHomeOn`), so a DFW→ORD flight credits Texas in the era ORD
-  // was home and Illinois in the era DFW was home. Gated on `hasHome` so an empty timeline behaves
+  // (DFW→SEA credits Washington, not Texas-via-Dallas). DATE-AWARE: an endpoint is "home" only on
+  // the dates it was actually home (`isHomeOn`), so a DFW→SEA flight credits Texas in the era SEA
+  // was home and Washington in the era DFW was home. Gated on `hasHome` so an empty timeline behaves
   // as before. Both endpoints use the flight's own `f.date` (flights are single-day).
   // PHASE-A SIMPLIFICATION: no connection detection — within a home era a co-home hub genuinely IS
   // home, so a same-era pass-through is excluded; connection-vs-arrival is left to trip
@@ -905,7 +905,7 @@ export function reconstructTrips(flights: EnrichedFlight[], settings: Settings):
 
   // Is movement `j` a connection redeparture of movement `j-1`? (prev landed exactly where this
   // departs, and re-departed within `layoverMaxHours`). A connection through a co-home hub must
-  // NOT read as a fresh "depart-from-home" (that would split a layover at e.g. ORD/MKE).
+  // NOT read as a fresh "depart-from-home" (that would split a layover at e.g. SEA/DEN).
   const isConnectionFrom = (prev: Movement | undefined, m: Movement): boolean => {
     if (!prev || prev.toCode !== m.fromCode) return false
     const a = arrInstant(prev)
