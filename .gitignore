@@ -5,3 +5,6 @@ dist/
 .superpowers/
 src/test/fixtures/real-sample.csv
 design-mockups/
+
+# OG image build scratch
+scripts/preprocess/.og-tmp/
