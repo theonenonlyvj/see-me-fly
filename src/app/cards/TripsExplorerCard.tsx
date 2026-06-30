@@ -4,8 +4,19 @@ import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
 import { reconstructTrips, tripsForYear, type Trip } from '../../engine/stats'
 import { hasHome } from '../../engine/home'
-import { estimatedBadge } from './TripsCard'
 import type { CardContext, CardDef } from './registry'
+
+/**
+ * The "estimated" badge for a trip whose start/end boundary was INFERRED (no recorded leg/link).
+ * The tooltip names the guessed boundary so the user knows which ground link would resolve it.
+ */
+export function estimatedBadge(t: Trip): { text: string; title: string } | undefined {
+  if (!t.estimated) return undefined
+  const title = t.estimated.boundary === 'end'
+    ? 'Return inferred — add a ground link to record how this trip ended'
+    : 'Start inferred — add a ground link to record how this trip began'
+  return { text: 'estimated', title }
+}
 
 const ACCENT = '#0891b2'
 const GRAD = 'linear-gradient(90deg, #0891b2, #67e8f9)'

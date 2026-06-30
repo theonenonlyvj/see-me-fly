@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { tripsCard } from '../../app/cards/TripsCard'
 import { tripsExplorerCard } from '../../app/cards/TripsExplorerCard'
 import { reconstructTrips } from '../../engine/stats'
 import { buildModel, DEFAULT_SETTINGS } from '../../engine'
@@ -37,13 +36,6 @@ describe('Trip.estimated surfacing (SHOULD-FIX 4)', () => {
     const model = buildModel(csv, settings, '2026-06-25')
     const trips = reconstructTrips(model.flown, settings)
     expect(trips.some((t) => t.estimated)).toBe(true)
-  })
-
-  it('TripsCard renders an "estimated" badge on inferred-boundary trips', () => {
-    const model = buildModel(csv, settings, '2026-06-25')
-    render(<>{tripsCard.render({ model, settings })}</>)
-    // a visible badge labelled estimated
-    expect(screen.getAllByText(/estimated/i).length).toBeGreaterThan(0)
   })
 
   it('TripsExplorerCard renders an "estimated" badge too', () => {

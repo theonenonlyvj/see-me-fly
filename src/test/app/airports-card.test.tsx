@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { airportsCard } from '../../app/cards/AirportsCard'
 import { buildModel, DEFAULT_SETTINGS } from '../../engine'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
@@ -104,6 +104,38 @@ describe('airportsCard', () => {
       expect(row.textContent).toMatch(/Dallas/)     // current home leads
       expect(row.textContent).toMatch(/Milwaukee/)  // earlier home listed
       expect(row.textContent).toMatch(/earlier/)    // compact "+ earlier:" listing
+    })
+
+    it('clicking the cohesive "Home bases" chip EXPANDS to reveal EVERY home base (not a merged list)', () => {
+      const allTimeCsv = [REQUIRED_COLUMNS.join(','),
+        '2012-08-01,AAL,10,MKE,AUS,,,,,false,,2012-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+        '2014-08-01,AAL,12,DFW,AUS,,,,,false,,2014-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+      ].join('\n')
+      const model = buildModel(allTimeCsv, eraSettings, '2026-06-25')
+      const opened: { title: string; flights: typeof model.flown }[] = []
+      const overlay = { openFlights: (title: string, flights: typeof model.flown) => opened.push({ title, flights }) } as never
+      render(<>{airportsCard.render({ model, settings: eraSettings, overlay })}</>)
+
+      // Collapsed: clicking the header should NOT open a merged flight list — it expands instead.
+      const header = screen.getByText(/^Home bases$/).closest('[role="button"]')! as HTMLElement
+      fireEvent.click(header)
+      expect(opened).toHaveLength(0)
+
+      // Expanded: BOTH bases are now listed as their own rows (metro labels), with the current marked.
+      // Dallas also appears in the chip header, so it shows more than once once expanded.
+      expect(screen.getAllByText(/Dallas \(DFW\/DAL\)/).length).toBeGreaterThanOrEqual(2)
+      expect(screen.getByText(/Milwaukee \(MKE\)/)).toBeInTheDocument()
+      expect(screen.getByText(/^current$/i)).toBeInTheDocument()
+
+      // Clicking ONE base's row opens THAT base's home flights only.
+      fireEvent.click(screen.getByText(/Milwaukee \(MKE\)/).closest('[role="button"]')!)
+      expect(opened).toHaveLength(1)
+      expect(opened[0].title).toMatch(/Milwaukee/)
+      expect(opened[0].flights.every((f) => f.fromCode === 'MKE' || f.toCode === 'MKE')).toBe(true)
+
+      // A second header click collapses the list (the per-base rows disappear).
+      fireEvent.click(header)
+      expect(screen.queryByText(/^current$/i)).toBeNull()
     })
 
     it('DFW stays a ranked bar in 2012 (not pulled into the pill) — no double-count', () => {

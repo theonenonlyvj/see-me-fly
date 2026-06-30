@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import CardFrame from '../components/CardFrame'
 import BarList from '../components/charts/BarList'
 import type { BarRow } from '../components/charts/BarList'
@@ -8,6 +9,7 @@ import { airportKey } from '../../engine/normalize'
 import { displayEndpoint } from '../lib/places'
 import { flightsByAirportKey } from '../lib/flight-filters'
 import type { EnrichedFlight, Settings } from '../../engine'
+import type { OverlayApi } from '../components/Overlay'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT      = '#12c08a'
@@ -44,6 +46,27 @@ function homeEraSummary(settings: Settings): string {
 }
 
 /**
+ * Per-base home era date-range(s), keyed by the base's metro `airportKey` (so two eras that merge to
+ * the same Dallas key combine their ranges). Each era runs from its `start` to the NEXT era's start
+ * (or "present" for the last). Returns e.g. "2008–2013 (College) · 2013–present". Empty when there
+ * is no timeline (legacy single `home`).
+ */
+function homeEraRanges(settings: Settings): Map<string, string> {
+  const eras = [...settings.homeHistory].sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0))
+  const byKey = new Map<string, string[]>()
+  eras.forEach((era, i) => {
+    const key = airportKey(era.airports[0], settings.groupAirports)
+    const end = i + 1 < eras.length ? eras[i + 1].start.slice(0, 4) : 'present'
+    const label = era.label ? ` (${era.label})` : ''
+    const range = `${era.start.slice(0, 4)}–${end}${label}`
+    const cur = byKey.get(key) ?? []
+    cur.push(range)
+    byKey.set(key, cur)
+  })
+  return new Map([...byKey].map(([k, ranges]) => [k, ranges.join(' · ')]))
+}
+
+/**
  * DATE-AWARE, per-base "Home base" pills. Mirrors `byAirport`'s exclusion EXACTLY: it walks the
  * same endpoint occurrences (`[fromCode]` for a local flight, else `[fromCode, toCode]`) and keeps
  * ONLY the ones `byAirport` dropped — i.e. those where `isHomeOn(code, f.date, settings)` is true —
@@ -77,6 +100,87 @@ function homePills(scoped: EnrichedFlight[], settings: Settings): HomePill[] {
   return [...byBase]
     .map(([key, v]) => ({ key, count: v.count, flights: v.flights }))
     .sort((a, b) => b.count - a.count)
+}
+
+/**
+ * The multi-base "Home bases" chip. Compact header is kept (user likes it): the current base
+ * prominent + a "+ earlier" line + the combined count. Clicking the header no longer collapses the
+ * data into one merged flight list — it TOGGLES an inline list of EVERY home base (most-recent-first),
+ * each row showing the base's metro label, its era date range(s), and its home-flight count. A row
+ * click opens THAT base's home flights; a second header click collapses the list.
+ */
+function HomeBasesChip({ pills, settings, overlay }: { pills: HomePill[]; settings: Settings; overlay?: OverlayApi }) {
+  const [open, setOpen] = useState(false)
+  const { currentKey } = homePrimaryKeys(settings)
+  const current = pills.find((p) => p.key === currentKey) ?? pills[0]
+  const earlier = pills.filter((p) => p !== current)
+  const totalCount = pills.reduce((s, p) => s + p.count, 0)
+  const ranges = homeEraRanges(settings)
+
+  // Most-recent-first: lead with the current base, then the rest in pill order (busiest first).
+  const ordered = [current, ...earlier]
+
+  return (
+    <div
+      style={{
+        background: ACCENT_SOFT, border: `1px solid color-mix(in srgb, ${ACCENT} 28%, transparent)`,
+        borderRadius: 12, padding: '10px 12px', marginBottom: 16,
+      }}>
+      <div
+        onClick={() => setOpen((v) => !v)}
+        role={overlay ? 'button' : undefined}
+        aria-expanded={open}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, cursor: overlay ? 'pointer' : undefined }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
+          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, marginRight: 8 }}>Home bases</span>
+          {flagFor(current.key)} {displayEndpoint(current.key)}
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{totalCount}</span>
+          <span style={{ fontSize: 11, color: ACCENT, transform: open ? 'rotate(180deg)' : undefined, transition: 'transform .15s ease' }}>▾</span>
+        </span>
+      </div>
+      {!open && earlier.length > 0 && (
+        <div style={{ fontSize: 11.5, color: 'var(--ink-2)', fontWeight: 600, display: 'flex', flexWrap: 'wrap', gap: '2px 6px', marginTop: 6 }}>
+          <span style={{ fontWeight: 700 }}>+ earlier:</span>
+          {earlier.map((p, i) => (
+            <span key={p.key}>{displayEndpoint(p.key)}{i < earlier.length - 1 ? ' ·' : ''}</span>
+          ))}
+        </div>
+      )}
+      {open && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {ordered.map((p) => {
+            const range = ranges.get(p.key)
+            return (
+              <div
+                key={p.key}
+                onClick={() => overlay?.openFlights(`Flights via ${displayEndpoint(p.key)}`, p.flights)}
+                role={overlay ? 'button' : undefined}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                  background: 'var(--surface)', border: `1px solid color-mix(in srgb, ${ACCENT} 20%, transparent)`,
+                  borderRadius: 10, padding: '8px 10px', cursor: overlay ? 'pointer' : undefined,
+                }}>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink)' }}>
+                    {flagFor(p.key)} {displayEndpoint(p.key)}
+                    {p.key === current.key && (
+                      <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: ACCENT, marginLeft: 6 }}>current</span>
+                    )}
+                  </span>
+                  {range && (
+                    <span style={{ display: 'block', fontSize: 11, color: 'var(--ink-2)', fontWeight: 500, marginTop: 1 }}>{range}</span>
+                  )}
+                </span>
+                <span style={{ fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>{p.count}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export const airportsCard: CardDef = {
@@ -124,39 +228,7 @@ export const airportsCard: CardDef = {
             </div>
           )
         })()}
-        {pills.length > 1 && (() => {
-          // pills[0] is the busiest base; `currentKey` is the most-recent home so it leads as "current".
-          const currentKey = homePrimaryKeys(settings).currentKey
-          const current = pills.find((p) => p.key === currentKey) ?? pills[0]
-          const earlier = pills.filter((p) => p !== current)
-          const totalCount = pills.reduce((s, p) => s + p.count, 0)
-          const allFlights = [...new Set(pills.flatMap((p) => p.flights))]
-          return (
-            <div
-              onClick={() => overlay?.openFlights('Flights via your home bases', allFlights)}
-              role={overlay ? 'button' : undefined}
-              style={{
-                background: ACCENT_SOFT, border: `1px solid color-mix(in srgb, ${ACCENT} 28%, transparent)`,
-                borderRadius: 12, padding: '10px 12px', marginBottom: 16, cursor: overlay ? 'pointer' : undefined,
-              }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ink)' }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: ACCENT, marginRight: 8 }}>Home bases</span>
-                  {flagFor(current.key)} {displayEndpoint(current.key)}
-                </span>
-                <span style={{ fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{totalCount}</span>
-              </div>
-              {earlier.length > 0 && (
-                <div style={{ fontSize: 11.5, color: 'var(--ink-2)', fontWeight: 600, display: 'flex', flexWrap: 'wrap', gap: '2px 6px' }}>
-                  <span style={{ fontWeight: 700 }}>+ earlier:</span>
-                  {earlier.map((p, i) => (
-                    <span key={p.key}>{displayEndpoint(p.key)}{i < earlier.length - 1 ? ' ·' : ''}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        })()}
+        {pills.length > 1 && <HomeBasesChip pills={pills} settings={settings} overlay={overlay} />}
         <BarList rows={rows} max={5} seeAllTitle="Most-visited airports" formatValue={(n) => `${n}`} accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT}
           onRowClick={(row) => row.id && overlay?.openFlights(`Flights via ${row.label}`, flightsByAirportKey(model!.scoped, row.id, settings))} />
         {excludeOn && (

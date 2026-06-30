@@ -49,7 +49,7 @@ describe('geoExtremesCard', () => {
     expect(screen.getByText(/southernmost/i)).toBeInTheDocument()
   })
 
-  it('clicking a farthest-from-home row opens that base→farthest flight, not every flight via the airport', () => {
+  it('clicking a farthest-from-home row opens the whole TRIP that reached the farthest airport', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
     const opened: { title: string; flights: typeof model.flown }[] = []
     const overlay = {
@@ -63,10 +63,30 @@ describe('geoExtremesCard', () => {
     expect(baseRow.textContent).toMatch(/SYD/)
     baseRow.click()
     expect(opened).toHaveLength(1)
-    // Opens exactly the one DFW→SYD flight (not the LHR/AUS flights that also touch DFW).
-    expect(opened[0].flights).toHaveLength(1)
-    expect(opened[0].flights[0].toCode).toBe('SYD')
-    expect(opened[0].title).toMatch(/SYD/)
+    // The single DFW→SYD flight is its own (estimated-end) trip; opening the trip shows that leg.
+    expect(opened[0].flights.some((f) => f.toCode === 'SYD')).toBe(true)
+    // Titled "Trip to <farthest> · <month year>".
+    expect(opened[0].title).toMatch(/Trip to SYD/)
+    expect(opened[0].title).toMatch(/2018/)
+  })
+
+  it('opens the FULL multi-leg trip (not just the record leg) when the farthest is mid-trip', () => {
+    // A real round trip: DFW→SYD→DFW. SYD is the farthest; clicking the row should open BOTH legs.
+    const roundCsv = [
+      REQUIRED_COLUMNS.join(','),
+      makeRow('2019-05-01', 'DFW', 'SYD'),
+      makeRow('2019-05-10', 'SYD', 'DFW'),
+    ].join('\n')
+    const model = buildModel(roundCsv, DEFAULT_SETTINGS, '2026-06-25')
+    const opened: { title: string; flights: typeof model.flown }[] = []
+    const overlay = { openFlights: (title: string, flights: typeof model.flown) => opened.push({ title, flights }) } as never
+    render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS, overlay })}</>)
+    const baseRow = screen.getByText(/2 flights/i).closest('[role="button"]')! as HTMLElement
+    baseRow.click()
+    expect(opened).toHaveLength(1)
+    // The whole trip = both legs (the outbound record leg AND the return), not just DFW→SYD.
+    expect(opened[0].flights).toHaveLength(2)
+    expect(opened[0].title).toMatch(/Trip to SYD/)
   })
 
   it('renders the global block but NO per-base section when there is no home', () => {

@@ -1,6 +1,6 @@
 import CardFrame from '../components/CardFrame'
 import { fmtMiles } from '../lib/format'
-import { geoExtremes } from '../../engine/stats'
+import { geoExtremes, reconstructTrips, type Trip } from '../../engine/stats'
 import { airportKey } from '../../engine/normalize'
 import { flightsByAirportIdent } from '../lib/flight-filters'
 import { displayEndpoint } from '../lib/places'
@@ -12,6 +12,12 @@ import type { Model } from '../state/useModel'
 const ACCENT      = '#6a3cff'
 const ACCENT_GRAD = 'linear-gradient(90deg, #6a3cff, #9a6bff)'
 const ACCENT_SOFT = '#ebe4ff'
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+function tripWhen(t: Trip): string {
+  const d = t.departDate
+  return `${MONTHS[Number(d.slice(5, 7)) - 1] ?? ''} ${d.slice(0, 4)}`.trim()
+}
 
 function coords(ap: Airport): string {
   const lat = `${Math.abs(ap.lat).toFixed(2)}°${ap.lat >= 0 ? 'N' : 'S'}`
@@ -52,6 +58,11 @@ export const geoExtremesCard: CardDef = {
   render: (ctx: CardContext) => {
     // Always operate over all-time flights; the year scope is inert for this card.
     const result = geoExtremes(ctx.model!.flown, ctx.settings)
+    // Reconstruct trips once so a "farthest from home" row can open the WHOLE trip that reached
+    // that airport, not just the record-setting leg. Map each flight's rawIndex → its trip.
+    const trips = reconstructTrips(ctx.model!.flown, ctx.settings)
+    const tripByRawIndex = new Map<number, Trip>()
+    for (const t of trips) for (const f of t.flights) tripByRawIndex.set(f.rawIndex, t)
 
     return (
       <CardFrame
@@ -84,13 +95,19 @@ export const geoExtremesCard: CardDef = {
                   {result.byBase.map((base) => {
                     const ap = base.farthest.airport
                     const baseLabel = displayEndpoint(airportKey(base.primaryCode, ctx.settings.groupAirports))
-                    // Open exactly the base's flight(s) that reached this farthest airport (filtered
-                    // by both endpoint AND era-home in `geoExtremes`), so the row opens the trip that
-                    // made the record — not every flight ever touching the airport.
-                    const open = () => ctx.overlay?.openFlights(
-                      `${baseLabel} → ${ap.iata || ap.ident}`,
-                      base.farthestFlights,
-                    )
+                    const dest = ap.iata || ap.ident
+                    // `base.farthestFlights` are the record-setting leg(s) to the farthest airport. Open
+                    // the WHOLE trip that contains one of them (match by rawIndex) so the overlay shows
+                    // the full journey, not just the leg. Fall back to the bare leg(s) if no trip is
+                    // found (e.g. no home set ⇒ no reconstructed trips).
+                    const trip = base.farthestFlights.map((f) => tripByRawIndex.get(f.rawIndex)).find(Boolean)
+                    const open = () => {
+                      if (trip) {
+                        ctx.overlay?.openFlights(`Trip to ${dest} · ${tripWhen(trip)}`, trip.flights)
+                      } else {
+                        ctx.overlay?.openFlights(`${baseLabel} → ${dest}`, base.farthestFlights)
+                      }
+                    }
                     return (
                       <div
                         key={base.primaryCode}
