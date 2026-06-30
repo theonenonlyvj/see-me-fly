@@ -13,7 +13,7 @@
 - Engine never reads the clock; `today` is injected. Determinism preserved.
 - `tsc --noEmit` must stay clean; full `npm test` green before each commit.
 - Settings persisted in localStorage; new fields must default in for old stored blobs (the `{...DEFAULT_SETTINGS, ...stored}` spread in `settings-store.ts` already does this — keep SCHEMA_VERSION=1, additive only).
-- Home default = `"DFW"` (Vijay is Dallas-anchored). Layover threshold default = `5` hours.
+- Home default = `"DFW"` (a Dallas-anchored default). Layover threshold default = `5` hours.
 
 ---
 

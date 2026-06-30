@@ -1,7 +1,7 @@
 # Flight Visualizer — Design Spec
 
 **Date:** 2026-06-25
-**Owner:** Vijay
+**Owner:** the user
 **Status:** Approved design, hardened by adversarial review (v2), pre-implementation
 
 > v2 incorporates a 6-lens adversarial completeness review (58 raw findings → ~25 patches) run against the real sample CSV. All measured facts below are from that export.

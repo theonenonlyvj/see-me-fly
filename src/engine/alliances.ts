@@ -81,7 +81,7 @@ export function airlinesUnalignedOther(flights: EnrichedFlight[], excludeNames: 
 
 /**
  * Alliance breakdown that PROMOTES any big unaligned carrier to its own slice instead of burying it
- * in "Unaligned" (Southwest is ~a third of Vijay's flying). The 3 alliances stay aggregated; an
+ * in "Unaligned" (e.g. Southwest can be ~a third of a user's flying). The 3 alliances stay aggregated; an
  * unaligned airline (by its effective/successor name, so AirTran rolls into Southwest) gets its own
  * group when it's >= 20% of the unaligned total (and >= 5 flights); the rest become "Other (unaligned)".
  * Returned sorted by count desc.

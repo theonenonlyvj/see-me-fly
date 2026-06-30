@@ -188,8 +188,8 @@ describe('see-me-fly links CSV', () => {
         mode: 'bus',
         fromPlace: 'Cambridge, MA',
         toPlace: 'Washington, DC',
-        operator: 'RedCoach, Inc.',
-        bookingRef: '080162158958',
+        operator: 'Coach Lines, Inc.',
+        bookingRef: '000123456789',
         klass: 'business',
         price: 49.5,
         currency: 'USD',
@@ -202,9 +202,9 @@ describe('see-me-fly links CSV', () => {
     expect(back).toHaveLength(1)
     const l = back[0]
     expect(l.fromPlace).toBe('Cambridge, MA') // comma preserved, not split
-    expect(l.operator).toBe('RedCoach, Inc.')
+    expect(l.operator).toBe('Coach Lines, Inc.')
     expect(l.note).toBe('He said "great seats"') // quotes preserved
-    expect(l.bookingRef).toBe('080162158958') // string; no leading-zero loss
+    expect(l.bookingRef).toBe('000123456789') // string; no leading-zero loss
     expect(typeof l.bookingRef).toBe('string')
     expect(l.klass).toBe('business') // mapped back from `class` column
     expect(l.price).toBe(49.5)

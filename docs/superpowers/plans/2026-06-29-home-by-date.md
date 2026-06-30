@@ -98,7 +98,7 @@ function sanitizeHomeHistory(eras: HomeEra[]): HomeEra[]  // sort asc by start, 
 ```
 
 - [ ] **Step 1 — failing tests:**
-  - **RFC-4180 round-trip:** a link with `fromPlace:'Cambridge, MA'`, `operator:'RedCoach, Inc.'`, `bookingRef:'080162158958'` (leading-zero-safe) serializes then parses back identical (no comma corruption, ref stays a string).
+  - **RFC-4180 round-trip:** a link with `fromPlace:'Cambridge, MA'`, `operator:'Coach Lines, Inc.'`, `bookingRef:'000123456789'` (leading-zero-safe) serializes then parses back identical (no comma corruption, ref stays a string).
   - `serializeHomesCsv` emits header `schema_version,start_date,home_airports,label` and slash-joins airports; `parseHomesCsv` reads them back; primary = first airport.
   - **malformed:** out-of-order / duplicate-start / zero-length eras → `sanitizeHomeHistory` returns sorted, de-duped (last-wins), zero-length-dropped; `parseHomesCsv` surfaces an `errors[]` entry but never throws.
   - `parseLinksCsv` with a blank `currency` but a `price` keeps `price` set and leaves currency undefined; `price:'1,200'` parses to `1200` after unquoting.
@@ -122,8 +122,8 @@ function buildMovements(flights: EnrichedFlight[], links: GroundLink[]): Movemen
 ```
 
 - [ ] **Step 1 — failing tests** (build `EnrichedFlight`-lite fixtures with `fromCode/toCode/date/rawIndex`):
-  - **relocation:** RDU-home until move; flights `MCO→IAD→…→IAH` (no home endpoint) + a link `IAH→MKE` dated after, home becomes MKE → exactly ONE trip spanning first leg → link arrival; `estimated` undefined; ORD same-day connection does NOT split it.
-  - **connection-not-close:** during MKE era, `…→ORD→IAH` same-day (≤`layoverMaxHours`) does not close at ORD.
+  - **relocation:** CMH-home until move; flights `CMH→ORD→…→PDX` (no home endpoint) + a link `PDX→SEA` dated after, home becomes SEA → exactly ONE trip spanning first leg → link arrival; `estimated` undefined; ORD same-day connection does NOT split it.
+  - **connection-not-close:** during the SEA era, `…→PDX→SEA-area` same-day (≤`layoverMaxHours`) does not close at the co-home hub.
   - **link-to-non-home bridges:** a link whose `toAirport` isn't home extends the open trip, doesn't close.
   - **inferred end:** leave home, no return, no link, then next trip departs home → prior trip closes at its last leg's date with `estimated:{boundary:'end'}`.
   - **inferred start:** lone `SFO→DFW` (DFW home) with no prior departure → 0-night trip, `estimated:{boundary:'start'}`.
@@ -201,9 +201,9 @@ interface GeoExtremes {
 
 ---
 
-## Task 10: Draft Vijay's real data (separate from the build)
+## Task 10: Draft the user's real data (separate from the build)
 
-**Not repo code.** After the feature works, Claude drafts `see-me-fly_homes.csv` + `see-me-fly_links.csv` from Vijay's history (the lifecoach ground-links record + an anchor-pass over his flight CSV) for him to import and correct. These files are his data — delivered to him, never committed to the app repo.
+**Not repo code.** After the feature works, a user's `see-me-fly_homes.csv` + `see-me-fly_links.csv` are drafted from their own history (any existing ground-links record + an anchor-pass over their flight CSV) for them to import and correct. These files are user data — delivered to the user, never committed to the app repo.
 
 ---
 

@@ -19,7 +19,7 @@ const S = (over: Partial<Settings> = {}): Settings => ({
   mergeDefunctAirlines: false, duration: C, ...over,
 })
 
-// Vijay's real-ish eras: RDU college → MKE move → DFW back.
+// Sample multi-era timeline: a college home → a relocation → a later move.
 const ERAS: HomeEra[] = [
   { start: '2008-08-18', airports: ['RDU'] },
   { start: '2012-07-03', airports: ['MKE', 'ORD', 'MDW'] },
