@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { GroundLink } from '../../../engine'
 import AirportPicker from './AirportPicker'
+import OpenMojiIcon from '../OpenMojiIcon'
 
 /**
  * Editor for user-entered significant ground segments (`Settings.groundLinks`). CORE per
@@ -30,6 +31,10 @@ const smallBtn = {
 } as const
 
 const MODES = ['drive', 'bus', 'train', 'ferry', 'other'] as const
+
+const MODE_ICON: Record<string, string> = {
+  drive: '🚗', bus: '🚌', train: '🚆', ferry: '⛴️', other: '🧭',
+}
 
 // Optional fields rendered under "more", with a label and input type.
 const OPTIONAL_FIELDS: ReadonlyArray<{ key: keyof GroundLink; label: string; type?: 'date' | 'time' | 'text' }> = [
@@ -128,14 +133,17 @@ export default function GroundLinksEditor({
                 width={130}
                 onChange={(code) => patch(i, { toAirport: code })}
               />
-              <select
-                aria-label={`link ${i + 1} mode`}
-                value={link.mode}
-                onChange={(e) => patch(i, { mode: e.target.value })}
-                style={fieldStyle}
-              >
-                {MODES.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <OpenMojiIcon emoji={MODE_ICON[link.mode] ?? '🧭'} size={18} />
+                <select
+                  aria-label={`link ${i + 1} mode`}
+                  value={link.mode}
+                  onChange={(e) => patch(i, { mode: e.target.value })}
+                  style={fieldStyle}
+                >
+                  {MODES.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </span>
               <button type="button" onClick={() => toggleMore(i)} style={smallBtn}>
                 {isOpen ? 'Less' : 'More'}
               </button>

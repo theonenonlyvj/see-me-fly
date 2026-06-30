@@ -16,3 +16,7 @@ body {
 button { font: inherit; color: inherit; cursor: pointer; }
 a { color: var(--coral); }
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+/* OpenMoji color icons: the inlined <svg> fills its sized wrapper box. */
+.openmoji-icon { line-height: 0; }
+.openmoji-icon svg { width: 100%; height: 100%; display: block; }

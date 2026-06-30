@@ -300,6 +300,10 @@ export default function SettingsPanel({ settings, update, reset, onReplace, flow
         <button onClick={reset} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: 'var(--radius-sm)', padding: '4px 10px' }}>Reset settings</button>
         <button onClick={onReplace} style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-dim)', borderRadius: 'var(--radius-sm)', padding: '4px 10px' }}>Load a different CSV</button>
       </div>
+
+      <div style={{ color: 'var(--text-dim)', fontSize: 11, marginTop: 4 }}>
+        Icons by <a href="https://openmoji.org" target="_blank" rel="noreferrer noopener">OpenMoji</a> (CC BY-SA 4.0)
+      </div>
     </div>
   )
 }

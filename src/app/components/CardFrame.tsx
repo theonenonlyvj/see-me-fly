@@ -1,4 +1,5 @@
 import type { ReactNode, CSSProperties } from 'react'
+import OpenMojiIcon from './OpenMojiIcon'
 
 const cardStyle: CSSProperties = {
   position: 'relative',
@@ -82,7 +83,7 @@ export default function CardFrame({
             background: soft,
             border: `1px solid color-mix(in srgb, ${acc} 30%, transparent)`,
             boxShadow: `0 8px 18px -8px color-mix(in srgb, ${acc} 70%, transparent)`,
-          }}>{icon}</div>
+          }}><OpenMojiIcon emoji={icon} size={26} /></div>
         )}
         <div>
           {eyebrow && (
