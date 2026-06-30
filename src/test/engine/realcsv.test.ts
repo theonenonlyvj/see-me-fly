@@ -12,9 +12,13 @@ describe.skipIf(!existsSync(path))('real Flighty export smoke test', () => {
   const csv = readFileSync(path, 'utf8')
   const m = buildModel(csv, DEFAULT_SETTINGS, TODAY)
 
-  it('parses the export rows with a valid header', () => {
+  it('parses essentially every export row (no large parse drop)', () => {
     expect(m.headerOk).toBe(true)
-    expect(m.all.length).toBeGreaterThan(0)
+    // Strong-but-private guardrail: derive the expected count from the file itself rather than
+    // hard-coding the owner's flight total. Catches a parser regression that silently drops rows.
+    const dataRows = csv.trim().split(/\r?\n/).length - 1 // minus header
+    expect(dataRows).toBeGreaterThan(100)
+    expect(m.all.length).toBeGreaterThan(dataRows * 0.95)
   })
   it('resolves essentially every airport (near-zero unknowns; RPJ resolves)', () => {
     const unknownCodes = new Set(m.unresolved.flatMap((f) => [f.fromCode, f.toCode]).filter((c) => {
