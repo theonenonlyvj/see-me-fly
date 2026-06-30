@@ -83,7 +83,7 @@ export default function CardFrame({
             background: soft,
             border: `1px solid color-mix(in srgb, ${acc} 30%, transparent)`,
             boxShadow: `0 8px 18px -8px color-mix(in srgb, ${acc} 70%, transparent)`,
-          }}><OpenMojiIcon emoji={icon} size={26} /></div>
+          }}><OpenMojiIcon emoji={icon} size={34} /></div>
         )}
         <div>
           {eyebrow && (
