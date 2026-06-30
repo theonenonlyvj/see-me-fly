@@ -21,7 +21,7 @@ const S = (over: Partial<Settings> = {}): Settings => ({
 
 // Sample multi-era timeline: a college home → a relocation → a later move.
 const ERAS: HomeEra[] = [
-  { start: '2008-08-18', airports: ['RDU'] },
+  { start: '2008-08-18', airports: ['CMH'] },
   { start: '2019-06-01', airports: ['DEN', 'SEA', 'PAE'] },
   { start: '2021-02-04', airports: ['DFW', 'DAL'] },
 ]
@@ -99,23 +99,23 @@ describe('byAirport — date-aware home exclusion', () => {
   const find = (res: { key: string; count: number }[], key: string) =>
     res.find((r) => r.key === key)?.count ?? 0
 
-  it('excludes RDU only for college-era flights; counts it in later years', () => {
+  it('excludes CMH only for college-era flights; counts it in later years', () => {
     const s = S({ homeHistory: ERAS })
     const res = byAirport([
-      route('RDU', 'DFW', '2010-03-01'), // RDU home era → RDU dropped
-      route('RDU', 'DFW', '2022-03-01'), // RDU just a visited airport → counts
+      route('CMH', 'DFW', '2010-03-01'), // CMH home era → CMH dropped
+      route('CMH', 'DFW', '2022-03-01'), // CMH just a visited airport → counts
     ], s)
-    expect(find(res, 'RDU')).toBe(1) // only the 2022 flight credits RDU
+    expect(find(res, 'CMH')).toBe(1) // only the 2022 flight credits CMH
     expect(find(res, 'DFW')).toBe(1) // 2010 DFW (not home then) + 2022 DFW (home → dropped) = 1
   })
 
-  it('with exclusion off, RDU counts in every year', () => {
+  it('with exclusion off, CMH counts in every year', () => {
     const s = S({ homeHistory: ERAS, excludeHomeFromRankings: false })
     const res = byAirport([
-      route('RDU', 'DFW', '2010-03-01'),
-      route('RDU', 'DFW', '2022-03-01'),
+      route('CMH', 'DFW', '2010-03-01'),
+      route('CMH', 'DFW', '2022-03-01'),
     ], s)
-    expect(find(res, 'RDU')).toBe(2)
+    expect(find(res, 'CMH')).toBe(2)
   })
 
   it('single-home fallback excludes the legacy home all-time', () => {

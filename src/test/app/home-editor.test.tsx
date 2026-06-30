@@ -36,7 +36,7 @@ describe('HomeHistoryEditor', () => {
       <HomeHistoryEditor
         homeHistory={[
           { start: '2013-01-15', airports: ['DFW'] },
-          { start: '2008-08-18', airports: ['RDU'] },
+          { start: '2008-08-18', airports: ['CMH'] },
         ]}
         groupAirports={true}
         onChange={onChange}
@@ -75,7 +75,7 @@ describe('HomeHistoryEditor', () => {
     render(
       <HomeHistoryEditor
         homeHistory={[
-          { start: '2008-08-18', airports: ['RDU'] },
+          { start: '2008-08-18', airports: ['CMH'] },
           { start: '2013-01-15', airports: ['DFW'] },
         ]}
         groupAirports={true}
@@ -124,9 +124,9 @@ describe('GroundLinksEditor', () => {
 
 describe('serializers (export source)', () => {
   it('serializeHomesCsv / serializeLinksCsv produce non-empty CSV text', () => {
-    const homes = serializeHomesCsv([{ start: '2008-08-18', airports: ['RDU'], label: 'College' }])
+    const homes = serializeHomesCsv([{ start: '2008-08-18', airports: ['CMH'], label: 'College' }])
     expect(homes).toContain('start_date')
-    expect(homes).toContain('RDU')
+    expect(homes).toContain('CMH')
     const links = serializeLinksCsv([{ date: '2019-06-01', fromAirport: 'COS', toAirport: 'DEN', mode: 'drive' }])
     expect(links).toContain('from_airport')
     expect(links).toContain('COS')
@@ -166,7 +166,7 @@ describe('SettingsPanel — import/export wiring', () => {
   })
 
   it('"Download my see-me-fly data" triggers a download (createObjectURL called)', () => {
-    renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['RDU'] }] })
+    renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['CMH'] }] })
     const btn = screen.getByRole('button', { name: /download my see-me-fly data/i })
     fireEvent.click(btn)
     expect(URL.createObjectURL).toHaveBeenCalled()
@@ -177,7 +177,7 @@ describe('SettingsPanel — import/export wiring', () => {
     // expand the optional home-timeline section to reach the import controls
     fireEvent.click(screen.getByRole('button', { name: /home timeline & ground links/i }))
     const csv = serializeHomesCsv([
-      { start: '2008-08-18', airports: ['RDU'], label: 'College' },
+      { start: '2008-08-18', airports: ['CMH'], label: 'College' },
       { start: '2013-01-15', airports: ['DFW', 'DAL'] },
     ])
     const file = new File([csv], 'see-me-fly_homes.csv', { type: 'text/csv' })
@@ -199,7 +199,7 @@ describe('SettingsPanel — import/export wiring', () => {
   // MUST-FIX 2: a malformed / wrong-shape import must NEVER wipe the existing timeline.
   it('importing a flight-style CSV into the homes slot leaves homeHistory UNCHANGED and shows an error', async () => {
     // homeHistory non-empty → the timeline section (with the import controls) starts expanded.
-    const update = renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['RDU'] }] })
+    const update = renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['CMH'] }] })
     // A Flighty-style flight CSV (no start_date / home_airports columns).
     const badCsv = ['Date,Airline,From,To', '2018-01-01,AAL,DFW,AUS'].join('\n')
     const file = new File([badCsv], 'flights.csv', { type: 'text/csv' })
@@ -215,8 +215,8 @@ describe('SettingsPanel — import/export wiring', () => {
   })
 
   it('refuses a homes CSV with a newer schema_version (no wipe, error shown)', async () => {
-    const update = renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['RDU'] }] })
-    const text = ['schema_version,start_date,home_airports,label', '2,2008-08-18,RDU,College'].join('\n')
+    const update = renderPanel({ homeHistory: [{ start: '2008-08-18', airports: ['CMH'] }] })
+    const text = ['schema_version,start_date,home_airports,label', '2,2008-08-18,CMH,College'].join('\n')
     const file = new File([text], 'homes.csv', { type: 'text/csv' })
     const input = document.querySelector('input[data-testid="import-homes"]') as HTMLInputElement
     Object.defineProperty(input, 'files', { value: [file] })

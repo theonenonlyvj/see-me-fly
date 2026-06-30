@@ -18,10 +18,10 @@ function makeRow(date: string, from: string, to: string): string {
   return fields.join(',')
 }
 
-// Touch RDU, DFW, AUS — RDU & DFW are both home (different eras).
+// Touch CMH, DFW, AUS — CMH & DFW are both home (different eras).
 const csv = [
   REQUIRED_COLUMNS.join(','),
-  makeRow('2010-03-10', 'RDU', 'AUS'),
+  makeRow('2010-03-10', 'CMH', 'AUS'),
   makeRow('2020-06-15', 'DFW', 'AUS'),
   makeRow('2020-09-20', 'AUS', 'DFW'),
 ].join('\n')
@@ -36,17 +36,17 @@ function homeDots(container: HTMLElement): Element[] {
 describe('RouteMapV2 home anchor (date-less union)', () => {
   it('rings EVERY home-key member, not just one', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    const homeKeys = new Set(['RDU', 'DFW'])
+    const homeKeys = new Set(['CMH', 'DFW'])
     const { container } = render(
       <RouteMapV2 flights={model.scoped} accent="#1aa9ff" homeKeys={homeKeys} primaryKey="DFW" />,
     )
-    // both RDU and DFW dots should be ringed → 2 home dots
+    // both CMH and DFW dots should be ringed → 2 home dots
     expect(homeDots(container).length).toBe(2)
   })
 
   it('emphasizes the primaryKey dot above the others', () => {
     const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    const homeKeys = new Set(['RDU', 'DFW'])
+    const homeKeys = new Set(['CMH', 'DFW'])
     const { container } = render(
       <RouteMapV2 flights={model.scoped} accent="#1aa9ff" homeKeys={homeKeys} primaryKey="DFW" />,
     )

@@ -40,12 +40,12 @@ describe('domestic tier cards', () => {
   })
 
   it('multiple distinct home-state eras use the multi-era title', () => {
-    // RDU (North Carolina) then DFW (Texas) — two distinct home regions.
+    // CMH (North Carolina) then DFW (Texas) — two distinct home regions.
     const s = {
       ...DEFAULT_SETTINGS,
       home: null,
       homeHistory: [
-        { start: '2008-08-18', airports: ['RDU'] },
+        { start: '2008-08-18', airports: ['CMH'] },
         { start: '2013-01-15', airports: ['DFW', 'DAL'] },
       ],
     }

@@ -41,9 +41,9 @@ const S = (over: Partial<Settings> = {}): Settings => ({
   ...over,
 })
 
-// RDU-college → DEN-move → DFW-back, ascending eras
+// CMH-college → DEN-move → DFW-back, ascending eras
 const ERAS: HomeEra[] = [
-  { start: '2008-08-18', airports: ['RDU'] },
+  { start: '2008-08-18', airports: ['CMH'] },
   { start: '2019-06-01', airports: ['DEN', 'SEA', 'PAE'] },
   { start: '2021-02-04', airports: ['DFW', 'DAL'] },
 ]
@@ -73,15 +73,15 @@ describe('buildMovements', () => {
 })
 
 describe('reconstructTrips — all-time home-by-date', () => {
-  it('relocation: RDU→…→COS then drive COS→DEN closes as ONE spanning trip; SEA connection does not split', () => {
+  it('relocation: CMH→…→COS then drive COS→DEN closes as ONE spanning trip; SEA connection does not split', () => {
     seq = 0
     const home = S({ home: null, homeHistory: ERAS })
-    // Leave RDU-era home; long Europe trip, then SEA same-day connection to COS, then drive to DEN (now home).
+    // Leave CMH-era home; long Europe trip, then SEA same-day connection to COS, then drive to DEN (now home).
     const flights = [
       FL({ date: '2019-05-26', fromCode: 'MCO', toCode: 'IAD' }),
       FL({ date: '2019-05-26', fromCode: 'IAD', toCode: 'FRA', depUtcMs: ms('2019-05-26', 14), arrUtcMs: ms('2019-05-27', 4) }),
       FL({ date: '2019-06-22', fromCode: 'MUC', toCode: 'IAD', depUtcMs: ms('2019-06-22', 6), arrUtcMs: ms('2019-06-22', 12) }),
-      // SEA is a co-home hub for the DEN era — but on 2019-06-22 home is still RDU; regardless this is a connection.
+      // SEA is a co-home hub for the DEN era — but on 2019-06-22 home is still CMH; regardless this is a connection.
       FL({ date: '2019-06-22', fromCode: 'IAD', toCode: 'SEA', depUtcMs: ms('2019-06-22', 13), arrUtcMs: ms('2019-06-22', 15) }),
       FL({ date: '2019-06-22', fromCode: 'SEA', toCode: 'COS', depUtcMs: ms('2019-06-22', 16), arrUtcMs: ms('2019-06-22', 18) }),
     ]

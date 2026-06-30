@@ -12,14 +12,14 @@ import type { HomeEra, GroundLink } from '../../engine/types'
 describe('see-me-fly homes CSV', () => {
   it('serializes the branded header, schema_version, slash-joined airports (primary first)', () => {
     const eras: HomeEra[] = [
-      { start: '2008-08-18', airports: ['RDU'], label: 'College — Durham' },
+      { start: '2008-08-18', airports: ['CMH'], label: 'College' },
       { start: '2019-06-01', airports: ['DEN', 'SEA', 'PAE'], label: 'Moved to Denver' },
       { start: '2021-02-04', airports: ['DFW', 'DAL'] },
     ]
     const csv = serializeHomesCsv(eras)
     const lines = csv.trim().split(/\r?\n/)
     expect(lines[0]).toBe('schema_version,start_date,home_airports,label')
-    expect(lines[1]).toBe(`${SMF_SCHEMA_VERSION},2008-08-18,RDU,College — Durham`)
+    expect(lines[1]).toBe(`${SMF_SCHEMA_VERSION},2008-08-18,CMH,College`)
     expect(lines[2]).toBe(`${SMF_SCHEMA_VERSION},2019-06-01,DEN/SEA/PAE,Moved to Denver`)
     // No label -> empty trailing field.
     expect(lines[3]).toBe(`${SMF_SCHEMA_VERSION},2021-02-04,DFW/DAL,`)
@@ -27,9 +27,9 @@ describe('see-me-fly homes CSV', () => {
 
   it('round-trips homes: parse(serialize(eras)) preserves order, airports, primary, label', () => {
     const eras: HomeEra[] = [
-      { start: '2008-08-18', airports: ['RDU'], label: 'College — Durham' },
+      { start: '2008-08-18', airports: ['CMH'], label: 'College' },
       { start: '2019-06-01', airports: ['DEN', 'SEA', 'PAE'], label: 'Moved to Denver' },
-      { start: '2021-02-04', airports: ['DFW', 'DAL'], label: 'Back to Dallas' },
+      { start: '2021-02-04', airports: ['DFW', 'DAL'], label: 'Dallas' },
     ]
     const { eras: back, errors } = parseHomesCsv(serializeHomesCsv(eras))
     expect(errors).toEqual([])
@@ -40,13 +40,13 @@ describe('see-me-fly homes CSV', () => {
   it('parses a hand-written homes CSV with a missing label', () => {
     const text = [
       'schema_version,start_date,home_airports,label',
-      '1,2008-08-18,RDU,College — Durham',
+      '1,2008-08-18,CMH,College',
       '1,2013-01-15,DFW/DAL,',
     ].join('\n')
     const { eras, errors } = parseHomesCsv(text)
     expect(errors).toEqual([])
     expect(eras).toEqual([
-      { start: '2008-08-18', airports: ['RDU'], label: 'College — Durham' },
+      { start: '2008-08-18', airports: ['CMH'], label: 'College' },
       { start: '2013-01-15', airports: ['DFW', 'DAL'] },
     ])
   })
@@ -54,8 +54,8 @@ describe('see-me-fly homes CSV', () => {
   it('sanitizes malformed homes (out-of-order, duplicate-start last-wins, zero-length) and never throws', () => {
     const text = [
       'schema_version,start_date,home_airports,label',
-      '1,2013-01-15,DFW/DAL,Back to Dallas', // out of order
-      '1,2008-08-18,RDU,College',
+      '1,2013-01-15,DFW/DAL,Dallas', // out of order
+      '1,2008-08-18,CMH,College',
       '1,2010-05-01,,Empty airports', // zero-length airports -> dropped
       '1,2008-08-18,IAD,Dup start LATER wins', // duplicate start: this should win
     ].join('\n')
@@ -66,7 +66,7 @@ describe('see-me-fly homes CSV', () => {
     // Sorted ascending, empty dropped, duplicate '2008-08-18' last wins (IAD).
     expect(result.eras).toEqual([
       { start: '2008-08-18', airports: ['IAD'], label: 'Dup start LATER wins' },
-      { start: '2013-01-15', airports: ['DFW', 'DAL'], label: 'Back to Dallas' },
+      { start: '2013-01-15', airports: ['DFW', 'DAL'], label: 'Dallas' },
     ])
     // An errors[] note is surfaced about the dropped/de-duped rows.
     expect(result.errors.length).toBeGreaterThan(0)
@@ -86,7 +86,7 @@ describe('see-me-fly homes CSV — schema/header validation (MUST-FIX 2)', () =>
   it('refuses a homes file whose schema_version is newer than supported', () => {
     const text = [
       'schema_version,start_date,home_airports,label',
-      `${SMF_SCHEMA_VERSION + 1},2008-08-18,RDU,College`,
+      `${SMF_SCHEMA_VERSION + 1},2008-08-18,CMH,College`,
     ].join('\n')
     const { eras, errors } = parseHomesCsv(text)
     expect(eras).toEqual([])
@@ -94,7 +94,7 @@ describe('see-me-fly homes CSV — schema/header validation (MUST-FIX 2)', () =>
   })
 
   it('still accepts a valid homes file at the current schema_version', () => {
-    const text = ['schema_version,start_date,home_airports,label', '1,2008-08-18,RDU,College'].join('\n')
+    const text = ['schema_version,start_date,home_airports,label', '1,2008-08-18,CMH,College'].join('\n')
     const { eras, errors } = parseHomesCsv(text)
     expect(eras).toHaveLength(1)
     expect(errors).toEqual([])
@@ -132,7 +132,7 @@ describe('sanitizeHomeHistory (pure)', () => {
   it('sorts ascending by start', () => {
     const out = sanitizeHomeHistory([
       { start: '2013-01-15', airports: ['DFW'] },
-      { start: '2008-08-18', airports: ['RDU'] },
+      { start: '2008-08-18', airports: ['CMH'] },
     ])
     expect(out.map((e) => e.start)).toEqual(['2008-08-18', '2013-01-15'])
   })
@@ -147,7 +147,7 @@ describe('sanitizeHomeHistory (pure)', () => {
 
   it('collapses duplicate starts, last wins', () => {
     const out = sanitizeHomeHistory([
-      { start: '2008-08-18', airports: ['RDU'], label: 'first' },
+      { start: '2008-08-18', airports: ['CMH'], label: 'first' },
       { start: '2008-08-18', airports: ['IAD'], label: 'second' },
     ])
     expect(out).toEqual([{ start: '2008-08-18', airports: ['IAD'], label: 'second' }])
@@ -156,7 +156,7 @@ describe('sanitizeHomeHistory (pure)', () => {
   it('is pure (does not mutate the input array)', () => {
     const input: HomeEra[] = [
       { start: '2013-01-15', airports: ['DFW'] },
-      { start: '2008-08-18', airports: ['RDU'] },
+      { start: '2008-08-18', airports: ['CMH'] },
     ]
     const snapshot = JSON.parse(JSON.stringify(input))
     sanitizeHomeHistory(input)

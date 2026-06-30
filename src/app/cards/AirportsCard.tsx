@@ -27,7 +27,7 @@ function flagFor(key: string): string {
 
 /**
  * One line per home era for the exclusion pill's hover title:
- * "RDU — 2008-08-18 to 2013-01-15 (College)", the last era open-ended ("to present").
+ * "CMH — 2008-08-18 to 2013-01-15 (College)", the last era open-ended ("to present").
  * Falls back to the legacy single `home` when there's no timeline.
  */
 function homeEraSummary(settings: Settings): string {

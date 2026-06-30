@@ -80,7 +80,7 @@ describe('countriesCard', () => {
       home: null,
       excludeHomeFromRankings: true,
       homeHistory: [
-        { start: '2008-08-18', airports: ['RDU'] },
+        { start: '2008-08-18', airports: ['CMH'] },
         { start: '2013-01-15', airports: ['DFW', 'DAL'] },
       ],
     }

@@ -33,7 +33,7 @@ describe('airportsCard', () => {
       home: null,
       excludeHomeFromRankings: true,
       homeHistory: [
-        { start: '2008-08-18', airports: ['RDU'], label: 'College' },
+        { start: '2008-08-18', airports: ['CMH'], label: 'College' },
         { start: '2013-01-15', airports: ['DFW', 'DAL'] },
       ],
     }
@@ -42,7 +42,7 @@ describe('airportsCard', () => {
     const note = container.querySelector('[data-home-eras]')
     expect(note).not.toBeNull()
     const title = note!.getAttribute('title') ?? ''
-    expect(title).toMatch(/RDU/)
+    expect(title).toMatch(/CMH/)
     expect(title).toMatch(/DFW/)
     expect(title).toMatch(/2008-08-18/)
   })

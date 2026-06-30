@@ -10,9 +10,9 @@ const S = (over: Partial<Settings> = {}): Settings => ({
 
 // Canonical multi-era timeline used across most cases.
 const ERAS: HomeEra[] = [
-  { start: '2008-08-18', airports: ['RDU'], label: 'College — Durham' },
+  { start: '2008-08-18', airports: ['CMH'], label: 'College' },
   { start: '2019-06-01', airports: ['DEN', 'SEA', 'PAE'], label: 'Moved to Denver' },
-  { start: '2021-02-04', airports: ['DFW', 'DAL'], label: 'Back to Dallas' },
+  { start: '2021-02-04', airports: ['DFW', 'DAL'], label: 'Dallas' },
 ]
 
 describe('hasHome', () => {
@@ -45,8 +45,8 @@ describe('homeAt — no home at all', () => {
 describe('homeAt — multi-era resolution', () => {
   const s = S({ homeHistory: ERAS })
 
-  it('resolves a date inside the first era to RDU', () => {
-    expect(homeAt('2010-06-01', s)!.primary).toBe('RDU')
+  it('resolves a date inside the first era to CMH', () => {
+    expect(homeAt('2010-06-01', s)!.primary).toBe('CMH')
   })
 
   it('move day resolves to the NEW era (half-open [start, nextStart))', () => {
@@ -64,7 +64,7 @@ describe('homeAt — pre-first-era clamp (totality)', () => {
   it('a date before the first era clamps to the earliest era, not null', () => {
     const r = homeAt('2006-01-01', S({ homeHistory: ERAS }))
     expect(r).not.toBeNull()
-    expect(r!.primary).toBe('RDU')
+    expect(r!.primary).toBe('CMH')
   })
 })
 
@@ -72,7 +72,7 @@ describe('isHomeOn — boundary membership (move day, both sides count)', () => 
   const s = S({ homeHistory: ERAS })
 
   it('the OLD home counts as home on the move date', () => {
-    expect(isHomeOn('RDU', '2019-06-01', s)).toBe(true)
+    expect(isHomeOn('CMH', '2019-06-01', s)).toBe(true)
   })
 
   it('the NEW home counts as home on the move date', () => {
@@ -84,8 +84,8 @@ describe('isHomeOn — boundary membership (move day, both sides count)', () => 
   })
 
   it('off the boundary, only the containing era counts', () => {
-    // 2019-08-01 is inside the DEN era; RDU (prior era) must NOT count.
-    expect(isHomeOn('RDU', '2019-08-01', s)).toBe(false)
+    // 2019-08-01 is inside the DEN era; CMH (prior era) must NOT count.
+    expect(isHomeOn('CMH', '2019-08-01', s)).toBe(false)
     expect(isHomeOn('DEN', '2019-08-01', s)).toBe(true)
   })
 })
@@ -107,7 +107,7 @@ describe('homeKeys — date-less union + most-recent primary', () => {
   it('keys contains the airportKey of every era airport; primaryKey = most-recent era primary key', () => {
     const s = S({ homeHistory: ERAS, groupAirports: true })
     const { keys, primaryKey } = homeKeys(s)
-    expect(keys.has(airportKey('RDU', true))).toBe(true)
+    expect(keys.has(airportKey('CMH', true))).toBe(true)
     expect(keys.has(airportKey('DEN', true))).toBe(true)
     expect(keys.has(airportKey('SEA', true))).toBe(true) // == airportKey('PAE', true) == 'Seattle'
     expect(keys.has(airportKey('DFW', true))).toBe(true) // == airportKey('DAL', true) == 'Dallas'
@@ -132,7 +132,7 @@ describe('homePrimaryKeys — displayed bases (primaries only, no co-home second
   it('keys are the DISTINCT primary metros only; SEA/PAE (co-home) do NOT appear as bases', () => {
     const s = S({ homeHistory: ERAS, groupAirports: true })
     const { keys, currentKey } = homePrimaryKeys(s)
-    expect(keys.has(airportKey('RDU', true))).toBe(true)
+    expect(keys.has(airportKey('CMH', true))).toBe(true)
     expect(keys.has(airportKey('DEN', true))).toBe(true)   // Denver primary
     expect(keys.has(airportKey('DFW', true))).toBe(true)    // Dallas primary
     // Seattle (SEA/PAE) is a co-home SECONDARY of the Denver era — membership-only, never a base.

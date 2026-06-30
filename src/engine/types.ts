@@ -97,7 +97,7 @@ export interface EnrichedFlight {
 export interface HomeEra {
   start: string          // 'YYYY-MM-DD', inclusive
   airports: string[]     // one or more codes; airports[0] = PRIMARY
-  label?: string         // freeform, e.g. "College — Durham"
+  label?: string         // freeform, e.g. "College"
 }
 
 /**
