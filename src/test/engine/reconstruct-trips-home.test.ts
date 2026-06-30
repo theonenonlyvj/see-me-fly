@@ -93,7 +93,7 @@ describe('reconstructTrips — all-time home-by-date', () => {
     expect(t.flights).toHaveLength(5) // all five flight legs; the link is a bridge, not a flight
     expect(t.estimated).toBeUndefined()
     expect(t.roundTrip).toBe(true) // closed by a ground link arriving home
-    // nights span from first leg to the link's home arrival (~Jul 5)
+    // nights span from first leg to the link's home arrival (2019-07-05)
     expect(t.nights).toBeGreaterThan(35)
   })
 

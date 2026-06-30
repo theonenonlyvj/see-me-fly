@@ -71,11 +71,11 @@ function isHomeOn(code: string, date: string, s: Settings): boolean        // bo
 - [ ] **Step 1 — failing tests** (`home.test.ts`), each asserting one spec rule:
   - empty `homeHistory` + `home:'DFW'` → `homeAt('2020-01-01')` = `{airports:['DFW'],primary:'DFW'}`; `hasHome` true.
   - no home at all (`home:null`, `homeHistory:[]`) → `homeAt` null, `hasHome` false.
-  - eras `[{start:'2008-08-18',airports:['RDU']},{start:'2012-07-03',airports:['MKE','ORD','MDW']},{start:'2013-01-15',airports:['DFW','DAL']}]`: `homeAt('2010-06-01').primary==='RDU'`; `homeAt('2012-07-03').primary==='MKE'` (move-day → new era); `homeAt('2025-01-01').primary==='DFW'`.
-  - **pre-first-era clamp:** `homeAt('2006-01-01').primary==='RDU'` (earliest era), not null.
-  - **boundary membership:** `isHomeOn('RDU','2012-07-03',s)` true AND `isHomeOn('MKE','2012-07-03',s)` true (either side of a move counts on the boundary date).
-  - **grouping:** with `groupAirports:true`, `isHomeOn('MDW','2012-08-01',s)` true (ORD/MDW co-home) and uses `airportKey`.
-  - **homeKeys union:** `homeKeys(s).keys` contains the `airportKey` of RDU, MKE-group, DFW-group; `primaryKey` = most-recent era primary's key (DFW group).
+  - eras `[{start:'2008-08-18',airports:['CMH']},{start:'2019-06-01',airports:['DEN','SEA','PAE']},{start:'2021-02-04',airports:['DFW','DAL']}]`: `homeAt('2010-06-01').primary==='CMH'`; `homeAt('2019-06-01').primary==='DEN'` (move-day → new era); `homeAt('2025-01-01').primary==='DFW'`.
+  - **pre-first-era clamp:** `homeAt('2006-01-01').primary==='CMH'` (earliest era), not null.
+  - **boundary membership:** `isHomeOn('CMH','2019-06-01',s)` true AND `isHomeOn('DEN','2019-06-01',s)` true (either side of a move counts on the boundary date).
+  - **grouping:** with `groupAirports:true`, `isHomeOn('PAE','2019-08-01',s)` true (SEA/PAE co-home) and uses `airportKey`.
+  - **homeKeys union:** `homeKeys(s).keys` contains the `airportKey` of CMH, Seattle-group, DFW-group; `primaryKey` = most-recent era primary's key (DFW group).
 - [ ] **Step 2 — run, see them fail.**
 - [ ] **Step 3 — implement** per spec "Home Resolution": binary search half-open intervals on a sorted/deduped copy; clamp pre-first-era to `homeHistory[0]`; fallback to `home`; `isHomeOn` compares `airportKey(code,grouping)` against the union of the era containing `date` PLUS, when `date` equals an era `start`, the prior era too; `homeKeys` unions all eras' `airportKey`-normalized airports (+`home`) with `primaryKey` = last era's primary key.
 - [ ] **Step 4 — run; green. `tsc`.**
@@ -160,9 +160,9 @@ interface GeoExtremes {
 **Files:** Modify `src/engine/stats.ts` (`byCountry`, `domesticTierOf`, `homeDistanceTiers`), `src/engine/aggregate.ts` (`byAirport`), `src/app/cards/AirportsCard.tsx`; Tests: `src/test/engine/home-exclusion.test.ts` (create) + adjust existing.
 
 - [ ] **Step 1 — failing tests:**
-  - `byCountry`: `DFW→ORD` on a 2012 (MKE-home) flight credits **Texas** (ORD home → skipped); the same route in 2020 (DFW home) credits **Illinois**. A same-day connection through a co-home hub is **not** excluded.
-  - `domesticTierOf`: `DFW→AUS` in 2012 with home=MKE → **intra-country**, not intra-state (region compared to `homeAt(f.date).primary` region).
-  - `byAirport`: with `excludeHomeFromRankings`, RDU is excluded from the airport ranking only for college-era flights; counts otherwise. (Exclusion now lives in `byAirport` per-flight; `AirportsCard` no longer post-filters.)
+  - `byCountry`: `DFW→ORD` on a 2019 (DEN-home) flight credits **Texas** (ORD home → skipped); the same route in 2022 (DFW home) credits **Illinois**. A same-day connection through a co-home hub is **not** excluded.
+  - `domesticTierOf`: `DFW→AUS` in 2019 with home=DEN → **intra-country**, not intra-state (region compared to `homeAt(f.date).primary` region).
+  - `byAirport`: with `excludeHomeFromRankings`, CMH is excluded from the airport ranking only for college-era flights; counts otherwise. (Exclusion now lives in `byAirport` per-flight; `AirportsCard` no longer post-filters.)
 - [ ] **Step 2 — fail.**
 - [ ] **Step 3 — implement:** thread `isHomeOn(code, f.date, settings)` into each; move `byAirport` exclusion into the engine as a per-flight drop; strip the `AirportsCard.tsx:31-34` post-filter and consume the engine result; `domesticTierOf` uses `homeAt(f.date).primary` region.
 - [ ] **Step 4 — green; `tsc`. Commit:** `feat(home): date-aware home exclusion across rankings`.

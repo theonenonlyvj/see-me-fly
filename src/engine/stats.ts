@@ -302,7 +302,7 @@ export function extremeFlights(
 ): EnrichedFlight[] {
   const metric = (f: EnrichedFlight) => by === 'distance' ? f.distanceMi : f.durationMin
   let filtered = flights.filter(f => metric(f) !== null)
-  // duration 0 = data artifact; distance 0 = a REAL local flight (e.g. RPJ skydiving), keep it
+  // duration 0 = data artifact; distance 0 = a REAL local flight (e.g. RPJ local hop), keep it
   if (dir === 'short' && by === 'duration') {
     filtered = filtered.filter(f => (metric(f) as number) > 0)
   }
@@ -767,7 +767,7 @@ export function redEyeProfile(flights: EnrichedFlight[]): {
     withTime += 1
     hourCounts[h] += 1
     // A red-eye must run THROUGH the night: a late departure AND a real overnight haul (>= 3h).
-    // Excludes short late hops like a 10pm Houston→Dallas 1-hour flight.
+    // Excludes short late hops like a 10pm short-hop (e.g. AUS→DAL 1-hour flight).
     if ((h >= 21 || h <= 4) && f.durationMin != null && f.durationMin >= 180) redEyes += 1
     if (h >= 5 && h <= 6) dawnPatrol += 1   // pre-7am "dawn patrol"
   }

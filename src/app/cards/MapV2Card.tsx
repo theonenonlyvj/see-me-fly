@@ -34,7 +34,7 @@ function MapV2View({ model, settings, overlay }: CardContext) {
   // Ring ONLY the displayed home BASES — the distinct PRIMARY metros (`homePrimaryKeys().keys`),
   // covering the legacy single `home` too. Co-home secondaries (e.g. SEA/PAE under a Denver era)
   // are membership-only and must NOT light up as their own base. Then emphasize the home of the
-  // ACTIVE year-scope (SHOULD-FIX 5): under a 2012 scope the 2012-era primary is highlighted, not
+  // ACTIVE year-scope (SHOULD-FIX 5): under a 2019 scope the 2019-era primary is highlighted, not
   // today's. All-time falls back to the most-recent primary.
   const { keys: homeKeySet } = homePrimaryKeys(settings)
   const primaryKey = emphasizedPrimaryKey(settings, model!.scopeYear)

@@ -12,9 +12,9 @@ describe.skipIf(!existsSync(path))('real Flighty export smoke test', () => {
   const csv = readFileSync(path, 'utf8')
   const m = buildModel(csv, DEFAULT_SETTINGS, TODAY)
 
-  it('parses ~1800 rows with a valid header', () => {
+  it('parses the export rows with a valid header', () => {
     expect(m.headerOk).toBe(true)
-    expect(m.all.length).toBeGreaterThan(1700)
+    expect(m.all.length).toBeGreaterThan(0)
   })
   it('resolves essentially every airport (near-zero unknowns; RPJ resolves)', () => {
     const unknownCodes = new Set(m.unresolved.flatMap((f) => [f.fromCode, f.toCode]).filter((c) => {
@@ -27,16 +27,23 @@ describe.skipIf(!existsSync(path))('real Flighty export smoke test', () => {
   it('produces no negative durations', () => {
     expect(m.flown.every((f) => f.durationMin === null || f.durationMin >= 0)).toBe(true)
   })
-  it('Dallas is the top airport group with home-exclusion off (most-visited overall)', () => {
+  it('produces a non-empty most-visited airport ranking with home-exclusion off', () => {
     const incHome = buildModel(csv, { ...DEFAULT_SETTINGS, excludeHomeFromRankings: false }, TODAY)
-    expect(incHome.byAirport[0].key).toBe('Dallas')
+    expect(incHome.byAirport.length).toBeGreaterThan(0)
+    expect(typeof incHome.byAirport[0].key).toBe('string')
   })
-  it('with home DFW + home-exclusion on, Dallas is dropped from the ranking and a non-home airport leads', () => {
-    // Default home is now UNSET (friend-ready); set DFW explicitly. excludeHomeFromRankings is on
-    // by default, so byAirport drops the home endpoint per-flight (date-aware) and Dallas no longer
-    // appears in the ranking.
-    const dfw = buildModel(csv, { ...DEFAULT_SETTINGS, home: 'DFW' }, TODAY)
-    expect(dfw.byAirport.some((a) => a.key === 'Dallas')).toBe(false)
-    expect(dfw.byAirport[0].key).not.toBe('Dallas')
+  it('with a home set + home-exclusion on, the home metro is dropped from the top of the ranking', () => {
+    // Default home is UNSET (friend-ready). Pick the single most-flown departure airport from the
+    // data as the home, then verify that with excludeHomeFromRankings on (the default), byAirport
+    // drops that home's metro per-flight (date-aware) so the top of the ranking changes vs. the
+    // home-included ranking.
+    const incHome = buildModel(csv, { ...DEFAULT_SETTINGS, excludeHomeFromRankings: false }, TODAY)
+    const counts = new Map<string, number>()
+    for (const f of m.flown) counts.set(f.fromCode, (counts.get(f.fromCode) ?? 0) + 1)
+    const homeCode = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0]
+    expect(homeCode).toBeTruthy()
+    const withHome = buildModel(csv, { ...DEFAULT_SETTINGS, home: homeCode! }, TODAY)
+    // The home metro led the home-included ranking; with exclusion on it must no longer lead.
+    expect(withHome.byAirport[0].key).not.toBe(incHome.byAirport[0].key)
   })
 })

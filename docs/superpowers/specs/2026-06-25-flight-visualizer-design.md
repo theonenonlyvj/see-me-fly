@@ -4,18 +4,18 @@
 **Owner:** the user
 **Status:** Approved design, hardened by adversarial review (v2), pre-implementation
 
-> v2 incorporates a 6-lens adversarial completeness review (58 raw findings → ~25 patches) run against the real sample CSV. All measured facts below are from that export.
+> v2 incorporates a 6-lens adversarial completeness review (58 raw findings → ~25 patches) run against a representative sample export. Facts below are illustrative of a typical export.
 
 ## 1. Purpose
 
 A local, static tool that takes a [Flighty](https://flighty.com/) CSV export and renders a rich, visually-pleasing breakdown of personal flight history. It addresses gaps in how Flighty itself surfaces the data — chiefly the ability to **group nearby airports into metros** (so DFW/DAL read as "Dallas") and to view stats **all-time and year-by-year** with flexible route/airport identity rules.
 
-Sample data: `lifecoach/ops/travel/reference/FlightyExport-2026-06-24.csv` — **1,800 flights, 1991–2026 (incl. ~12–14 future-dated rows through 2026-08), 23 distinct years, 161 unique airports.**
+Sample data: a representative Flighty export — **a large multi-year export (thousands of flights across many years and a few hundred unique airports), including some future-dated rows.**
 
 ## 2. Constraints & non-negotiables
 
 - **Local-only, no server, no runtime network.** Deliverable is a single static `index.html` you double-click. No tile servers, no CDN, no remote fonts, **no `fetch` at runtime**.
-- **No web workers.** They can't be spawned from inlined/blob scripts under `file://`. The engine runs synchronously on the main thread (1,800 rows is trivial). If PapaParse is used, set `worker: false`.
+- **No web workers.** They can't be spawned from inlined/blob scripts under `file://`. The engine runs synchronously on the main thread (a few thousand rows is trivial). If PapaParse is used, set `worker: false`.
 - **Point it at an export.** The user loads their own Flighty CSV at runtime (drag-drop / file picker). The CSV is *not* baked into the build, and (per `file://`) is *not* re-readable after refresh — see §4.3.1.
 - **Reference data is bundled** (baked into the build), so distances/timezones/countries/etc. work offline.
 - **Extensible cards.** Adding or editing a card must be an isolated change (one module + one manifest line).
@@ -28,7 +28,7 @@ The Flighty export contains only IATA airport codes and ICAO airline codes — *
 - **Source:** OurAirports. **Row-trim:** include **every row with a non-empty IATA code, plus every row whose `local_code` (FAA) or `ident` (ICAO) could be a Flighty code** — i.e. keep small GA fields too (still well under budget). The runtime CSV's airports are unknown at build time, so we can't trim to the user's set.
 - **Fields kept:** `{ iata, localCode, ident, name, municipality, lat, lon, iso_country, iso_region, continent, tz }`.
 - **Resolution order (engine):** a CSV airport code resolves by **IATA → FAA `local_code` → ICAO `ident`** (try `ident` both as-is and with a leading `K`/`C` stripped). This resolves general-aviation codes Flighty emits as FAA IDs.
-- **`tz`** = IANA/Olson string (e.g. `America/Chicago`), computed at preprocess from `lat`/`lon` via a coordinate→timezone-boundary lookup (e.g. `tz-lookup` / timezone-boundary-builder). **Not** from OpenFlights `airports.dat` (stale; missing tz for airports the user flies — DOH, HYD, GOX).
+- **`tz`** = IANA/Olson string (e.g. `America/Chicago`), computed at preprocess from `lat`/`lon` via a coordinate→timezone-boundary lookup (e.g. `tz-lookup` / timezone-boundary-builder). **Not** from OpenFlights `airports.dat` (stale; missing tz for some airports an export may contain — e.g. certain international fields).
 - **Unresolved airports:** with the local_code/ident fallback, **RPJ resolves to Rochelle Municipal, IL** (`KRPJ`, blank IATA) — it is a real airport, not unknown. Expect **near-zero true unknowns**; any that remain are logged (not dropped) and surfaced in a badge (§4.4).
 
 ### 3.2 `airlines.json` — ICAO → name
@@ -48,8 +48,8 @@ The Flighty export contains only IATA airport codes and ICAO airline codes — *
 - Substring/regex rules mapping free-text `Aircraft Type Name` (52 distinct values, no body-type column in the data) → `wide | narrow | regional | prop`, with an **`unclassified`** bucket for unmapped names. Regional jets (CRJ/Embraer, ~290 flights) are their **own bucket**.
 
 ### 3.6 `flight-overrides.json` — per-flight manual corrections (user-editable, durable)
-A bundled, editable list of corrections **keyed by a stable signature** = `Date|From|To|Gate Departure (Scheduled)` (the `Flight Flighty ID` is unreliable — **45/1,800 rows have it blank**, including the RPJ flight, so it can't be the key). Each entry may patch: `durationMinOverride`, `distanceMiOverride`, `from`/`to`, `exclude` (bool), and a `note`. Applied during enrich, **after** automatic enrichment but before aggregation. Because the signature recurs across exports, an override **persists when a new Flighty export is loaded** — the place to record recurring Flighty bugs.
-- **Seeded entry — the RPJ skydiving flight** (`2013-08-18|RPJ|RPJ|2013-08-18T12:00`): a DHC-6 Twin Otter jump flight that takes off and lands at Rochelle, IL. With the §4.2/§4.4 local-flight handling it already reads ~20 min and counts as a real flight; the seed entry pins a `note` documenting the recurring "same-airport, zero-mile" Flighty quirk so future exports stay correct.
+A bundled, editable list of corrections **keyed by a stable signature** = `Date|From|To|Gate Departure (Scheduled)` (the `Flight Flighty ID` is unreliable — **a small fraction of rows have it blank**, including the seeded local flight, so it can't be the key). Each entry may patch: `durationMinOverride`, `distanceMiOverride`, `from`/`to`, `exclude` (bool), and a `note`. Applied during enrich, **after** automatic enrichment but before aggregation. Because the signature recurs across exports, an override **persists when a new Flighty export is loaded** — the place to record recurring Flighty bugs.
+- **Seeded entry — a zero-mile local flight** (`2013-08-18|RPJ|RPJ|2013-08-18T12:00`): a small recreational/local flight (e.g. a scenic or jump hop) that takes off and lands at the same GA field (Rochelle, IL — RPJ). With the §4.2/§4.4 local-flight handling it already reads ~20 min and counts as a real flight; the seed entry pins a `note` documenting the recurring "same-airport, zero-mile" Flighty quirk so future exports stay correct.
 
 ### 3.7 Bundle budget
 `vite-plugin-singlefile` inlines all assets into one HTML doc with no code-splitting. **Raw `index.html` budget: < 4 MB.** A build-time assertion fails the build if exceeded. (~9k trimmed airports + small airline/region/aircraft maps + ~100 KB world TopoJSON fit comfortably.)
@@ -73,10 +73,10 @@ Deterministic pipeline, no React:
      2. **Scheduled** takeoff→landing.
      3. **Gate-to-gate** (actual, else scheduled) **minus a taxi allowance** (`gateTaxiMin ≈ 10`), clamped to ≥ `localFlightMinMin`. Helps the **143 rows** with gate times but no air-times.
      4. **Distance estimate:** `durationMin = taxi + (distanceMi / cruiseMph)*60 + climbDescent`, with **`cruiseMph ≈ 500`, `taxi ≈ 30`, `climbDescent ≈ 15`** min.
-     - **Zero-distance local flights** (`distanceMi == 0`, From==To — see §4.4): skip step 4 (the formula is meaningless); use steps 1–3, else a `localFlightDefaultMin ≈ 20`. The seeded RPJ jump flight resolves at **step 3** (gate 12:00→12:30 = 30 min − 10 taxi ≈ **20 min**), no hardcoding.
+     - **Zero-distance local flights** (`distanceMi == 0`, From==To — see §4.4): skip step 4 (the formula is meaningless); use steps 1–3, else a `localFlightDefaultMin ≈ 20`. The seeded RPJ local flight resolves at **step 3** (gate 12:00→12:30 = 30 min − 10 taxi ≈ **20 min**), no hardcoding.
      - All five constants live in **Advanced settings** (§5.1) and are tunable; tz-fallback and estimate rows are logged.
    - Keep **both** the raw-local and UTC-resolved timestamps on the enriched object (the hour-heatmaps want raw local; duration wants UTC — §6.2).
-   - **`delayMin`** = `Gate Arrival (Actual) − Gate Arrival (Scheduled)` (both at the same arrival airport → tz-safe, independent of the duration tz problem). Available for ~1,646/1,800 rows. `null` when actual gate arrival is blank (incl. most canceled/diverted).
+   - **`delayMin`** = `Gate Arrival (Actual) − Gate Arrival (Scheduled)` (both at the same arrival airport → tz-safe, independent of the duration tz problem). Available for most rows. `null` when actual gate arrival is blank (incl. most canceled/diverted).
    - **`flown`** flag = `has actual times OR date ≤ today`. Future-dated rows (date > today, ~12–14 rows, empty actuals) are **not flown**.
    - Flags: `canceled`, `diverted` (+ effective destination, §4.4).
 3. **Filter** by active settings: scope (all-time / year), include-canceled, exclude-before-date, and **flown-only by default** (upcoming rows excluded from flown-stats).
@@ -99,7 +99,7 @@ Deterministic pipeline, no React:
 
 ### 4.4 Edge-case semantics (engine rules)
 - **Unresolved endpoint:** `distanceMi = null`; **excluded** from distance/duration/route/geo aggregates and from unique-airport/route counts; surfaced in a visible "unresolved" badge/log. Still appears as a row where a raw listing is shown. (With §3.1's local_code/ident fallback this should be near-empty.)
-- **`From == To` = a legitimate "local flight"** (skydiving, scenic, training, ferry-return — e.g. the RPJ jump flight). It **counts** as a flight, a per-airport/group touch, and toward total time-in-flight (duration via the §4.2 local-flight path, `distanceMi = 0`). It is **excluded only** from route-keyed and distance-based aggregates where it would distort them: routes, super-domestic, intercontinental, unique-routes, map arcs (draws no arc), and **shortest/longest *by distance*** (0 mi would always win). It **may** appear in shortest/longest *by time*. Guard haversine/per-mile math against zero. This applies to raw From==To **and** pairs collapsed by grouping (DAL↔DFW → Dallas→Dallas). A truly empty junk row (no times, no aircraft) still just contributes 1 flight + 1 touch; use `flight-overrides.json` `exclude` to drop a specific bad row.
+- **`From == To` = a legitimate "local flight"** (scenic, training, ferry-return, jump/recreational hop — e.g. the seeded RPJ local flight). It **counts** as a flight, a per-airport/group touch, and toward total time-in-flight (duration via the §4.2 local-flight path, `distanceMi = 0`). It is **excluded only** from route-keyed and distance-based aggregates where it would distort them: routes, super-domestic, intercontinental, unique-routes, map arcs (draws no arc), and **shortest/longest *by distance*** (0 mi would always win). It **may** appear in shortest/longest *by time*. Guard haversine/per-mile math against zero. This applies to raw From==To **and** pairs collapsed by grouping (DAL↔DFW → Dallas→Dallas). A truly empty junk row (no times, no aircraft) still just contributes 1 flight + 1 touch; use `flight-overrides.json` `exclude` to drop a specific bad row.
 - **Diverted flight:** when `Diverted To` is non-blank, **effective `To` = Diverted To** for **all** airport/route/distance/geo aggregation (route `From→DivertedTo`, distance to the diverted endpoint — consistent with the truncated-leg timestamps, arrival credit to DivertedTo). The original scheduled `To` is preserved **only** in Flight Detail as "intended destination." `delayMin = null` when actual gate arrival is blank (true for 2 of 3 diverted rows). The 3 confirmed diverted rows divert to AUS/LBB/SPS.
 
 ## 5. Settings & the identity engine
@@ -134,7 +134,7 @@ All "list of specific flights" surfaces click through to Flight Detail (§7), an
 2. **Distance buckets** — count per band. Seed bands (tunable; data is bottom-heavy — ~48% < 300mi, so the §11 tuning pass should split the short end / use quantile bands): `<300 / 300–700 / 700–1,500 / 1,500–3,000 / 3,000–6,000 / 6,000+ mi`, playful labels.
 3. **Shortest flights** — toggle time/distance; top 5 + show more; click-through.
 4. **Longest flights** — same.
-5. **Airports** — most-visited top 10 + show more; click → popup of flights touching it. Popup contract: **reverse-chronological**, initial cap (show 20 + "show more"), **virtualized or capped with a count badge** (e.g. "965 flights — showing 20"); applies equally to grouped-airport popups (Dallas = 1,457 flights). Respects grouping.
+5. **Airports** — most-visited top 10 + show more; click → popup of flights touching it. Popup contract: **reverse-chronological**, initial cap (show 20 + "show more"), **virtualized or capped with a count badge** (e.g. "N flights — showing 20"); applies equally to grouped-airport popups (a busy metro can hold many flights). Respects grouping.
 6. **Airlines** — most-flown top 5 + show more.
 7. **Routes** — toggle sum-of-miles / # flights; grouping + direction rules make this the centerpiece.
 8. **Countries** — top 10 + show more; **US, India, and Mexico split by state/region** (via `iso_region`, named through §3.4); all other countries shown whole.
@@ -147,15 +147,15 @@ All "list of specific flights" surfaces click through to Flight Detail (§7), an
 - **🗺️ The Map** — drawn from **bundled world TopoJSON** (world-atlas `countries-110m`, ~100 KB, ES-module import) with D3 `geoNaturalEarth1`; great-circle arcs via `d3.geoInterpolate`, thickness/opacity = route frequency. **Antimeridian-crossing arcs** (DFW↔SIN/TPE/KUL) clipped/split at ±180°. No tiles.
 - **🌍 Around-the-world odometer** — total miles as ×-around-Earth (24,901 mi) and % to the Moon (238,900 mi). Uses flown-only distance. (Exact framing tuned post-build.)
 - **📅 Travel intensity heatmap** — GitHub-style calendar, flights per month/year.
-- **🏆 Records & streaks (easy stats only, v1)** — most flights in a single day, busiest month, busiest year, longest grounded gap, **milestone flights (100th / 500th / 1,000th)**. Milestones are computed over the full **non-canceled, flown** set ordered by the best-available departure timestamp (`Gate Departure (Scheduled)` || `Take off (Scheduled)` || `Date`) ascending, with **original CSV row index** as the final deterministic tiebreak (**not** `Flight Flighty ID` — 45/1,800 rows have it blank). Computed **before** scope/exclude-before-date filtering (card may note the active cutoff) so a year scope doesn't hide the 1,000th. *Backlogged: redeyes, longest multi-segment trip (connection detection).*
-- **🧭 Geographic extremes** — northern/southern/eastern/western-most airport, farthest from **home (Dallas metro)** (a single config constant), travel bounding box.
+- **🏆 Records & streaks (easy stats only, v1)** — most flights in a single day, busiest month, busiest year, longest grounded gap, **milestone flights (100th / 500th / 1,000th)**. Milestones are computed over the full **non-canceled, flown** set ordered by the best-available departure timestamp (`Gate Departure (Scheduled)` || `Take off (Scheduled)` || `Date`) ascending, with **original CSV row index** as the final deterministic tiebreak (**not** `Flight Flighty ID` — a fraction of rows have it blank). Computed **before** scope/exclude-before-date filtering (card may note the active cutoff) so a year scope doesn't hide the 1,000th. *Backlogged: redeyes, longest multi-segment trip (connection detection).*
+- **🧭 Geographic extremes** — northern/southern/eastern/western-most airport, farthest from **home** (the configured home metro — a single config constant), travel bounding box.
 - **⏰ When you fly** — departure-hour and arrival-hour heatmaps using the **raw local timestamp as-stored** (no tz conversion — that's the correct frame). (No day-of-week — too flat.)
 - **✈️ Aircraft** — types ranked, rarest type, **wide/narrow/regional/prop split** via `aircraft-classes.json`; 47 blank-type rows excluded from the split → "unclassified". Caveat: 11 "Helio H-500 Twin Courier" rows are a Flighty mislabel for AAL mainline transcons.
 - **🔧 Same Metal (tail numbers)** — "aircraft you rode more than once": tails with **≥2 flights** (~309 qualify), tiebreak most-recent-flight then tail string; click a tail → every flight on that physical aircraft (→ click-through). Caveat: tail data is recorded **from ~2013** (0% before), ~86.5% overall — the card notes "based on N of M flights."
 - **😤 Delay leaderboard** — `delayMin` per §4.2; most-delayed flights, **on-time %** (threshold 15 min; denominator = flights with both gate-arrival timestamps, ~1,646; surface the excluded count), cancellations survived, diversions.
 
 ### 6.3 Backlog (parked, not v1)
-- **Cabin & seat** — **blocked, not merely unreliable:** Cabin Class / Seat Type / Reason / Notes are **0% populated** in this export (Seat 21%, PNR 41%, Tail 86.5%).
+- **Cabin & seat** — **blocked, not merely unreliable:** Cabin Class / Seat Type / Reason / Notes can be **entirely empty** in a Flighty export (and Seat / PNR / Tail are only partially populated), so cards keyed on them may be undeliverable.
 - **Reason split** — 0% populated.
 - **Auto-suggest groupings** — propose airports within N miles to accept into `airport-groups.json`.
 - Harder Records stats (redeyes, multi-segment trips).
@@ -171,7 +171,7 @@ Shows (when present): date, airline + flight number, route (with a small bundled
 `cards/` holds one module per card; a manifest array lists active cards in display order. **Adding a card = new module + one manifest line.**
 
 Each card exports `{ id, title, group: 'core'|'creative', settings?, render(ctx) }`:
-- **`ctx`** (built once per `(settings, scope)` change, **memoized**, shared across all cards — never re-aggregate 1,800 rows per card per keystroke) exposes the normalized flight array + named aggregate helpers: `byAirport`, `byRoute`, `byAirline`, `distanceBuckets`, `byYear`, plus the unresolved/upcoming sets.
+- **`ctx`** (built once per `(settings, scope)` change, **memoized**, shared across all cards — never re-aggregate the full flight set per card per keystroke) exposes the normalized flight array + named aggregate helpers: `byAirport`, `byRoute`, `byAirline`, `distanceBuckets`, `byYear`, plus the unresolved/upcoming sets.
 - **`settings`** = optional declarative descriptor for the card's own toggles (e.g. miles/#flights for Routes, time/distance for Shortest), backed by a namespaced `useCardState` helper.
 - Standard **"show more"** and **empty-state** conventions provided by a shared card frame.
 
@@ -226,7 +226,7 @@ UI is thin over the tested engine.
 
 **v1 acceptance — done when:**
 - The golden suite passes.
-- The real CSV loads with **every airport/airline resolved or explicitly logged** (near-zero unknowns; with the local_code/ident fallback even RPJ resolves).
+- A representative CSV loads with **every airport/airline resolved or explicitly logged** (near-zero unknowns; with the local_code/ident fallback even a GA-only code like RPJ resolves).
 - Phase-1 cards render correct totals; settings persist and recompute live.
 - `index.html` opens via `file://` with **no network calls**, within the size budget.
 - *(Ship-blocking cards: the 10 core + Map, Odometer, Heatmap, Records, Geo-extremes, When-you-fly, Aircraft, Same Metal, Delay. All 19 are v1.)*

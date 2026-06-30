@@ -27,7 +27,7 @@
 interface HomeEra {
   start: string          // 'YYYY-MM-DD', inclusive
   airports: string[]     // one or more codes; airports[0] = PRIMARY
-  label?: string         // freeform, e.g. "College — Durham"
+  label?: string         // freeform, e.g. "College"
 }
 ```
 - Ordered ascending by `start`. Each era runs `[start, nextEra.start)` (half-open); the last era runs to the present.
@@ -44,7 +44,7 @@ schema_version,start_date,home_airports,label
 1,2008-08-18,CMH,College — hometown
 1,2010-06-01,DEN,Summer — Denver
 1,2011-09-01,LHR/LGW/STN,Term abroad — London
-1,2012-07-03,SEA/PDX,Moved to Seattle (present)
+1,2019-06-01,SEA/PDX,Moved to Seattle (present)
 ```
 `home_airports` is slash-joined; first = primary. Each row starts an era; the last runs to present.
 
@@ -123,10 +123,10 @@ type Movement =
 4. **Fresh depart-from-home** still closes any still-open prior trip.
 
 ### Worked example — a post-grad relocation (hometown CMH → Seattle SEA)
-Home is **CMH through the move**. Journey: `CMH→ORD→FRA→…→MUC→ORD→DEN→PDX` (May 26 – Jun 22), an ~11-day gap (a stay with family between cities), then a `drive PDX→SEA` link departing **2012-07-03**, arriving ~Jul 5.
-- You left CMH and never returned, so the trip stays **OPEN the entire time** — the overseas legs *and* the in-between gap — because you don't touch a home airport again until Seattle. (ORD on Jun 22 is a same-day connection per rule 2, not a home arrival.)
-- The **drive PDX→SEA closes the trip** (rule 3: a ground link lands you at a home airport — SEA is home from the move), at the ~Jul 5 arrival. The Jun 22 PDX flight is just the last flight leg.
-- **Result: one ~40-night relocation trip.** Reconstruction over all-time flights (Constraint 6) is what lets it span late-May → July as one trip; year-scoped reconstruction would have split it at the year boundary (it doesn't here, but a Dec→Jan move would). Relocation trips open at the old home and close at the **new** home; the in-between gap is part of the single trip by design.
+Home is **CMH through the move**. Journey: `CMH→ORD→FRA→…→MUC→ORD→DEN→PDX` (Mar 4 – Mar 31), an ~11-day gap (a stay with family between cities), then a `drive PDX→SEA` link departing **2019-04-11**, arriving ~Apr 13.
+- You left CMH and never returned, so the trip stays **OPEN the entire time** — the overseas legs *and* the in-between gap — because you don't touch a home airport again until Seattle. (ORD on Mar 31 is a same-day connection per rule 2, not a home arrival.)
+- The **drive PDX→SEA closes the trip** (rule 3: a ground link lands you at a home airport — SEA is home from the move), at the ~Apr 13 arrival. The Mar 31 PDX flight is just the last flight leg.
+- **Result: one ~40-night relocation trip.** Reconstruction over all-time flights (Constraint 6) is what lets it span early-Mar → April as one trip; year-scoped reconstruction would have split it at the year boundary (it doesn't here, but a Dec→Jan move would). Relocation trips open at the old home and close at the **new** home; the in-between gap is part of the single trip by design.
 
 ### Inferred boundaries (no link)
 When a trip can't be cleanly bracketed and no link resolves it, collapse the **unknown** boundary to the nearest **known** leg and **flag** it:
@@ -150,7 +150,7 @@ Thread `homeAt(flight.date, settings)` / `homeKeys(settings)` / `hasHome(setting
   - **Intended consequence:** the pre-first-era clamp credits a base for trips taken just before you moved there (a 2006 Tokyo trip credits your earliest base) — accepted for a "reach from each home" view.
   - **Tests are consumers:** `stats.test.ts:518-549` (old flat shape + `geoExtremes([])===null`) and `geoExtremes-card.test.tsx` must update; pin a backward-compat case (empty `homeHistory` ⇒ single-home flat-equivalent).
 - **`byAirport` (`aggregate.ts:15`) + `AirportsCard.tsx:31-34` — relocate + rework.** `byAirport` has NO home logic; the real exclusion is a **card-level post-filter on all-time `settings.home` over deduped counts**. Move exclusion into `byAirport` as a **per-flight** drop via `homeAt(f.date)` set-membership; `AirportsCard` consumes that instead of post-filtering. (Spec previously mislocated this to `index.ts`.)
-- **`domesticTierOf` (`stats.ts:174-180`).** Today checks only `f.from.region` against the single home region. Credit **intra-state only when the route's region equals `homeAt(f.date).primary`'s region**; define both-endpoint behavior. Test: `DFW→AUS` in 2012 with home = MKE must be **intra-country, not intra-state**.
+- **`domesticTierOf` (`stats.ts:174-180`).** Today checks only `f.from.region` against the single home region. Credit **intra-state only when the route's region equals `homeAt(f.date).primary`'s region**; define both-endpoint behavior. Test: `DFW→AUS` in 2019 with home = DEN must be **intra-country, not intra-state**.
 - **`byCountry` (`stats.ts`) home-endpoint exclusion → date-aware**, set-membership, with the boundary-date rule. A pure connection through a co-home hub is **not** excluded (mirror trip rule 2).
 - **`homeDistanceTiers`, `reconstructTrips`** → date-aware (per above).
 - **`places.ts` `homeKey`/`displayRoute`** → date-less: use `homeKeys` set-union for home-first route ordering.
@@ -193,7 +193,7 @@ In `src/app/components/SettingsPanel.tsx`:
 - Ground links do not contribute to flight stats in Phase A.
 - No automatic inference of homes or links in Phase A (Phase B).
 - No backend/account in Phase A (localStorage; download/import is the portability path).
-- Home-by-date leaves **local flights** (RPJ skydiving, `isLocalFlight`) untouched; a local flight at a then-home airport is date-aware-excluded from country credit only for its home era (one explicit behavior line).
+- Home-by-date leaves **local flights** (the RPJ zero-mile local hop, `isLocalFlight`) untouched; a local flight at a then-home airport is date-aware-excluded from country credit only for its home era (one explicit behavior line).
 
 ## Open Items (resolve while seeding a user's data, not blocking the build)
 

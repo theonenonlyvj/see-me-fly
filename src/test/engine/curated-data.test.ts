@@ -31,7 +31,7 @@ describe('curated reference files', () => {
     expect(match('Boeing 737-800')).toBe('narrow')
     expect(match('Bombardier CRJ700')).toBe('regional')
   })
-  it('seeds the RPJ skydiving override', () => {
+  it('seeds the RPJ local-flight override', () => {
     const o = (overrides as { overrides: { signature: string }[] }).overrides
     expect(o.some((x) => x.signature === '2013-08-18|RPJ|RPJ|2013-08-18T12:00')).toBe(true)
   })

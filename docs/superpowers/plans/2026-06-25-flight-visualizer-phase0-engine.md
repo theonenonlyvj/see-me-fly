@@ -4,7 +4,7 @@
 
 **Goal:** Build the data foundation — the bundled reference files and the pure, fully-tested enrichment/aggregation engine — that every UI card in later phases consumes. No React UI in this plan; the deliverable is a tested TypeScript library + a build-time preprocess pipeline.
 
-**Architecture:** A dev-time **preprocess** step downloads OurAirports + OpenFlights data and emits trimmed JSON reference files (plus hand-authored curated files). A pure **engine** (no React, no DOM, no network) parses a Flighty CSV, enriches each row (distance, timezone-aware duration, country/region/continent, airline name, flags), applies per-flight overrides, normalizes route/airport identity by settings, and aggregates per-card stats. Everything is validated against a hand-computed 12-row golden fixture and smoke-tested against the real export.
+**Architecture:** A dev-time **preprocess** step downloads OurAirports + OpenFlights data and emits trimmed JSON reference files (plus hand-authored curated files). A pure **engine** (no React, no DOM, no network) parses a Flighty CSV, enriches each row (distance, timezone-aware duration, country/region/continent, airline name, flags), applies per-flight overrides, normalizes route/airport identity by settings, and aggregates per-card stats. Everything is validated against a hand-computed 12-row golden fixture and smoke-tested against a real Flighty export (gitignored personal data).
 
 **Tech Stack:** Vite + React + **TypeScript**, Vitest (tests), PapaParse (`worker:false`) for CSV, Luxon (timezone-aware datetime math), tz-lookup (coordinate→IANA timezone at preprocess time). Node ≥ 20 for preprocess scripts (`tsx` runner).
 
@@ -18,7 +18,7 @@ _(Copied verbatim from the spec; every task implicitly includes these.)_
 - **Bundle budget:** the eventual single `index.html` must stay **< 8 MB** (raised from 4 MB — it's a local double-click file with no network download, so size is non-critical; this is just a sanity ceiling). `airports.json` alone is ~6.3 MB raw with full OurAirports coverage. Phase 0 adds a size log for `src/reference/*.json`.
 - **Timestamps are local wall-clock with no offset**, in two formats: `YYYY-MM-DDTHH:mm` and `YYYY-MM-DDTHH:mm:ss`.
 - **Airport resolution order:** IATA → FAA `local_code` → ICAO `ident` (ident tried as-is and with a leading `K`/`C` stripped).
-- **`Flight Flighty ID` is unreliable** (blank on ~45/1800 rows) — never use it as a key or sole sort tiebreak.
+- **`Flight Flighty ID` is unreliable** (blank on a fraction of rows) — never use it as a key or sole sort tiebreak.
 - **Today's date** for the flown/upcoming split is injected, never read from the system clock inside the engine (keeps the engine pure/testable).
 
 ---
@@ -823,7 +823,7 @@ describe('curated reference files', () => {
     expect(match('Boeing 737-800')).toBe('narrow')
     expect(match('Bombardier CRJ700')).toBe('regional')
   })
-  it('seeds the RPJ skydiving override', () => {
+  it('seeds the RPJ local-flight override', () => {
     const o = (overrides as { overrides: { signature: string }[] }).overrides
     expect(o.some((x) => x.signature === '2013-08-18|RPJ|RPJ|2013-08-18T12:00')).toBe(true)
   })
@@ -2148,11 +2148,11 @@ describe('golden model', () => {
 Run: `npm --prefix /Users/vijayram/Cursor/flight_visualizer test -- model`
 Expected: PASS.
 
-- [ ] **Step 5: Write `src/test/engine/realcsv.test.ts`** (smoke test against the real export — copy it in first)
+- [ ] **Step 5: Write `src/test/engine/realcsv.test.ts`** (smoke test against a real Flighty export — copy one in first)
 
-Run first:
+Run first (point at your own Flighty export; the destination is gitignored personal data):
 ```bash
-cp "/Users/vijayram/Cursor/lifecoach/ops/travel/reference/FlightyExport-2026-06-24.csv" /Users/vijayram/Cursor/flight_visualizer/src/test/fixtures/real-sample.csv
+cp "/path/to/your/FlightyExport.csv" /Users/vijayram/Cursor/flight_visualizer/src/test/fixtures/real-sample.csv
 ```
 
 ```ts
@@ -2170,9 +2170,9 @@ describe.skipIf(!existsSync(path))('real Flighty export smoke test', () => {
   const csv = readFileSync(path, 'utf8')
   const m = buildModel(csv, DEFAULT_SETTINGS, TODAY)
 
-  it('parses ~1800 rows with a valid header', () => {
+  it('parses the export rows with a valid header', () => {
     expect(m.headerOk).toBe(true)
-    expect(m.all.length).toBeGreaterThan(1700)
+    expect(m.all.length).toBeGreaterThan(0)
   })
   it('resolves essentially every airport (near-zero unknowns; RPJ resolves)', () => {
     const unknownCodes = new Set(m.unresolved.flatMap((f) => [f.fromCode, f.toCode]).filter((c) => {
@@ -2185,8 +2185,9 @@ describe.skipIf(!existsSync(path))('real Flighty export smoke test', () => {
   it('produces no negative durations', () => {
     expect(m.flown.every((f) => f.durationMin === null || f.durationMin >= 0)).toBe(true)
   })
-  it('Dallas is the top airport group', () => {
-    expect(m.byAirport[0].key).toBe('Dallas')
+  it('produces a non-empty most-visited airport ranking', () => {
+    expect(m.byAirport.length).toBeGreaterThan(0)
+    expect(typeof m.byAirport[0].key).toBe('string')
   })
 })
 ```
@@ -2218,7 +2219,7 @@ git -C /Users/vijayram/Cursor/flight_visualizer commit -m "feat: buildModel publ
 
 - [ ] `npm --prefix /Users/vijayram/Cursor/flight_visualizer run preprocess` regenerates all reference JSON and passes the size check (< 8 MB total).
 - [ ] `npm --prefix /Users/vijayram/Cursor/flight_visualizer test` is green across all engine modules.
-- [ ] The real export loads via `buildModel` with near-zero unresolved airports, RPJ resolving to a ~20-min local flight, no negative durations, and Dallas as the top group.
+- [ ] A real export loads via `buildModel` with near-zero unresolved airports, RPJ resolving to a ~20-min local flight, no negative durations, and a sensible most-visited airport ranking.
 - [ ] No runtime network, no web workers, all reference data imported as ES modules.
 
 This delivers the tested engine + reference layer that Plan 2 (Phase 1: app scaffold, settings/scope UI, and the first runnable cards) builds the UI on top of.

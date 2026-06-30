@@ -22,5 +22,5 @@ Plan: `docs/superpowers/plans/2026-06-26-flight-visualizer-backlog-batch1.md`.
 ## Notes / levers
 - **8 MB budget is self-imposed** (`scripts/preprocess/size-check.ts` `BUDGET_BYTES`). A `file://` HTML can be far bigger; or trim `airports.json` to IATA-only (~3 MB).
 - Click-through flight lists cap at 500 rows (most-recent-first) with a "narrow the view" note — revisit with virtualization if needed.
-- Carry-forwards: milestones at day-granularity could now use `depUtcMs` for sub-day precision; per-card aggregations recompute on render (fine at ~1,800 flights).
+- Carry-forwards: milestones at day-granularity could now use `depUtcMs` for sub-day precision; per-card aggregations recompute on render (fine at a few thousand flights).
 - Test infra: global env `node`; component tests `// @vitest-environment jsdom`; async FileReader tests need `waitFor`; a clickable BarList row + its sub-toggle both have role=button — query the toggle via `{ expanded }`.
