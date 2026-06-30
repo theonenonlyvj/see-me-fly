@@ -473,7 +473,10 @@ export interface ExtremePoint {
  */
 export interface GeoExtremes {
   global: { north: ExtremePoint; south: ExtremePoint; east: ExtremePoint; west: ExtremePoint } | null
-  byBase: Array<{ baseLabel: string; primaryCode: string; farthest: ExtremePoint; flightCount: number }>
+  // `farthestFlights`: the base's flight(s) that actually reached the farthest airport (an endpoint
+  // equals the farthest airport AND the flight's date resolves to THIS base) — so the card's
+  // farthest-row click opens exactly the trip-defining flight(s), not every flight ever touching it.
+  byBase: Array<{ baseLabel: string; primaryCode: string; farthest: ExtremePoint; flightCount: number; farthestFlights: EnrichedFlight[] }>
 }
 
 export function geoExtremes(flights: EnrichedFlight[], settings: Settings): GeoExtremes {
@@ -514,7 +517,7 @@ export function geoExtremes(flights: EnrichedFlight[], settings: Settings): GeoE
     rawIndex: number                               // lowest rawIndex over the base's flights (base-order tiebreak)
     homeKeys: Set<string>                          // union of the merged eras' home airports (key-normalized)
     flightCount: number
-    endpoints: Array<{ ap: Airport; rawIndex: number }> // candidate far-endpoints (incl. home; filtered below)
+    endpoints: Array<{ ap: Airport; rawIndex: number; flight: EnrichedFlight }> // candidate far-endpoints (incl. home; filtered below)
   }
   // Keyed by the base's primary airportKey so eras sharing a primary merge into one base.
   const bases = new Map<string, BaseAcc>()
@@ -532,8 +535,8 @@ export function geoExtremes(flights: EnrichedFlight[], settings: Settings): GeoE
     for (const a of home.airports) acc.homeKeys.add(airportKey(a, settings.groupAirports))
     acc.flightCount++
     acc.rawIndex = Math.min(acc.rawIndex, f.rawIndex)
-    if (f.from) acc.endpoints.push({ ap: f.from, rawIndex: f.rawIndex })
-    if (f.to && !f.isLocalFlight) acc.endpoints.push({ ap: f.to, rawIndex: f.rawIndex })
+    if (f.from) acc.endpoints.push({ ap: f.from, rawIndex: f.rawIndex, flight: f })
+    if (f.to && !f.isLocalFlight) acc.endpoints.push({ ap: f.to, rawIndex: f.rawIndex, flight: f })
   }
 
   // Most-recent era wins primary/label: walk eras ascending and let the latest era whose
@@ -547,7 +550,7 @@ export function geoExtremes(flights: EnrichedFlight[], settings: Settings): GeoE
     }
   }
 
-  const ranked: Array<{ baseLabel: string; primaryCode: string; farthest: ExtremePoint; flightCount: number; rawIndex: number }> = []
+  const ranked: Array<{ baseLabel: string; primaryCode: string; farthest: ExtremePoint; flightCount: number; rawIndex: number; farthestFlights: EnrichedFlight[] }> = []
   for (const acc of bases.values()) {
     const primaryAp = lookupAirport(acc.primaryCode)
     if (!primaryAp) continue // primary doesn't resolve → skip this base
@@ -566,12 +569,21 @@ export function geoExtremes(flights: EnrichedFlight[], settings: Settings): GeoE
       }
     }
     if (!farthestAirport) continue // no non-home candidate endpoints → drop the base
-    ranked.push({ baseLabel: acc.label, primaryCode: acc.primaryCode, farthest: { airport: farthestAirport, miles: farthestMiles }, flightCount: acc.flightCount, rawIndex: acc.rawIndex })
+    // The base's flight(s) that reached this farthest airport — an endpoint matches the farthest
+    // airport's ident — for the card's click-through. Deduped + ordered by rawIndex.
+    const farIdent = farthestAirport.ident
+    const seen = new Set<number>()
+    const farthestFlights = acc.endpoints
+      .filter(({ ap }) => ap.ident === farIdent)
+      .map(({ flight }) => flight)
+      .filter((f) => (seen.has(f.rawIndex) ? false : (seen.add(f.rawIndex), true)))
+      .sort((a, b) => a.rawIndex - b.rawIndex)
+    ranked.push({ baseLabel: acc.label, primaryCode: acc.primaryCode, farthest: { airport: farthestAirport, miles: farthestMiles }, flightCount: acc.flightCount, rawIndex: acc.rawIndex, farthestFlights })
   }
 
   // Rank by farthest miles descending; deterministic tiebreak by the base's lowest rawIndex.
   ranked.sort((a, b) => b.farthest.miles - a.farthest.miles || a.rawIndex - b.rawIndex)
-  return { global, byBase: ranked.map(({ baseLabel, primaryCode, farthest, flightCount }) => ({ baseLabel, primaryCode, farthest, flightCount })) }
+  return { global, byBase: ranked.map(({ baseLabel, primaryCode, farthest, flightCount, farthestFlights }) => ({ baseLabel, primaryCode, farthest, flightCount, farthestFlights })) }
 }
 
 /**

@@ -162,3 +162,29 @@ export function homeKeys(s: Settings): { keys: Set<string>; primaryKey: string |
   }
   return { keys, primaryKey }
 }
+
+/**
+ * The DISPLAYED home bases — the set of distinct PRIMARY metros only (each era's `airports[0]`,
+ * key-normalized), NOT the full membership union. This is what "lights up" as a home base on the
+ * map / in geo-extremes: a Milwaukee era (`MKE/ORD/MDW`) contributes ONLY Milwaukee — the co-home
+ * secondaries ORD/MDW are membership-only (they still count for "at home"/trip-bracketing via the
+ * `homeKeys` union + `isHomeOn`, but never surface as their own displayed base).
+ *
+ * `keys` = `airportKey(era.airports[0])` across all eras (distinct primaries; plus the legacy
+ * single `home` when there's no timeline). `currentKey` = the MOST-RECENT era's primary key (or the
+ * single `home`'s key, or null when `!hasHome`) — the one to emphasize.
+ */
+export function homePrimaryKeys(s: Settings): { keys: Set<string>; currentKey: string | null } {
+  const keys = new Set<string>()
+  const eras = sortedEras(s.homeHistory)
+  for (const era of eras) keys.add(airportKey(era.airports[0], s.groupAirports))
+  if (eras.length === 0 && s.home != null) keys.add(airportKey(s.home, s.groupAirports))
+
+  let currentKey: string | null = null
+  if (eras.length > 0) {
+    currentKey = airportKey(eras[eras.length - 1].airports[0], s.groupAirports)
+  } else if (s.home != null) {
+    currentKey = airportKey(s.home, s.groupAirports)
+  }
+  return { keys, currentKey }
+}

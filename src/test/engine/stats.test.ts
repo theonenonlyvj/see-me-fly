@@ -557,6 +557,9 @@ describe('geoExtremes', () => {
     // LHR is farther from DFW than AUS is
     expect(base.farthest.airport.iata).toBe('LHR')
     expect(base.farthest.miles).toBeGreaterThan(4000)
+    // farthestFlights = exactly the DFW→LHR leg that reached the farthest airport (for click-through).
+    expect(base.farthestFlights).toHaveLength(1)
+    expect(base.farthestFlights[0]).toBe(fLhr)
   })
 
   it('per-base farthest excludes the base own home airports', () => {

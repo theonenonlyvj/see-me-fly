@@ -35,8 +35,9 @@ function arcPath(fromLon: number, fromLat: number, toLon: number, toLat: number)
 /**
  * Improved route map: great-circle arcs only (no heat/choropleth). Arc opacity/width are LOG-scaled
  * so a 2-airline Texas hub doesn't burn out the canvas; airport dots are sqrt-sized by visit count;
- * EVERY home airport (date-less union) gets a ringed anchor, with the current/most-recent home
- * (`primaryKey`) emphasized. Arcs and dots are clickable (drill into the flight list).
+ * each displayed home BASE in `homeKeys` (the distinct PRIMARY metros — co-home secondaries are
+ * excluded by the caller) gets a ringed anchor, with the current/most-recent home (`primaryKey`)
+ * emphasized. Arcs and dots are clickable (drill into the flight list).
  */
 export function RouteMapV2({ flights, accent, groupAirports = false, homeKeys, primaryKey, mode = 'routes', onRoute, onNode, nameOf }: {
   flights: EnrichedFlight[]

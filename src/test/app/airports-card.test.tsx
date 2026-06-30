@@ -86,6 +86,26 @@ describe('airportsCard', () => {
       expect(pill.textContent).not.toMatch(/Dallas/)
     })
 
+    it('ALL-TIME collapses the multi-era home bases into ONE cohesive "Home bases" row (no swarm)', () => {
+      // All-time: a 2012 MKE flight (MKE home then) AND a 2014 DFW flight (DFW home by 2013) → two
+      // distinct excluded home bases that must collapse into ONE cohesive row, not two pills.
+      const allTimeCsv = [REQUIRED_COLUMNS.join(','),
+        '2012-08-01,AAL,10,MKE,AUS,,,,,false,,2012-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+        '2014-08-01,AAL,12,DFW,AUS,,,,,false,,2014-08-01T09:00,,,,,,,,Boeing 737,,,,,,,,,,,',
+      ].join('\n')
+      const model = buildModel(allTimeCsv, eraSettings, '2026-06-25')
+      render(<>{airportsCard.render({ model, settings: eraSettings })}</>)
+      // Exactly ONE home eyebrow, and it's the plural "Home bases" cohesive row (not N "Home base" pills).
+      expect(screen.queryAllByText(/^Home base$/)).toHaveLength(0)
+      const eyebrows = screen.getAllByText(/^Home bases$/)
+      expect(eyebrows).toHaveLength(1)
+      const row = eyebrows[0].closest('div')!.parentElement!
+      // The current (most-recent) base leads; the earlier base is listed compactly in the same row.
+      expect(row.textContent).toMatch(/Dallas/)     // current home leads
+      expect(row.textContent).toMatch(/Milwaukee/)  // earlier home listed
+      expect(row.textContent).toMatch(/earlier/)    // compact "+ earlier:" listing
+    })
+
     it('DFW stays a ranked bar in 2012 (not pulled into the pill) — no double-count', () => {
       const model = buildModel(eraCsv, eraSettings, '2026-06-25', 2012)
       // byAirport (ranked bars) must still contain the Dallas group for the 2012 DFW flight.

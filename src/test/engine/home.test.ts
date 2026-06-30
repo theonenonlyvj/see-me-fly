@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { homeAt, hasHome, homeKeys, isHomeOn } from '../../engine/home'
+import { homeAt, hasHome, homeKeys, homePrimaryKeys, isHomeOn } from '../../engine/home'
 import { airportKey } from '../../engine/normalize'
 import { DEFAULT_DURATION_CONSTANTS as C } from '../../engine/constants'
 import type { Settings, HomeEra } from '../../engine/types'
@@ -125,5 +125,40 @@ describe('homeKeys — date-less union + most-recent primary', () => {
     const { keys, primaryKey } = homeKeys(S())
     expect(keys.size).toBe(0)
     expect(primaryKey).toBeNull()
+  })
+})
+
+describe('homePrimaryKeys — displayed bases (primaries only, no co-home secondaries)', () => {
+  it('keys are the DISTINCT primary metros only; ORD/MDW (co-home) do NOT appear as bases', () => {
+    const s = S({ homeHistory: ERAS, groupAirports: true })
+    const { keys, currentKey } = homePrimaryKeys(s)
+    expect(keys.has(airportKey('RDU', true))).toBe(true)
+    expect(keys.has(airportKey('MKE', true))).toBe(true)   // Milwaukee primary
+    expect(keys.has(airportKey('DFW', true))).toBe(true)    // Dallas primary
+    // Chicago (ORD/MDW) is a co-home SECONDARY of the Milwaukee era — membership-only, never a base.
+    expect(keys.has(airportKey('ORD', true))).toBe(false)
+    expect(keys.has(airportKey('MDW', true))).toBe(false)
+    expect(keys.size).toBe(3)
+    expect(currentKey).toBe(airportKey('DFW', true))
+  })
+
+  it('contrast: homeKeys (membership union) DOES include Chicago, homePrimaryKeys does NOT', () => {
+    const s = S({ homeHistory: ERAS, groupAirports: true })
+    expect(homeKeys(s).keys.has(airportKey('ORD', true))).toBe(true)
+    expect(homePrimaryKeys(s).keys.has(airportKey('ORD', true))).toBe(false)
+  })
+
+  it('falls back to the single home when homeHistory is empty', () => {
+    const s = S({ home: 'DFW' })
+    const { keys, currentKey } = homePrimaryKeys(s)
+    expect(keys.has(airportKey('DFW', false))).toBe(true)
+    expect(keys.size).toBe(1)
+    expect(currentKey).toBe(airportKey('DFW', false))
+  })
+
+  it('returns an empty set and null currentKey when !hasHome', () => {
+    const { keys, currentKey } = homePrimaryKeys(S())
+    expect(keys.size).toBe(0)
+    expect(currentKey).toBeNull()
   })
 })

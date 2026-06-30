@@ -49,6 +49,26 @@ describe('geoExtremesCard', () => {
     expect(screen.getByText(/southernmost/i)).toBeInTheDocument()
   })
 
+  it('clicking a farthest-from-home row opens that base→farthest flight, not every flight via the airport', () => {
+    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    const opened: { title: string; flights: typeof model.flown }[] = []
+    const overlay = {
+      openFlights: (title: string, flights: typeof model.flown) => opened.push({ title, flights }),
+    } as never
+    render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS, overlay })}</>)
+    // The Dallas base's farthest is SYD; click its per-base row (scoped via the flight-count chip,
+    // which only the per-base rows carry, to avoid the global SYD/southernmost row).
+    const chip = screen.getByText(/3 flights/i)
+    const baseRow = chip.closest('[role="button"]')! as HTMLElement
+    expect(baseRow.textContent).toMatch(/SYD/)
+    baseRow.click()
+    expect(opened).toHaveLength(1)
+    // Opens exactly the one DFW→SYD flight (not the LHR/AUS flights that also touch DFW).
+    expect(opened[0].flights).toHaveLength(1)
+    expect(opened[0].flights[0].toCode).toBe('SYD')
+    expect(opened[0].title).toMatch(/SYD/)
+  })
+
   it('renders the global block but NO per-base section when there is no home', () => {
     const noHome = { ...DEFAULT_SETTINGS, home: null, homeHistory: [] }
     const model = buildModel(csv, noHome, '2026-06-25')

@@ -84,9 +84,12 @@ export const geoExtremesCard: CardDef = {
                   {result.byBase.map((base) => {
                     const ap = base.farthest.airport
                     const baseLabel = displayEndpoint(airportKey(base.primaryCode, ctx.settings.groupAirports))
+                    // Open exactly the base's flight(s) that reached this farthest airport (filtered
+                    // by both endpoint AND era-home in `geoExtremes`), so the row opens the trip that
+                    // made the record — not every flight ever touching the airport.
                     const open = () => ctx.overlay?.openFlights(
-                      `Flights via ${ap.iata || ap.ident}`,
-                      flightsByAirportIdent(ctx.model!.flown, ap.ident),
+                      `${baseLabel} → ${ap.iata || ap.ident}`,
+                      base.farthestFlights,
                     )
                     return (
                       <div
