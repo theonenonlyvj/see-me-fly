@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
   explicitlyUnique: false,
   includeCanceled: false,
   excludeBeforeDate: null,
-  home: 'DFW',
+  home: null,
   homeHistory: [],
   groundLinks: [],
   excludeHomeFromRankings: true,

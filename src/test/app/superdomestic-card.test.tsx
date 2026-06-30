@@ -19,8 +19,10 @@ const csv = [
 
 describe('domestic tier cards', () => {
   it('home-state card titles with the home state ("Within Texas") and shows its route', () => {
-    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    render(<>{domesticStateCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
+    // Default home is now UNSET; the home-state title needs an explicit home.
+    const dfw = { ...DEFAULT_SETTINGS, home: 'DFW' }
+    const model = buildModel(csv, dfw, '2026-06-25')
+    render(<>{domesticStateCard.render({ model, settings: dfw })}</>)
     expect(screen.getByText(/Within Texas/i)).toBeInTheDocument()
     expect(screen.getAllByText(/DFW|Dallas|AUS|Austin/i).length).toBeGreaterThan(0)
   })

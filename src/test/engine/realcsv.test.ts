@@ -31,10 +31,12 @@ describe.skipIf(!existsSync(path))('real Flighty export smoke test', () => {
     const incHome = buildModel(csv, { ...DEFAULT_SETTINGS, excludeHomeFromRankings: false }, TODAY)
     expect(incHome.byAirport[0].key).toBe('Dallas')
   })
-  it('with home-exclusion on (default), Dallas is dropped from the ranking and a non-home airport leads', () => {
-    // DEFAULT_SETTINGS has home DFW + excludeHomeFromRankings: byAirport now drops the home
-    // endpoint per-flight (date-aware), so Dallas no longer appears in the ranking.
-    expect(m.byAirport.some((a) => a.key === 'Dallas')).toBe(false)
-    expect(m.byAirport[0].key).not.toBe('Dallas')
+  it('with home DFW + home-exclusion on, Dallas is dropped from the ranking and a non-home airport leads', () => {
+    // Default home is now UNSET (friend-ready); set DFW explicitly. excludeHomeFromRankings is on
+    // by default, so byAirport drops the home endpoint per-flight (date-aware) and Dallas no longer
+    // appears in the ranking.
+    const dfw = buildModel(csv, { ...DEFAULT_SETTINGS, home: 'DFW' }, TODAY)
+    expect(dfw.byAirport.some((a) => a.key === 'Dallas')).toBe(false)
+    expect(dfw.byAirport[0].key).not.toBe('Dallas')
   })
 })

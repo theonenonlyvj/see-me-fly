@@ -5,6 +5,10 @@ import { geoExtremesCard } from '../../app/cards/GeoExtremesCard'
 import { buildModel, DEFAULT_SETTINGS } from '../../engine'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
 
+// Default home is now UNSET (friend-ready), so per-base / farthest-from-home tests
+// must opt into a home explicitly. DFW is the long-standing fixture home.
+const DFW_SETTINGS = { ...DEFAULT_SETTINGS, home: 'DFW' }
+
 function makeRow(date: string, from: string, to: string): string {
   const fields = new Array<string>(REQUIRED_COLUMNS.length).fill('')
   fields[0]  = date
@@ -27,9 +31,9 @@ const csv = [
 ].join('\n')
 
 describe('geoExtremesCard', () => {
-  it('shows the per-base farthest-from-each-home section (DFW default home)', () => {
-    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
-    render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS })}</>)
+  it('shows the per-base farthest-from-each-home section (DFW home)', () => {
+    const model = buildModel(csv, DFW_SETTINGS, '2026-06-25')
+    render(<>{geoExtremesCard.render({ model, settings: DFW_SETTINGS })}</>)
     expect(screen.getByText(/farthest from each home/i)).toBeInTheDocument()
     // SYD (Sydney) is farthest from DFW; the base label uses the metro convention.
     expect(screen.getByText(/dallas/i)).toBeInTheDocument()
@@ -50,12 +54,12 @@ describe('geoExtremesCard', () => {
   })
 
   it('clicking a farthest-from-home row opens the whole TRIP that reached the farthest airport', () => {
-    const model = buildModel(csv, DEFAULT_SETTINGS, '2026-06-25')
+    const model = buildModel(csv, DFW_SETTINGS, '2026-06-25')
     const opened: { title: string; flights: typeof model.flown }[] = []
     const overlay = {
       openFlights: (title: string, flights: typeof model.flown) => opened.push({ title, flights }),
     } as never
-    render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS, overlay })}</>)
+    render(<>{geoExtremesCard.render({ model, settings: DFW_SETTINGS, overlay })}</>)
     // The Dallas base's farthest is SYD; click its per-base row (scoped via the flight-count chip,
     // which only the per-base rows carry, to avoid the global SYD/southernmost row).
     const chip = screen.getByText(/3 flights/i)
@@ -77,10 +81,10 @@ describe('geoExtremesCard', () => {
       makeRow('2019-05-01', 'DFW', 'SYD'),
       makeRow('2019-05-10', 'SYD', 'DFW'),
     ].join('\n')
-    const model = buildModel(roundCsv, DEFAULT_SETTINGS, '2026-06-25')
+    const model = buildModel(roundCsv, DFW_SETTINGS, '2026-06-25')
     const opened: { title: string; flights: typeof model.flown }[] = []
     const overlay = { openFlights: (title: string, flights: typeof model.flown) => opened.push({ title, flights }) } as never
-    render(<>{geoExtremesCard.render({ model, settings: DEFAULT_SETTINGS, overlay })}</>)
+    render(<>{geoExtremesCard.render({ model, settings: DFW_SETTINGS, overlay })}</>)
     const baseRow = screen.getByText(/2 flights/i).closest('[role="button"]')! as HTMLElement
     baseRow.click()
     expect(opened).toHaveLength(1)
