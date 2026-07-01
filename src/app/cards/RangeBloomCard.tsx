@@ -36,6 +36,7 @@ export const rangeBloomCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🧭"
+        poppable
       >
         {!hasHome(ctx.settings) || destinations.length === 0 ? (
           <p style={{ color: 'var(--ink-2)', fontSize: 13, lineHeight: 1.5 }}>

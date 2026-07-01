@@ -11,9 +11,11 @@ export interface OverlayApi {
   openFlight: (flight: EnrichedFlight) => void
   /** Open a full stat-list in a popup. The caller passes a ready-rendered body (e.g. a full BarList). */
   openList: (title: string, body: ReactNode, subtitle?: string) => void
+  /** Pop a card/chart out into a WIDE modal (for enlarging beautiful graphs). */
+  openWide: (title: string, body: ReactNode, subtitle?: string) => void
 }
 
-const NOOP: OverlayApi = { openFlights: () => {}, openFlight: () => {}, openList: () => {} }
+const NOOP: OverlayApi = { openFlights: () => {}, openFlight: () => {}, openList: () => {}, openWide: () => {} }
 const Ctx = createContext<OverlayApi>(NOOP)
 export function useOverlay(): OverlayApi { return useContext(Ctx) }
 
@@ -21,6 +23,7 @@ type Overlay =
   | { kind: 'flights'; title: string; subtitle?: string; flights: EnrichedFlight[] }
   | { kind: 'flight'; flight: EnrichedFlight }
   | { kind: 'list'; title: string; subtitle?: string; body: ReactNode }
+  | { kind: 'wide'; title: string; subtitle?: string; body: ReactNode }
 
 const LIST_CAP = 500
 
@@ -70,11 +73,12 @@ function FlightsBody({ flights, onOpenFlight }: { flights: EnrichedFlight[]; onO
   )
 }
 
-function Panel({ title, subtitle, onClose, onBack, children }: {
+function Panel({ title, subtitle, onClose, onBack, wide, children }: {
   title: string
   subtitle?: string
   onClose: () => void
   onBack?: () => void
+  wide?: boolean
   children: ReactNode
 }) {
   return (
@@ -84,7 +88,8 @@ function Panel({ title, subtitle, onClose, onBack, children }: {
       aria-label={title}
       onClick={(e) => e.stopPropagation()}
       style={{
-        width: 'min(680px, 94vw)', maxHeight: '86vh', display: 'flex', flexDirection: 'column',
+        width: wide ? 'min(1060px, 95vw)' : 'min(680px, 94vw)', maxHeight: wide ? '92vh' : '86vh',
+        display: 'flex', flexDirection: 'column',
         background: '#fff', borderRadius: 20, overflow: 'hidden',
         boxShadow: '0 30px 80px -20px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.05)',
       }}
@@ -118,6 +123,9 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const openList = useCallback((title: string, body: ReactNode, subtitle?: string) => {
     setStack((s) => [...s, { kind: 'list', title, body, subtitle }])
   }, [])
+  const openWide = useCallback((title: string, body: ReactNode, subtitle?: string) => {
+    setStack((s) => [...s, { kind: 'wide', title, body, subtitle }])
+  }, [])
   const pop = useCallback(() => setStack((s) => s.slice(0, -1)), [])
   const closeAll = useCallback(() => setStack([]), [])
 
@@ -132,7 +140,7 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   const top = stack[stack.length - 1]
 
   return (
-    <Ctx.Provider value={{ openFlights, openFlight, openList }}>
+    <Ctx.Provider value={{ openFlights, openFlight, openList, openWide }}>
       {children}
       {top && (
         <div
@@ -154,6 +162,16 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
             </Panel>
           ) : top.kind === 'list' ? (
             <Panel
+              title={top.title}
+              subtitle={top.subtitle}
+              onClose={closeAll}
+              onBack={stack.length > 1 ? pop : undefined}
+            >
+              {top.body}
+            </Panel>
+          ) : top.kind === 'wide' ? (
+            <Panel
+              wide
               title={top.title}
               subtitle={top.subtitle}
               onClose={closeAll}

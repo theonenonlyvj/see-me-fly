@@ -27,6 +27,7 @@ export const yearBloomsCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🌸"
+        poppable
       >
         <YearBlooms data={data} accent={ACCENT} />
         <div style={{ marginTop: 14, fontSize: 12, color: 'var(--ink-2)', fontWeight: 600, textAlign: 'center' }}>

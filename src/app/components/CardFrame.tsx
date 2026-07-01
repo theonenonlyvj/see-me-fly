@@ -1,5 +1,6 @@
 import type { ReactNode, CSSProperties } from 'react'
 import OpenMojiIcon from './OpenMojiIcon'
+import { useOverlay } from './Overlay'
 
 const cardStyle: CSSProperties = {
   position: 'relative',
@@ -24,7 +25,7 @@ export function QuickToggle({ label, checked, onChange, accent }: { label: strin
 }
 
 export default function CardFrame({
-  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth, onTitleClick, controls,
+  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth, onTitleClick, controls, poppable,
 }: {
   title: string
   children: ReactNode
@@ -39,10 +40,18 @@ export default function CardFrame({
   onTitleClick?: () => void
   /** small inline controls (quick toggles) rendered on the right of the header */
   controls?: ReactNode
+  /** show a "⤢ pop out" affordance that enlarges this card's chart in a wide modal */
+  poppable?: boolean
 }) {
   const grad = accentGrad ?? `linear-gradient(90deg, ${accent ?? 'var(--coral)'}, ${accent ?? 'var(--coral)'})`
   const soft = accentSoft ?? 'var(--hair-2)'
   const acc  = accent ?? 'var(--coral)'
+
+  const overlay = useOverlay()
+  // Pop-out is available only when no other title action is wired (maps use onTitleClick).
+  const canPop = poppable && !onTitleClick
+  const popOut = () => overlay.openWide(title, <>{children}{footer}</>, eyebrow)
+  const headerClick = onTitleClick ?? (canPop ? popOut : undefined)
 
   const sectionStyle: CSSProperties = fullWidth
     ? { ...cardStyle, columnSpan: 'all', breakInside: 'auto' }
@@ -72,9 +81,10 @@ export default function CardFrame({
 
       {/* card header */}
       <div
-        onClick={onTitleClick}
-        role={onTitleClick ? 'button' : undefined}
-        style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 22, position: 'relative', cursor: onTitleClick ? 'pointer' : undefined }}>
+        onClick={headerClick}
+        role={headerClick ? 'button' : undefined}
+        title={canPop && !onTitleClick ? 'Click to pop out' : undefined}
+        style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 22, position: 'relative', cursor: headerClick ? 'pointer' : undefined }}>
         {icon && (
           <div style={{
             width: 42, height: 42, flexShrink: 0,
@@ -110,10 +120,11 @@ export default function CardFrame({
             color: 'var(--ink)',
           }}>{title}</h2>
         </div>
-        {(controls || onTitleClick) && (
+        {(controls || onTitleClick || canPop) && (
           <div onClick={(e) => e.stopPropagation()} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             {controls}
             {onTitleClick && <span onClick={onTitleClick} style={{ fontSize: 12, color: acc, fontWeight: 800, whiteSpace: 'nowrap', cursor: 'pointer' }}>↗ map</span>}
+            {canPop && <span onClick={popOut} title="Pop out to a larger view" style={{ fontSize: 11.5, color: acc, fontWeight: 800, whiteSpace: 'nowrap', cursor: 'pointer', opacity: 0.85 }}>⤢ pop out</span>}
           </div>
         )}
       </div>

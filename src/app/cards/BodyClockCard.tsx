@@ -91,6 +91,7 @@ export const bodyClockCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🌓"
+        poppable
       >
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* the dial */}
