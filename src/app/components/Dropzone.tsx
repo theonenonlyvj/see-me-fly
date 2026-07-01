@@ -1,11 +1,26 @@
 import { useRef, useState } from 'react'
 import { readFileText, validateCsv } from '../csv/load-csv'
 
-export default function Dropzone({ onLoaded }: { onLoaded: (text: string, fileName: string, remember: boolean) => void }) {
+export default function Dropzone({ onLoaded, onUnlock }: {
+  onLoaded: (text: string, fileName: string, remember: boolean) => void
+  /** Try a share code → resolves true if it unlocked a shared view. */
+  onUnlock?: (code: string) => Promise<boolean>
+}) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
   const [remember, setRemember] = useState(true)
+  const [code, setCode] = useState('')
+  const [codeBusy, setCodeBusy] = useState(false)
+  const [codeErr, setCodeErr] = useState<string | null>(null)
+
+  async function submitCode() {
+    if (!onUnlock || !code.trim()) return
+    setCodeBusy(true); setCodeErr(null)
+    const ok = await onUnlock(code.trim())
+    setCodeBusy(false)
+    if (!ok) setCodeErr("That code didn't unlock a shared view.")
+  }
 
   async function handleFile(file: File | undefined | null) {
     if (!file) return
@@ -57,6 +72,28 @@ export default function Dropzone({ onLoaded }: { onLoaded: (text: string, fileNa
           Saved only in this browser via localStorage — never uploaded. Uncheck to keep it one-time; clear it anytime with “Load a different CSV”.
         </p>
         {error && <p role="alert" style={{ color: 'var(--warn)', marginTop: 16, maxWidth: 420 }}>{error}</p>}
+
+        {onUnlock && (
+          <div style={{ marginTop: 26, paddingTop: 18, borderTop: '1px solid var(--border)', maxWidth: 420, marginLeft: 'auto', marginRight: 'auto' }}>
+            <div style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 8 }}>Have a share code?</div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void submitCode() }}
+                placeholder="Enter code"
+                aria-label="Share code"
+                style={{ flex: 1, padding: '9px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: '#fff', color: 'var(--text)', fontSize: 14 }}
+              />
+              <button
+                onClick={() => void submitCode()}
+                disabled={codeBusy || !code.trim()}
+                style={{ background: 'var(--accent)', color: '#06121f', border: 'none', borderRadius: 'var(--radius-sm)', padding: '9px 16px', fontWeight: 700, cursor: 'pointer', opacity: codeBusy || !code.trim() ? 0.6 : 1 }}
+              >{codeBusy ? '…' : 'View'}</button>
+            </div>
+            {codeErr && <p role="alert" style={{ color: 'var(--warn)', marginTop: 8, fontSize: 12.5 }}>{codeErr}</p>}
+          </div>
+        )}
       </div>
     </div>
   )

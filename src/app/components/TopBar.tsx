@@ -1,7 +1,7 @@
 import ScopeDropdown from './ScopeDropdown'
 
 export default function TopBar({ fileName, years, scope, onScope, onToggleSettings }: {
-  fileName: string; years: number[]; scope: number | undefined; onScope: (y: number | undefined) => void; onToggleSettings: () => void
+  fileName: string; years: number[]; scope: number | undefined; onScope: (y: number | undefined) => void; onToggleSettings?: () => void
 }) {
   return (
     <header style={{
@@ -61,15 +61,17 @@ export default function TopBar({ fileName, years, scope, onScope, onToggleSettin
           <ScopeDropdown years={years} value={scope} onChange={onScope} />
         </div>
 
-        <button onClick={onToggleSettings} style={{
-          display: 'inline-flex', alignItems: 'center', gap: 7,
-          fontSize: 13.5, fontWeight: 700,
-          color: 'var(--ink)',
-          background: '#fff',
-          border: '1px solid var(--hair)',
-          borderRadius: 12,
-          padding: '8px 13px',
-        }}>⚙ Settings</button>
+        {onToggleSettings && (
+          <button onClick={onToggleSettings} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            fontSize: 13.5, fontWeight: 700,
+            color: 'var(--ink)',
+            background: '#fff',
+            border: '1px solid var(--hair)',
+            borderRadius: 12,
+            padding: '8px 13px',
+          }}>⚙ Settings</button>
+        )}
       </div>
     </header>
   )
