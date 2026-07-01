@@ -41,7 +41,7 @@ function MapV2View({ model, settings, overlay }: CardContext) {
   return (
     <CardFrame title="Your map ✦" eyebrow="Routes, hubs & home — tap to drill in" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🗺️" fullWidth>
       <div style={{ display: 'inline-flex', padding: 3, gap: 2, marginBottom: 12, background: ACCENT_SOFT, borderRadius: 12, border: `1px solid color-mix(in srgb, ${ACCENT} 24%, transparent)` }}>
-        {([['routes', 'Routes'], ['districts', 'Districts']] as ['routes' | 'districts', string][]).map(([m, lbl]) => (
+        {([['routes', 'Routes'], ['districts', 'Regions']] as ['routes' | 'districts', string][]).map(([m, lbl]) => (
           <button key={m} onClick={() => setMode(m)}
             style={{ fontFamily: 'var(--font)', fontSize: 12, fontWeight: 800, border: 'none', cursor: 'pointer', padding: '6px 13px', borderRadius: 9, color: mode === m ? '#fff' : 'var(--ink)', background: mode === m ? ACCENT : 'transparent' }}>
             {lbl}
@@ -62,7 +62,7 @@ function MapV2View({ model, settings, overlay }: CardContext) {
       <p style={{ marginTop: 8, fontSize: 11.5, color: 'var(--ink-2)', fontStyle: 'italic' }}>
         {mode === 'routes'
           ? 'Arc thickness & opacity = how often you fly it (log-scaled); dot size = visits; ◯ = home. Drag to pan, scroll to zoom, tap any arc or dot.'
-          : 'Each airport cluster lights a fixed ~100-mile district, shaded by how often you visit — so a hub city never floods its whole country. Drag to pan, scroll to zoom.'}
+          : 'A solid ~100-mile region around every airport you’ve visited, clipped to land so coastal zones stay inland — a filled map of where you’ve been. Drag to pan, scroll to zoom.'}
       </p>
     </CardFrame>
   )

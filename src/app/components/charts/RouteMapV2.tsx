@@ -16,14 +16,9 @@ const WIDTH = 980
 const HEIGHT = 500
 const projection = geoNaturalEarth1().fitSize([WIDTH, HEIGHT], landCollection)
 const path = geoPath(projection)
-
-function heatColor(t: number): string {
-  if (t < 0.2) return '#fca5a5'
-  if (t < 0.45) return '#f87171'
-  if (t < 0.7) return '#ef4444'
-  if (t < 0.88) return '#dc2626'
-  return '#991b1b'
-}
+// Projected land outline, reused as a clip-path so the solid "regions" disks stay on land
+// (a coastal airport's zone hugs the coastline instead of bleeding into the ocean).
+const landPath = path(landCollection) ?? ''
 
 function arcPath(fromLon: number, fromLat: number, toLon: number, toLat: number): string | null {
   const it = geoInterpolate([fromLon, fromLat], [toLon, toLat])
@@ -142,7 +137,9 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKeys, p
       <svg ref={svgRef} viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         style={{ width: '100%', height: 'auto', display: 'block', cursor: zoomed ? 'grab' : 'default', touchAction: 'none' }}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp}>
-        <defs><filter id="rmv2heat" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" /></filter></defs>
+        <defs>
+          <clipPath id="rmv2land"><path d={landPath} /></clipPath>
+        </defs>
         <rect width={WIDTH} height={HEIGHT} fill="#eef2f7" rx={4} />
         <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
         {countriesCollection.features.map((feat: Feature<Geometry>, i: number) => {
@@ -150,13 +147,22 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKeys, p
           return <path key={i} data-country d={d} fill="#dce5ee" stroke="#b8c5d4" strokeWidth={0.4} vectorEffect="non-scaling-stroke" />
         })}
         {mode === 'districts' && (
-          <g data-districts filter="url(#rmv2heat)">
-            {districts.map((di, i) => (
-              <circle key={i} cx={di.cx} cy={di.cy} r={di.r} fill={heatColor(di.t)} opacity={0.32 + 0.56 * di.t}>
-                <title>{`${label(di.key)} — ${di.count} visits`}</title>
-              </circle>
-            ))}
-          </g>
+          <>
+            {/* solid ~100-mile "regions" around every visited airport, clipped to land so coastal
+                zones stay inland — a filled highlight of where you've been */}
+            <g data-districts clipPath="url(#rmv2land)">
+              {districts.map((di, i) => (
+                <circle key={i} cx={di.cx} cy={di.cy} r={di.r} fill={accent} opacity={0.78}>
+                  <title>{`${label(di.key)} — ${di.count} visits`}</title>
+                </circle>
+              ))}
+            </g>
+            {/* re-stroke country borders on top so the filled regions still read as a map */}
+            {countriesCollection.features.map((feat: Feature<Geometry>, i: number) => {
+              const d = path(feat); if (!d) return null
+              return <path key={`bd${i}`} d={d} fill="none" stroke="#8b9db1" strokeWidth={0.4} strokeOpacity={0.7} vectorEffect="non-scaling-stroke" />
+            })}
+          </>
         )}
         {mode === 'routes' && arcs.map((arc, i) => (
           <path key={i} data-arc d={arc.d} fill="none" stroke={accent} strokeWidth={arc.sw} strokeOpacity={arc.op} strokeLinecap="round" vectorEffect="non-scaling-stroke"
@@ -188,9 +194,10 @@ export function RouteMapV2({ flights, accent, groupAirports = false, homeKeys, p
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="34" height="8"><line x1="0" y1="4" x2="34" y2="4" stroke={accent} strokeWidth={3.1} strokeOpacity={0.8} /></svg>{maxRoute}× (busiest)</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><svg width="16" height="16"><circle cx="8" cy="8" r="6.5" fill={accent} opacity={0.85} /></svg>dot size = visits (up to {maxNode})</span>
         </>) : (<>
-          <span>Each ~100-mile district, shaded by how often you visit:</span>
-          {[0.1, 0.4, 0.7, 0.95].map((t) => <span key={t} style={{ width: 16, height: 12, borderRadius: 3, background: heatColor(t) }} />)}
-          <span>more →</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <svg width="16" height="12"><rect width="16" height="12" rx="3" fill={accent} opacity={0.78} /></svg>
+            a ~100-mile region around every airport you&apos;ve visited, clipped to land
+          </span>
         </>)}
       </div>
     </div>
