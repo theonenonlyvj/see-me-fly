@@ -2,6 +2,7 @@ import CardFrame from '../components/CardFrame'
 import StreamGraph, { type StreamLayer, type StreamHome } from '../components/charts/StreamGraph'
 import { airlineByYearDetailed } from '../../engine/stats'
 import { byAirline } from '../../engine/aggregate'
+import { airlineColor } from '../../engine/airline-colors'
 import { sanitizeHomeHistory } from '../../engine/home'
 import { displayEndpoint } from '../lib/places'
 import type { CardContext, CardDef } from './registry'
@@ -24,13 +25,16 @@ export const allegianceCard: CardDef = {
   render: ({ model, settings }: CardContext) => {
     // Life portrait → ALL-TIME flights, never the year-scoped slice.
     const flights = model!.flown
-    const mergeDefunct = settings.mergeDefunctAirlines
+    // Allegiance is about brand loyalty over time, so always roll an acquired carrier into its
+    // survivor (US Airways → American) regardless of the global setting.
+    const mergeDefunct = true
 
     // Overall rank picks which carriers are FEATURED (stable across years) + their display names.
     const overall = byAirline(flights, mergeDefunct)
     const featured = overall.slice(0, FEATURED_N)
     const featuredNames = new Set(featured.map((a) => a.name))
-    const colorOf = new Map(featured.map((a, i) => [a.name, CARRIER_COLORS[i % CARRIER_COLORS.length]]))
+    // Each carrier in its own brand color; unlisted carriers fall back to a distinct Pop hue by rank.
+    const colorOf = new Map(featured.map((a, i) => [a.name, airlineColor(a.airlineCode, CARRIER_COLORS[i % CARRIER_COLORS.length])]))
 
     const perYear = airlineByYearDetailed(flights, mergeDefunct)
 

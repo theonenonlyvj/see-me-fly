@@ -1,13 +1,15 @@
 import CardFrame from '../components/CardFrame'
 import StackedColumns from '../components/charts/StackedColumns'
 import { airlineByYear } from '../../engine/stats'
+import { byAirline } from '../../engine/aggregate'
+import { airlineColor } from '../../engine/airline-colors'
 import { flightsByYear } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT = '#0a58ff'
 const GRAD = 'linear-gradient(90deg, #0a58ff, #5b8def)'
 const SOFT = '#e3ecff'
-const PALETTE = ['#0a58ff', '#ff3d57', '#f59e0b', '#9aa7b8'] // top airline, 2nd, 3rd, Other
+const PALETTE = ['#0a58ff', '#ff3d57', '#f59e0b', '#9aa7b8'] // fallback: top airline, 2nd, 3rd, Other
 
 export const airlineErasCard: CardDef = {
   id: 'airlineEras',
@@ -15,8 +17,10 @@ export const airlineErasCard: CardDef = {
   group: 'creative',
   accent: ACCENT,
   icon: '🎟️',
-  render: ({ model, settings, overlay }: CardContext) => {
-    const { years, series } = airlineByYear(model!.scoped, 3, settings.mergeDefunctAirlines)
+  render: ({ model, overlay }: CardContext) => {
+    // "Who flew you" reads as brand loyalty, so always roll acquired carriers into their survivor.
+    const { years, series } = airlineByYear(model!.scoped, 3, true)
+    const codeByName = new Map(byAirline(model!.scoped, true).map((a) => [a.name, a.airlineCode]))
     return (
       <CardFrame title="Airline loyalty" eyebrow="Who flew you, by year" accent={ACCENT} accentGrad={GRAD} accentSoft={SOFT} icon="🎟️"
         onTitleClick={() => overlay?.openFlights('All flights', model!.scoped)}>
@@ -31,7 +35,7 @@ export const airlineErasCard: CardDef = {
           // "Other" is the last series → paint it gray regardless of count
           const cseries = series.map((s, i) => ({
             name: s.name,
-            color: s.name === 'Other' ? PALETTE[3] : PALETTE[Math.min(i, 2)],
+            color: s.name === 'Other' ? PALETTE[3] : airlineColor(codeByName.get(s.name), PALETTE[Math.min(i, 2)]),
             counts: cont.map((y) => { const j = idx.get(y); return j === undefined ? 0 : s.counts[j] }),
           }))
           return (

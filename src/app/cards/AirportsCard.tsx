@@ -57,8 +57,8 @@ function homeEraRanges(settings: Settings): Map<string, string> {
   eras.forEach((era, i) => {
     const key = airportKey(era.airports[0], settings.groupAirports)
     const end = i + 1 < eras.length ? eras[i + 1].start.slice(0, 4) : 'present'
-    const label = era.label ? ` (${era.label})` : ''
-    const range = `${era.start.slice(0, 4)}–${end}${label}`
+    // Just the year range — the freeform era labels/notes are too noisy in this list.
+    const range = `${era.start.slice(0, 4)}–${end}`
     const cur = byKey.get(key) ?? []
     cur.push(range)
     byKey.set(key, cur)

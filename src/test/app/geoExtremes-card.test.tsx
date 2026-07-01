@@ -31,14 +31,14 @@ const csv = [
 ].join('\n')
 
 describe('geoExtremesCard', () => {
-  it('shows the per-base farthest-from-each-home section (DFW home)', () => {
+  it('shows a single furthest-from-home record (SYD, farthest from any home)', () => {
     const model = buildModel(csv, DFW_SETTINGS, '2026-06-25')
     render(<>{geoExtremesCard.render({ model, settings: DFW_SETTINGS })}</>)
-    expect(screen.getByText(/farthest from each home/i)).toBeInTheDocument()
-    // SYD (Sydney) is farthest from DFW; the base label uses the metro convention.
-    expect(screen.getByText(/dallas/i)).toBeInTheDocument()
-    // A flight-count chip is shown for the base (3 flights all from DFW).
-    expect(screen.getByText(/3 flights/i)).toBeInTheDocument()
+    expect(screen.getByText(/furthest from home/i)).toBeInTheDocument()
+    // SYD (Sydney) is the farthest reach from home; shown with its mileage, no per-base rows/notes.
+    const section = screen.getByText(/furthest from home/i).parentElement!
+    expect(section.textContent).toMatch(/SYD/)
+    expect(section.textContent).toMatch(/mi/)
   })
 
   it('shows northernmost label (global block)', () => {
@@ -60,10 +60,9 @@ describe('geoExtremesCard', () => {
       openFlights: (title: string, flights: typeof model.flown) => opened.push({ title, flights }),
     } as never
     render(<>{geoExtremesCard.render({ model, settings: DFW_SETTINGS, overlay })}</>)
-    // The Dallas base's farthest is SYD; click its per-base row (scoped via the flight-count chip,
-    // which only the per-base rows carry, to avoid the global SYD/southernmost row).
-    const chip = screen.getByText(/3 flights/i)
-    const baseRow = chip.closest('[role="button"]')! as HTMLElement
+    // The single furthest-from-home row (under its header) reaches SYD.
+    const section = screen.getByText(/furthest from home/i).parentElement!
+    const baseRow = section.querySelector('[role="button"]')! as HTMLElement
     expect(baseRow.textContent).toMatch(/SYD/)
     baseRow.click()
     expect(opened).toHaveLength(1)
@@ -85,7 +84,8 @@ describe('geoExtremesCard', () => {
     const opened: { title: string; flights: typeof model.flown }[] = []
     const overlay = { openFlights: (title: string, flights: typeof model.flown) => opened.push({ title, flights }) } as never
     render(<>{geoExtremesCard.render({ model, settings: DFW_SETTINGS, overlay })}</>)
-    const baseRow = screen.getByText(/2 flights/i).closest('[role="button"]')! as HTMLElement
+    const section = screen.getByText(/furthest from home/i).parentElement!
+    const baseRow = section.querySelector('[role="button"]')! as HTMLElement
     baseRow.click()
     expect(opened).toHaveLength(1)
     // The whole trip = both legs (the outbound record leg AND the return), not just DFW→SYD.
@@ -98,7 +98,7 @@ describe('geoExtremesCard', () => {
     const model = buildModel(csv, noHome, '2026-06-25')
     render(<>{geoExtremesCard.render({ model, settings: noHome })}</>)
     expect(screen.getByText(/northernmost/i)).toBeInTheDocument()
-    expect(screen.queryByText(/farthest from each home/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/furthest from home/i)).not.toBeInTheDocument()
   })
 
   it('renders empty-state when no resolved airports', () => {
