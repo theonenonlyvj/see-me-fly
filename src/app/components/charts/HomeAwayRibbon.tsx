@@ -44,6 +44,8 @@ export interface HomeAwayRibbonProps {
   rows: RibbonYear[]
   longestHome: HomeAwayStretch | null
   longestAway: HomeAwayStretch | null
+  /** When set, away blocks are clickable and call this with the block's year + span. */
+  onPick?: (year: number, span: RibbonYear['spans'][number]) => void
 }
 
 // Layout geometry.
@@ -55,7 +57,7 @@ const ROW_H = 15   // per-year row band height
 const ROW_GAP = 5
 const BAR_H = 9    // away-block / home-baseline thickness
 
-export default function HomeAwayRibbon({ rows, longestHome, longestAway }: HomeAwayRibbonProps) {
+export default function HomeAwayRibbon({ rows, longestHome, longestAway, onPick }: HomeAwayRibbonProps) {
   const W = 620
   const plotW = W - PAD_L - PAD_R
   const H = PAD_T + rows.length * (ROW_H + ROW_GAP) - ROW_GAP + PAD_B
@@ -122,10 +124,13 @@ export default function HomeAwayRibbon({ rows, longestHome, longestAway }: HomeA
               // (doy 366 → xForDoy(367)) doesn't overshoot the right gridline.
               const x1 = Math.min(PAD_L + plotW, xForDoy(sp.endDoy + 1))
               const w = Math.max(1.6, x1 - x0)
+              const click = onPick ? () => onPick(r.year, sp) : undefined
               return (
-                <g key={si}>
+                <g key={si} onClick={click} style={click ? { cursor: 'pointer' } : undefined}>
                   <rect x={x0} y={mid - BAR_H / 2} width={w} height={BAR_H} rx={2} fill={TIER_COLOR[sp.tier]} />
                   {sp.estimated && <rect x={x0} y={mid - BAR_H / 2} width={w} height={BAR_H} rx={2} fill="url(#ha-hatch)" />}
+                  {/* a taller transparent hit target so a thin away-block is still easy to click */}
+                  {click && <rect x={x0 - 1.5} y={mid - ROW_H / 2} width={w + 3} height={ROW_H} fill="transparent" />}
                 </g>
               )
             })}

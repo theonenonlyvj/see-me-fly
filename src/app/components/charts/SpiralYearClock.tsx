@@ -52,9 +52,11 @@ export interface SpiralYearClockProps {
   colorFor: (date: string) => string
   /** The single busiest week to annotate (weekStart = Monday YYYY-MM-DD). Omit to skip. */
   busiest?: { weekStart: string; count: number } | null
+  /** When set, ticks are clickable and call this with the flight. */
+  onPick?: (f: EnrichedFlight) => void
 }
 
-export default function SpiralYearClock({ flights, colorFor, busiest }: SpiralYearClockProps) {
+export default function SpiralYearClock({ flights, colorFor, busiest, onPick }: SpiralYearClockProps) {
   // Non-local, dated flights only. Local hops (From==To) don't belong on a "where did you go" clock.
   const marks = flights.filter((f) => !f.isLocalFlight && f.date && f.date.length >= 10)
 
@@ -153,18 +155,23 @@ export default function SpiralYearClock({ flights, colorFor, busiest }: SpiralYe
         const half = 0.55 + w * 0.9 // radial half-length grows gently with weight
         const a = polar(CX, CY, baseR - half, ang)
         const b = polar(CX, CY, baseR + half, ang)
+        const click = onPick ? () => onPick(f) : undefined
         return (
-          <line
-            key={f.id}
-            x1={a.x.toFixed(2)}
-            y1={a.y.toFixed(2)}
-            x2={b.x.toFixed(2)}
-            y2={b.y.toFixed(2)}
-            stroke={colorFor(f.date)}
-            strokeWidth={w.toFixed(2)}
-            strokeOpacity={0.8}
-            strokeLinecap="round"
-          />
+          <g key={f.id} onClick={click} style={click ? { cursor: 'pointer' } : undefined}>
+            <line
+              x1={a.x.toFixed(2)}
+              y1={a.y.toFixed(2)}
+              x2={b.x.toFixed(2)}
+              y2={b.y.toFixed(2)}
+              stroke={colorFor(f.date)}
+              strokeWidth={w.toFixed(2)}
+              strokeOpacity={0.8}
+              strokeLinecap="round"
+            >
+              <title>{`${fmtDay(f.date)} · ${f.fromCode} → ${f.toCode}`}</title>
+            </line>
+            {click && <line x1={a.x.toFixed(2)} y1={a.y.toFixed(2)} x2={b.x.toFixed(2)} y2={b.y.toFixed(2)} stroke="transparent" strokeWidth={Math.max(6, w + 5)} strokeLinecap="round" />}
+          </g>
         )
       })}
 

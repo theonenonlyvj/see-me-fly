@@ -34,6 +34,7 @@ export interface StreamGraphProps {
   layers: StreamLayer[]     // draw order: featured (rank) first, Other last
   totals: number[]          // per-year TOTAL flights (all carriers), index-aligned to `years`
   homes?: StreamHome[]      // home-move hairlines (era.start dates)
+  onPick?: (layer: StreamLayer) => void  // when set, carrier bands are clickable
 }
 
 // ── geometry ────────────────────────────────────────────────────────────────
@@ -138,7 +139,7 @@ function bandPath(xs: number[], topYs: number[], botYs: number[]): string {
   return `${start}${topD}${toBot}${botD} Z`
 }
 
-export default function StreamGraph({ years, layers, totals, homes }: StreamGraphProps) {
+export default function StreamGraph({ years, layers, totals, homes, onPick }: StreamGraphProps) {
   const n = years.length
   if (n === 0 || layers.length === 0) return null
 
@@ -222,6 +223,8 @@ export default function StreamGraph({ years, layers, totals, homes }: StreamGrap
           stroke={L.featured ? '#ffffff' : 'none'}
           strokeWidth={L.featured ? 0.6 : 0}
           strokeOpacity={0.5}
+          style={onPick ? { cursor: 'pointer' } : undefined}
+          onClick={onPick ? () => onPick(L) : undefined}
         >
           <title>{L.label}</title>
         </path>

@@ -17,7 +17,10 @@ const R_INNER = 5.5 // hub radius (center dead-zone)
 const R_OUTER = 35 // max spoke reach at the global max
 const BAR_W = 2.6
 
-function Bloom({ months, globalMax, accent }: { months: number[]; globalMax: number; accent: string }) {
+function Bloom({ months, globalMax, accent, year, onPick }: {
+  months: number[]; globalMax: number; accent: string; year: number
+  onPick?: (year: number, month: number) => void
+}) {
   const span = R_OUTER - R_INNER
 
   return (
@@ -53,19 +56,14 @@ function Bloom({ months, globalMax, accent }: { months: number[]; globalMax: num
         const ang = (i / 12) * 360
         const a = polar(CX, CY, R_INNER, ang)
         const b = polar(CX, CY, R_INNER + len, ang)
+        const click = onPick ? () => onPick(year, i) : undefined
         return (
-          <line
-            key={`b${i}`}
-            x1={a.x}
-            y1={a.y}
-            x2={b.x}
-            y2={b.y}
-            stroke={accent}
-            strokeWidth={BAR_W}
-            strokeLinecap="round"
-          >
-            <title>{`Month ${i + 1}: ${v} flight${v === 1 ? '' : 's'}`}</title>
-          </line>
+          <g key={`b${i}`} onClick={click} style={click ? { cursor: 'pointer' } : undefined}>
+            <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={accent} strokeWidth={BAR_W} strokeLinecap="round">
+              <title>{`Month ${i + 1}: ${v} flight${v === 1 ? '' : 's'}`}</title>
+            </line>
+            {click && <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="transparent" strokeWidth={7} strokeLinecap="round" />}
+          </g>
         )
       })}
 
@@ -78,9 +76,11 @@ function Bloom({ months, globalMax, accent }: { months: number[]; globalMax: num
 export default function YearBlooms({
   data,
   accent = 'var(--coral)',
+  onPick,
 }: {
   data: { year: number; months: number[] }[]
   accent?: string
+  onPick?: (year: number, month: number) => void
 }) {
   // Single shared radius scale across ALL years — the whole point.
   const globalMax = Math.max(1, ...data.flatMap((d) => d.months))
@@ -96,7 +96,7 @@ export default function YearBlooms({
       >
         {data.map((d) => (
           <div key={d.year} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <Bloom months={d.months} globalMax={globalMax} accent={accent} />
+            <Bloom months={d.months} globalMax={globalMax} accent={accent} year={d.year} onPick={onPick} />
             <div
               style={{
                 marginTop: 2,

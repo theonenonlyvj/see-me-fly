@@ -95,9 +95,13 @@ export interface BodyClockProps {
   total: number
   /** modal departure hour to mark on the rim, or null. */
   modalHour?: number | null
+  /** When set, an invisible ring of 24 hour-sectors is clickable → the departure hour. */
+  onPick?: (hour: number) => void
 }
 
-export default function BodyClock({ arcs, total, modalHour }: BodyClockProps) {
+const hourLabel = (h: number) => (h === 0 ? '12am' : h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h - 12}pm`)
+
+export default function BodyClock({ arcs, total, modalHour, onPick }: BodyClockProps) {
   const majorLabels: [number, string][] = [
     [0, '12a'],
     [6, '6a'],
@@ -247,6 +251,23 @@ export default function BodyClock({ arcs, total, modalHour }: BodyClockProps) {
       >
         FLIGHTS
       </text>
+
+      {/* 24 invisible hour-sectors (only when interactive) — the arcs are too dense to click */}
+      {onPick && (
+        <g>
+          {Array.from({ length: 24 }, (_, h) => (
+            <path
+              key={`sec${h}`}
+              d={annulusWedge(h - 0.5, h + 0.5, R_IN - 6, R_OUT + 6)}
+              fill="transparent"
+              style={{ cursor: 'pointer' }}
+              onClick={() => onPick(h)}
+            >
+              <title>{`${hourLabel(h)} departures`}</title>
+            </path>
+          ))}
+        </g>
+      )}
     </svg>
   )
 }

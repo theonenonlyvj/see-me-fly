@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import CardFrame from '../components/CardFrame'
 import BodyClock, { type DialArc } from '../components/charts/BodyClock'
+import PopoutExplorer from '../components/PopoutExplorer'
 import { tzDirection, modalDepartureHour } from '../lib/body-clock'
 import type { EnrichedFlight } from '../../engine'
 import type { CardContext, CardDef } from './registry'
@@ -83,6 +84,31 @@ export const bodyClockCard: CardDef = {
     const total = arcs.length
     const modal = modalDepartureHour(flights)
 
+    const legendRows = (
+      <>
+        <LegRow swatch={<Swatch background="linear-gradient(90deg, var(--indigo), var(--magenta))" />} label="Flew east" meta="lose time" />
+        <LegRow swatch={<Swatch background="linear-gradient(90deg, var(--sky), var(--lime))" />} label="Flew west" meta="gain time" />
+        <LegRow swatch={<Swatch background="#c3c8d2" />} label="Same time zone" />
+      </>
+    )
+
+    // Interactive pop-out: click an hour sector → the flights that departed that hour.
+    const popBody = (
+      <PopoutExplorer
+        hint="Click an hour on the dial to see the flights that departed then."
+        chart={(onPick) => (
+          <div>
+            <BodyClock arcs={arcs} total={total} modalHour={modal ? modal.hour : null}
+              onPick={(hour) => {
+                const hf = flights.filter((f) => f.depHourLocal === hour)
+                onPick({ title: `Departures at ${fmtHour(hour)}`, subtitle: `${hf.length} flight${hf.length === 1 ? '' : 's'}`, flights: hf })
+              }} />
+            <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', marginTop: 8, fontFamily: 'var(--font)' }}>{legendRows}</div>
+          </div>
+        )}
+      />
+    )
+
     return (
       <CardFrame
         title="The Body-Clock"
@@ -92,6 +118,7 @@ export const bodyClockCard: CardDef = {
         accentSoft={ACCENT_SOFT}
         icon="🌓"
         poppable
+        popBody={popBody}
       >
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* the dial */}

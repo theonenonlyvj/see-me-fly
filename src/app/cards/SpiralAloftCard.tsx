@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react'
 import CardFrame from '../components/CardFrame'
 import SpiralYearClock from '../components/charts/SpiralYearClock'
+import PopoutExplorer from '../components/PopoutExplorer'
 import { buildHomeColoring } from '../lib/home-colors'
 import { busiestWeek } from '../../engine/stats'
+import { airportKey } from '../../engine/normalize'
+import { flightsByRoutePair } from '../lib/flight-filters'
 import type { CardContext, CardDef } from './registry'
 
 const ACCENT = 'var(--coral)'
@@ -42,6 +45,36 @@ export const spiralAloftCard: CardDef = {
     const busiest = busiestWeek(flights.filter((f) => !f.isLocalFlight))
     const nonLocal = flights.filter((f) => !f.isLocalFlight).length
 
+    // Interactive pop-out: click a flight tick → every flight on that route.
+    const popBody = (
+      <PopoutExplorer
+        hint="Click any flight tick to see every flight on that route."
+        chart={(onPick) => (
+          <div>
+            <SpiralYearClock
+              flights={flights}
+              colorFor={coloring.colorFor}
+              busiest={busiest}
+              onPick={(f) => {
+                const k = (c: string) => airportKey(c, ctx.settings.groupAirports)
+                const rf = flightsByRoutePair(ctx.model!.flown, k(f.fromCode), k(f.toCode), ctx.settings.groupAirports)
+                onPick({ title: `${f.fromCode} ↔ ${f.toCode}`, subtitle: `${rf.length} flight${rf.length === 1 ? '' : 's'} on this route`, flights: rf })
+              }}
+            />
+            {coloring.hasHomes && coloring.legend.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, fontFamily: 'var(--font)' }}>
+                {coloring.legend.map((row) => (
+                  <span key={row.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--ink)' }}>
+                    <span style={{ width: 11, height: 11, borderRadius: 3, background: row.color }} />{row.label}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      />
+    )
+
     return (
       <CardFrame
         title="13 Years Aloft"
@@ -51,6 +84,7 @@ export const spiralAloftCard: CardDef = {
         accentSoft={ACCENT_SOFT}
         icon="🌀"
         poppable
+        popBody={popBody}
       >
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* the spiral (left) */}
