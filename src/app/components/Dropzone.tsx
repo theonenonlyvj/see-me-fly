@@ -31,7 +31,7 @@ export default function Dropzone({ onLoaded }: { onLoaded: (text: string, fileNa
       }}
     >
       <div>
-        <h1 style={{ marginBottom: 8 }}>✈️ Flight Visualizer</h1>
+        <h1 style={{ marginBottom: 8 }}>✈️ See-Me-Fly</h1>
         <p style={{ color: 'var(--text-dim)', maxWidth: 420, margin: '0 auto 20px' }}>
           Drop your flight logs CSV here (any export with the expected flight columns), or pick it. Everything stays on your machine.
         </p>

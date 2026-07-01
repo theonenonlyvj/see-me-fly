@@ -10,7 +10,7 @@ beforeEach(() => { try { localStorage.clear() } catch { /* ignore */ } })
 describe('App', () => {
   it('renders the welcome prompt when nothing is saved', () => {
     render(<App />)
-    expect(screen.getByText(/Flight Visualizer/i)).toBeInTheDocument()
+    expect(screen.getByText(/See-Me-Fly/i)).toBeInTheDocument()
     expect(screen.getByText(/drop your flight logs csv/i)).toBeInTheDocument()
   })
 

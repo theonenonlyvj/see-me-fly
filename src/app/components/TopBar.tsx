@@ -32,7 +32,7 @@ export default function TopBar({ fileName, years, scope, onScope, onToggleSettin
             color: 'transparent',
           }}>
             <span style={{ WebkitTextFillColor: 'var(--coral)', color: 'var(--coral)', marginRight: 5, filter: 'drop-shadow(0 2px 7px rgba(255,61,87,0.45))' }}>✈</span>
-            Flight Visualizer
+            See-Me-Fly
           </span>
           {fileName && (
             <span style={{
