@@ -1,7 +1,11 @@
 import CardFrame from '../components/CardFrame'
 import RangeBloom, { CONTINENT_LEGEND } from '../components/charts/RangeBloom'
+import PopoutExplorer from '../components/PopoutExplorer'
 import { destinationsFromHome } from '../../engine/stats'
 import { hasHome } from '../../engine/home'
+import { airportKey } from '../../engine/normalize'
+import { flightsByAirportKey } from '../lib/flight-filters'
+import { fmtMiles } from '../lib/format'
 import { homeKey } from '../lib/places'
 import type { Continent } from '../../engine'
 import type { CardContext, CardDef } from './registry'
@@ -28,6 +32,34 @@ export const rangeBloomCard: CardDef = {
     )
     const legend = CONTINENT_LEGEND.filter((row) => row.match.some((c) => present.has(c)))
 
+    // Interactive pop-out: click a destination dot → its city + every flight that reached it.
+    const popBody = destinations.length > 0 ? (
+      <PopoutExplorer
+        hint="Click any destination dot to see the city and the flights that reached it."
+        chart={(onPick) => (
+          <div>
+            <RangeBloom
+              destinations={destinations}
+              farthest={farthest}
+              homeLabel={homeLabel}
+              onPick={(d) => onPick({
+                title: d.municipality || d.name || d.code,
+                subtitle: `${d.code} · ${fmtMiles(d.distanceMi)} · ${d.visits} visit${d.visits === 1 ? '' : 's'}`,
+                flights: flightsByAirportKey(ctx.model!.flown, airportKey(d.code, ctx.settings.groupAirports), ctx.settings),
+              })}
+            />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 8, fontFamily: 'var(--font)' }}>
+              {legend.map((row) => (
+                <span key={row.label} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--ink)', fontWeight: 500 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: row.color }} />{row.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      />
+    ) : undefined
+
     return (
       <CardFrame
         title="Home-anchored range bloom"
@@ -37,6 +69,7 @@ export const rangeBloomCard: CardDef = {
         accentSoft={ACCENT_SOFT}
         icon="🧭"
         poppable
+        popBody={popBody}
       >
         {!hasHome(ctx.settings) || destinations.length === 0 ? (
           <p style={{ color: 'var(--ink-2)', fontSize: 13, lineHeight: 1.5 }}>

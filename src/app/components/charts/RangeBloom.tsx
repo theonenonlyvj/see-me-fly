@@ -83,9 +83,11 @@ export interface RangeBloomProps {
   farthest?: RangeBloomDestination | null
   /** Home label for the center caption, e.g. "DFW" or "Dallas". */
   homeLabel?: string
+  /** When set, dots are clickable and call this with the picked destination. */
+  onPick?: (d: RangeBloomDestination) => void
 }
 
-export default function RangeBloom({ destinations, farthest, homeLabel }: RangeBloomProps) {
+export default function RangeBloom({ destinations, farthest, homeLabel, onPick }: RangeBloomProps) {
   const maxMi = Math.max(1, ...destinations.map((d) => d.distanceMi))
   const maxVisits = Math.max(1, ...destinations.map((d) => d.visits))
 
@@ -217,6 +219,8 @@ export default function RangeBloom({ destinations, farthest, homeLabel }: RangeB
             fillOpacity={0.88}
             stroke="#fff"
             strokeWidth={0.8}
+            style={onPick ? { cursor: 'pointer' } : undefined}
+            onClick={onPick ? () => onPick(d) : undefined}
           >
             <title>{`${d.code} · ${d.municipality || d.name} — ${fmtMi(d.distanceMi)} mi · ${d.visits} visit${d.visits === 1 ? '' : 's'}`}</title>
           </circle>

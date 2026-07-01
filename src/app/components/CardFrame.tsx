@@ -25,7 +25,7 @@ export function QuickToggle({ label, checked, onChange, accent }: { label: strin
 }
 
 export default function CardFrame({
-  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth, onTitleClick, controls, poppable,
+  title, children, footer, accent, accentGrad, accentSoft, icon, eyebrow, fullWidth, onTitleClick, controls, poppable, popBody,
 }: {
   title: string
   children: ReactNode
@@ -42,6 +42,8 @@ export default function CardFrame({
   controls?: ReactNode
   /** show a "⤢ pop out" affordance that enlarges this card's chart in a wide modal */
   poppable?: boolean
+  /** optional richer body to show in the pop-out (e.g. an interactive explorer) instead of the inline chart */
+  popBody?: ReactNode
 }) {
   const grad = accentGrad ?? `linear-gradient(90deg, ${accent ?? 'var(--coral)'}, ${accent ?? 'var(--coral)'})`
   const soft = accentSoft ?? 'var(--hair-2)'
@@ -50,7 +52,7 @@ export default function CardFrame({
   const overlay = useOverlay()
   // Pop-out is available only when no other title action is wired (maps use onTitleClick).
   const canPop = poppable && !onTitleClick
-  const popOut = () => overlay.openWide(title, <>{children}{footer}</>, eyebrow)
+  const popOut = () => overlay.openWide(title, popBody ?? <>{children}{footer}</>, eyebrow)
   const headerClick = onTitleClick ?? (canPop ? popOut : undefined)
 
   const sectionStyle: CSSProperties = fullWidth
