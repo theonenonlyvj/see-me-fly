@@ -8,3 +8,6 @@ design-mockups/
 
 # OG image build scratch
 scripts/preprocess/.og-tmp/
+
+# data-viz mockup scratch (council exploration)
+.dataviz-mockups/
