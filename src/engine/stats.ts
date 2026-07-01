@@ -2,7 +2,7 @@ import type { EnrichedFlight, Airport, Settings, Continent, AircraftClass } from
 import { classifyRoute } from './classify'
 import { routeKey, airportKey } from './normalize'
 import { countryName, regionName, aircraftFamily, lookupAirport, continentName } from './reference'
-import { haversineMi } from './distance'
+import { haversineMi, bearingDeg } from './distance'
 import { milestones } from './aggregate'
 import { DEFUNCT_AIRLINES, effectiveAirline } from './airline-history'
 import { hasHome, isHomeOn, homeAt } from './home'
@@ -584,6 +584,96 @@ export function geoExtremes(flights: EnrichedFlight[], settings: Settings): GeoE
   // Rank by farthest miles descending; deterministic tiebreak by the base's lowest rawIndex.
   ranked.sort((a, b) => b.farthest.miles - a.farthest.miles || a.rawIndex - b.rawIndex)
   return { global, byBase: ranked.map(({ baseLabel, primaryCode, farthest, flightCount, farthestFlights }) => ({ baseLabel, primaryCode, farthest, flightCount, farthestFlights })) }
+}
+
+/** One destination in the polar "range bloom": a distinct arrival airport, placed by its
+ *  compass bearing + great-circle distance from the era-correct home, sized by visit count. */
+export interface RangeBloomDestination {
+  code: string              // display code (IATA || ident) of the destination airport
+  name: string              // airport name
+  municipality: string      // city (for annotation / hover)
+  continent: Continent | null
+  bearing: number           // 0..360 (0=N, 90=E) from home to destination
+  distanceMi: number        // great-circle miles from home to destination
+  visits: number            // number of arrivals AT this destination (from a resolvable home)
+}
+
+/**
+ * Destinations for the Home-Anchored Range Bloom: each distinct arrival airport a flight
+ * TOOK you to (a resolved, non-local `to`), placed at its compass bearing + great-circle
+ * distance from the home that was active on that flight's date (`homeAt(date)`).
+ *
+ * Aggregation (keyed by `airportKey(to)` so grouped metros collapse to one dot):
+ *  - `visits` = count of arrivals at this destination from any flight with a resolvable home.
+ *  - A flight is skipped when: no resolved `to`, it's a local hop, no home resolves on its date,
+ *    or the destination IS the home (its key ∈ the era's home-airport key set) — home sits at the
+ *    center, never plotted as its own dot.
+ *  - `bearing` / `distanceMi` are computed from the home active on the destination's MOST-RECENT
+ *    visit. RATIONALE: a destination flown from two different homes (a relocation) has two true
+ *    bearings; we plot ONE dot and use the latest home so the bloom reflects where the traveler
+ *    now reaches from — the current center of gravity — rather than double-plotting or averaging.
+ *    (`visits` still counts every arrival, from either home.)
+ *
+ * Destinations whose most-recent home's primary fails `lookupAirport` are skipped (no anchor to
+ * measure from). Sorted by `distanceMi` descending so the caller can draw far/large dots first
+ * (under near/small ones) and label the single farthest — `[0]` is the longest reach.
+ */
+export function destinationsFromHome(flights: EnrichedFlight[], settings: Settings): RangeBloomDestination[] {
+  interface DestAcc {
+    to: Airport
+    visits: number
+    lastDate: string           // most-recent arrival date at this destination
+    lastRawIndex: number       // tiebreak within the same date (later row = later visit)
+    homeAtLast: string | null  // the home PRIMARY active on that most-recent visit
+  }
+  const byDest = new Map<string, DestAcc>()
+
+  for (const f of flights) {
+    if (!f.to || f.isLocalFlight) continue
+    const home = homeAt(f.date, settings)
+    if (!home) continue
+    // Skip flights that arrive back at the era's home — home is the center, not a dot.
+    // Key by IATA when present: the airport-group map (grouping) is IATA-keyed, so a raw
+    // ICAO ident like "KJFK" would never collapse into its "New York" metro. Fall back to
+    // ident for airports with no IATA code.
+    const destKey = airportKey(f.to.iata || f.to.ident, settings.groupAirports)
+    const homeKeys = new Set(home.airports.map((a) => airportKey(a, settings.groupAirports)))
+    if (homeKeys.has(destKey)) continue
+
+    let acc = byDest.get(destKey)
+    if (!acc) {
+      acc = { to: f.to, visits: 0, lastDate: f.date, lastRawIndex: f.rawIndex, homeAtLast: home.primary }
+      byDest.set(destKey, acc)
+    }
+    acc.visits++
+    // Track the MOST-RECENT visit (latest date, then latest rawIndex) → its home anchors the dot.
+    if (f.date > acc.lastDate || (f.date === acc.lastDate && f.rawIndex >= acc.lastRawIndex)) {
+      acc.lastDate = f.date
+      acc.lastRawIndex = f.rawIndex
+      acc.homeAtLast = home.primary
+      acc.to = f.to // keep the display airport consistent with the anchoring visit
+    }
+  }
+
+  const out: RangeBloomDestination[] = []
+  for (const acc of byDest.values()) {
+    const homeAp = acc.homeAtLast ? lookupAirport(acc.homeAtLast) : null
+    if (!homeAp) continue // no resolvable home anchor for the most-recent visit → skip
+    const distanceMi = haversineMi(homeAp.lat, homeAp.lon, acc.to.lat, acc.to.lon)
+    const bearing = bearingDeg(homeAp.lat, homeAp.lon, acc.to.lat, acc.to.lon)
+    out.push({
+      code: acc.to.iata || acc.to.ident,
+      name: acc.to.name,
+      municipality: acc.to.municipality,
+      continent: acc.to.continent ?? null,
+      bearing,
+      distanceMi,
+      visits: acc.visits,
+    })
+  }
+  // Farthest first: lets the card draw big/far dots underneath small/near ones and label out[0].
+  out.sort((a, b) => b.distanceMi - a.distanceMi)
+  return out
 }
 
 /**

@@ -37,6 +37,7 @@ import { mapCard } from './MapCard'
 import { careerArcCard } from './CareerArcCard'
 import { dayOfWeekCard } from './DayOfWeekCard'
 import { howFarFromHomeCard } from './HowFarFromHomeCard'
+import { rangeBloomCard } from './RangeBloomCard'
 import { aircraftClassBarCard } from './AircraftClassBarCard'
 import { airlineErasCard } from './AirlineErasCard'
 import { mapV2Card } from './MapV2Card'
@@ -60,7 +61,7 @@ export const CARDS: CardDef[] = [
   allegianceCard,
   careerArcCard, airlineErasCard,
   airportsCard, routesCard, topRouteHeroCard, layoversCard, airlinesCard, alliancesCard, ghostAirlinesCard, distanceCard,
-  countriesCard, domesticStateCard, domesticCountryCard, domesticContinentCard, intercontinentalCard, geoExtremesCard, howFarFromHomeCard,
+  countriesCard, domesticStateCard, domesticCountryCard, domesticContinentCard, intercontinentalCard, geoExtremesCard, rangeBloomCard, howFarFromHomeCard,
   whenYouFlyCard, bodyClockCard, whenYouFlyOverlayCard, dayOfWeekCard, redEyesCard, commuterCadenceCard, nightsAwayCard, tripsExplorerCard, intensityCard, yearBloomsCard,
   aircraftCard, aircraftClassCard, aircraftClassBarCard, sameMetalCard, fleetCard,
   recordsCard, delaysCard,

@@ -3,7 +3,7 @@ import {
   byCountry, superDomestic, intercontinental,
   extremeFlights, byMonth, byYearMonthMatrix, hourHistogram,
   byAircraft, byTail, delayStats, geoExtremes, odometer, records,
-  commonLayovers, intercontinentalByPair, groundGaps,
+  commonLayovers, intercontinentalByPair, groundGaps, destinationsFromHome,
 } from '../../engine/stats'
 import type { EnrichedFlight } from '../../engine/types'
 import { enrichFlight } from '../../engine/enrich'
@@ -626,6 +626,91 @@ describe('geoExtremes', () => {
     const result = geoExtremes([fBogus, fDfw], s)
     // ZZZ base skipped; only DFW survives.
     expect(result.byBase.map((b) => b.primaryCode)).toEqual(['DFW'])
+  })
+})
+
+// ─── destinationsFromHome (Range Bloom) ─────────────────────────────────────
+describe('destinationsFromHome', () => {
+  const homeDfw = S({ home: 'DFW' })
+
+  it('returns [] when no home is resolvable', () => {
+    const f = mkRow({ from: 'DFW', to: 'LHR', date: '2020-01-01' })
+    expect(destinationsFromHome([f], S({ home: null, homeHistory: [] }))).toEqual([])
+  })
+
+  it('aggregates visits per destination and computes bearing + distance from home', () => {
+    const f1 = mkRow({ from: 'DFW', to: 'LHR', date: '2020-01-01' })
+    const f2 = mkRow({ from: 'DFW', to: 'LHR', date: '2021-01-01' })
+    const f3 = mkRow({ from: 'DFW', to: 'AUS', date: '2020-02-01' })
+    const rows = destinationsFromHome([f1, f2, f3], homeDfw)
+    // Two distinct destinations: LHR (2 visits) + AUS (1 visit). Farthest first.
+    expect(rows.map((r) => r.code)).toEqual(['LHR', 'AUS'])
+    const lhr = rows.find((r) => r.code === 'LHR')!
+    expect(lhr.visits).toBe(2)
+    expect(lhr.distanceMi).toBeGreaterThan(4000)
+    expect(lhr.continent).toBe('EU')
+    // LHR is roughly NE of DFW → bearing in the 0..90 quadrant.
+    expect(lhr.bearing).toBeGreaterThan(0)
+    expect(lhr.bearing).toBeLessThan(90)
+    const aus = rows.find((r) => r.code === 'AUS')!
+    expect(aus.visits).toBe(1)
+    // AUS is roughly S of DFW → bearing near 180°.
+    expect(aus.bearing).toBeGreaterThan(120)
+    expect(aus.bearing).toBeLessThan(220)
+  })
+
+  it('skips flights whose destination IS the home (home is the center)', () => {
+    const back = mkRow({ from: 'AUS', to: 'DFW', date: '2020-01-01' }) // arrives home
+    const out  = mkRow({ from: 'DFW', to: 'AUS', date: '2020-01-02' })
+    const rows = destinationsFromHome([back, out], homeDfw)
+    expect(rows.map((r) => r.code)).toEqual(['AUS'])
+  })
+
+  it('skips local hops and unresolved destinations', () => {
+    const local = mkRow({ from: 'DFW', to: 'DFW', date: '2020-01-01' }) // local → skipped
+    const bogus = mkRow({ from: 'DFW', to: 'QQQ', date: '2020-01-02' }) // unresolved to → skipped
+    const good  = mkRow({ from: 'DFW', to: 'LHR', date: '2020-01-03' })
+    const rows = destinationsFromHome([local, bogus, good], homeDfw)
+    expect(rows.map((r) => r.code)).toEqual(['LHR'])
+  })
+
+  it('a destination flown from two homes uses the MOST-RECENT home for bearing/distance, counts all visits', () => {
+    // Era 1: DEN home; Era 2: DFW home. LAX flown from both. Latest visit is from DFW.
+    const s = S({
+      homeHistory: [
+        { start: '2015-01-01', airports: ['DEN'] },
+        { start: '2020-01-01', airports: ['DFW'] },
+      ],
+    })
+    const fromDen = mkRow({ from: 'DEN', to: 'LAX', date: '2016-06-01' }) // DEN era
+    const fromDfw = mkRow({ from: 'DFW', to: 'LAX', date: '2021-06-01' }) // DFW era (most recent)
+    const rows = destinationsFromHome([fromDen, fromDfw], s)
+    expect(rows).toHaveLength(1)
+    const lax = rows[0]
+    expect(lax.visits).toBe(2) // both visits counted
+    // Distance/bearing measured from DFW (most-recent home), not DEN. DFW→LAX ~1230 mi.
+    expect(lax.distanceMi).toBeGreaterThan(1100)
+    expect(lax.distanceMi).toBeLessThan(1350)
+  })
+
+  it('groups metro members into one dot when groupAirports is on', () => {
+    // DAL and DFW are the same Dallas metro group; arriving at either near-home is home-skipped,
+    // but two different NYC-area arrivals should collapse to one dot when grouped.
+    const s = S({ home: 'DFW', groupAirports: true })
+    const jfk = mkRow({ from: 'DFW', to: 'JFK', date: '2020-01-01' })
+    const lga = mkRow({ from: 'DFW', to: 'LGA', date: '2020-02-01' })
+    const rows = destinationsFromHome([jfk, lga], s)
+    // JFK + LGA are both in the New York metro group → one aggregated destination with 2 visits.
+    expect(rows).toHaveLength(1)
+    expect(rows[0].visits).toBe(2)
+  })
+
+  it('single destination yields a one-row bloom', () => {
+    const f = mkRow({ from: 'DFW', to: 'SYD', date: '2020-01-01' })
+    const rows = destinationsFromHome([f], homeDfw)
+    expect(rows).toHaveLength(1)
+    expect(rows[0].code).toBe('SYD')
+    expect(rows[0].distanceMi).toBeGreaterThan(8000)
   })
 })
 
