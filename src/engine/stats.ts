@@ -690,6 +690,39 @@ export function weekdayMonFirst(date: string): number | null {
 
 export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+/**
+ * The Monday-anchored calendar week (start date, inclusive) containing `date`.
+ * Weeks run Mon→Sun; `weekStart('2019-03-20')` (a Wednesday) → '2019-03-18'.
+ * Returns the input untouched if the date is unparseable (defensive; callers pass real dates).
+ */
+export function weekStart(date: string): string {
+  const w = weekdayMonFirst(date)
+  if (w === null) return date
+  const t = Date.parse(date + 'T00:00:00Z')
+  const start = new Date(t - w * 86_400_000)
+  return start.toISOString().slice(0, 10)
+}
+
+/**
+ * The single busiest Monday-anchored week — the 7-day bucket [Mon, Sun] holding the most flights —
+ * over the passed flights. Returns its start date + count, or null when there are no flights.
+ * Ties break toward the EARLIER week (deterministic). Used for the spiral's one annotation.
+ */
+export function busiestWeek(flights: EnrichedFlight[]): { weekStart: string; count: number } | null {
+  const counts = new Map<string, number>()
+  for (const f of flights) {
+    const ws = weekStart(f.date)
+    counts.set(ws, (counts.get(ws) ?? 0) + 1)
+  }
+  let best: { weekStart: string; count: number } | null = null
+  for (const [ws, count] of counts) {
+    if (!best || count > best.count || (count === best.count && ws < best.weekStart)) {
+      best = { weekStart: ws, count }
+    }
+  }
+  return best
+}
+
 /** Flight counts per weekday, Monday-first (index 0=Mon … 6=Sun). */
 export function byWeekday(flights: EnrichedFlight[]): number[] {
   const counts = new Array(7).fill(0)

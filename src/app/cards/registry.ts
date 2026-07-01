@@ -50,8 +50,10 @@ import { commuterCadenceCard } from './CommuterCadenceCard'
 import { nightsAwayCard } from './NightsAwayCard'
 import { alliancesCard } from './AlliancesCard'
 import { tripsExplorerCard } from './TripsExplorerCard'
+import { spiralAloftCard } from './SpiralAloftCard'
 export const CARDS: CardDef[] = [
   mapCard, mapV2Card,
+  spiralAloftCard,
   overviewCard, odometerCard, flightPersonalityCard,
   careerArcCard, airlineErasCard,
   airportsCard, routesCard, topRouteHeroCard, layoversCard, airlinesCard, alliancesCard, ghostAirlinesCard, distanceCard,

@@ -3,7 +3,7 @@ import { parseFlightyCsv } from '../../engine/parse'
 import { enrichFlight } from '../../engine/enrich'
 import { DEFAULT_DURATION_CONSTANTS } from '../../engine/constants'
 import { REQUIRED_COLUMNS } from '../../engine/parse'
-import { byWeekday, weekdayMonFirst, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines, reconstructTrips, tripSummary } from '../../engine/stats'
+import { byWeekday, weekdayMonFirst, weekStart, busiestWeek, homeDistanceTiers, aircraftClassCounts, airlineByYear, redEyeProfile, fleetStats, ghostAirlines, reconstructTrips, tripSummary } from '../../engine/stats'
 import { byAirline } from '../../engine/aggregate'
 import { byAlliance, airlineGroups } from '../../engine/alliances'
 import type { Settings } from '../../engine'
@@ -36,6 +36,32 @@ describe('time/behavioral aggregators', () => {
     expect(res[0]).toBe(2) // Monday
     expect(res[5]).toBe(1) // Saturday
     expect(res[6]).toBe(0) // Sunday
+  })
+
+  it('weekStart snaps a date back to its Monday', () => {
+    expect(weekStart('2019-03-18')).toBe('2019-03-18') // a Monday → itself
+    expect(weekStart('2019-03-20')).toBe('2019-03-18') // a Wednesday → prior Monday
+    expect(weekStart('2019-03-24')).toBe('2019-03-18') // the Sunday of that same week
+    expect(weekStart('2019-03-25')).toBe('2019-03-25') // next Monday → next week
+  })
+
+  it('busiestWeek finds the Monday-anchored 7-day bucket with the most flights', () => {
+    const flights = [
+      // week of Mar 18 2019: 3 flights (Mon, Wed, Sun)
+      row('2019-03-18', 'DFW', 'AUS'), row('2019-03-20', 'DFW', 'LAX'), row('2019-03-24', 'DFW', 'ORD'),
+      // week of Apr 1 2019: 2 flights
+      row('2019-04-01', 'DFW', 'AUS'), row('2019-04-03', 'DFW', 'LAX'),
+    ]
+    expect(busiestWeek(flights)).toEqual({ weekStart: '2019-03-18', count: 3 })
+    expect(busiestWeek([])).toBeNull()
+  })
+
+  it('busiestWeek breaks ties toward the earlier week', () => {
+    const flights = [
+      row('2019-03-18', 'DFW', 'AUS'), row('2019-03-19', 'DFW', 'LAX'), // week of Mar 18: 2
+      row('2019-04-01', 'DFW', 'AUS'), row('2019-04-02', 'DFW', 'LAX'), // week of Apr 1: 2 (tie)
+    ]
+    expect(busiestWeek(flights)).toEqual({ weekStart: '2019-03-18', count: 2 })
   })
 
   it('homeDistanceTiers splits resolved flights into 4 closest→farthest tiers', () => {
