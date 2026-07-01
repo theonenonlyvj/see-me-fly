@@ -50,7 +50,7 @@ export const spiralAloftCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🌀"
-        fullWidth
+        poppable
       >
         <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* the spiral (left) */}

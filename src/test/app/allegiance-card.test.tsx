@@ -72,8 +72,9 @@ describe('StreamGraph chart', () => {
     expect(svg).toBeTruthy()
     // one <path> band per layer
     expect(container.querySelectorAll('path').length).toBe(layers.length)
-    // the home hairline label renders
-    expect(screen.getByText(/Dallas/)).toBeInTheDocument()
+    // the home relocation renders as a faint, UNLABELED hairline (labels pile up with many moves)
+    expect(container.querySelectorAll('line[stroke-dasharray="2 4"]').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Dallas/)).toBeNull()
     // the top honesty strip label renders
     expect(screen.getByText(/flights \/ yr/i)).toBeInTheDocument()
   })

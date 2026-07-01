@@ -95,12 +95,12 @@ export const bodyClockCard: CardDef = {
       >
         <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
           {/* the dial */}
-          <div style={{ flex: '1 1 260px', minWidth: 240, maxWidth: 340 }}>
+          <div style={{ flex: '1 1 260px', minWidth: 240, maxWidth: 560 }}>
             <BodyClock arcs={arcs} total={total} modalHour={modal ? modal.hour : null} />
           </div>
 
           {/* callout + legend + honesty caption */}
-          <div style={{ flex: '1 1 200px', minWidth: 190, maxWidth: 300, fontFamily: 'var(--font)' }}>
+          <div style={{ flex: '1 1 200px', minWidth: 190, maxWidth: 360, fontFamily: 'var(--font)' }}>
             {modal && (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ fontSize: 12, color: 'var(--ink-2)', fontWeight: 600 }}>You have departed at</div>

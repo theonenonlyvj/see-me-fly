@@ -19,9 +19,12 @@ const SECTIONS: { title: string; ids: string[] }[] = [
   { title: 'When you fly', ids: ['bodyClock', 'whenYouFly', 'whenYouFlyOverlay', 'dayOfWeek', 'redEyes', 'yearBlooms', 'intensity', 'records'] },
 ]
 
-// Cards rendered full-width (stacked above the masonry) rather than in a column:
-// the two maps + the three wide viz cards (spiral hero, allegiance river, home/away ribbon).
-const FULLWIDTH = new Set(['map', 'mapV2', 'spiralAloft', 'allegiance', 'homeAway'])
+// Cards rendered full-width (stacked above the masonry) rather than in a column: just the maps.
+const FULLWIDTH = new Set(['map', 'mapV2'])
+
+// Cards that span 2 masonry columns (prominent, but not obnoxiously full-width). On a 1-column
+// layout they're full width; on 2 columns they fill the row; on 3 they take two-thirds.
+const SPAN2 = new Set(['spiralAloft', 'allegiance', 'homeAway'])
 
 /** Responsive column count (3 / 2 / 1). */
 function useColumns(): number {
@@ -40,9 +43,11 @@ function useColumns(): number {
 
 interface Pos { left: number; top: number }
 
-/** Absolute-positioned greedy masonry over a fixed set of cards (cards never remount on reflow). */
-function Masonry({ cards, cols, ctx }: { cards: CardDef[]; cols: number; ctx: CardContext }) {
+/** Absolute-positioned greedy masonry over a fixed set of cards (cards never remount on reflow).
+ *  Cards in `span2` occupy two adjacent columns (capped at the column count). */
+function Masonry({ cards, cols, ctx, span2 }: { cards: CardDef[]; cols: number; ctx: CardContext; span2: Set<string> }) {
   const ids = useMemo(() => cards.map((c) => c.id), [cards])
+  const spanOf = (id: string) => (span2.has(id) ? Math.min(2, cols) : 1)
 
   const containerRef = useRef<HTMLDivElement | null>(null)
   const wrapRefs = useRef<Record<string, HTMLDivElement | null>>({})
@@ -65,13 +70,25 @@ function Masonry({ cards, cols, ctx }: { cards: CardDef[]; cols: number; ctx: Ca
     const colH = new Array(cols).fill(0)
     const pos: Record<string, Pos> = {}
     for (const id of ids) {
-      let min = 0
-      for (let c = 1; c < cols; c++) if (colH[c] < colH[min]) min = c
-      pos[id] = { left: min * (colWidth + GAP), top: colH[min] }
-      colH[min] += (heights.current[id] ?? 0) + GAP
+      const h = (heights.current[id] ?? 0) + GAP
+      if (spanOf(id) >= 2 && cols >= 2) {
+        // place across the adjacent column pair whose taller side is lowest
+        let best = 0, bestTop = Infinity
+        for (let i = 0; i <= cols - 2; i++) {
+          const top = Math.max(colH[i], colH[i + 1])
+          if (top < bestTop - 0.001) { bestTop = top; best = i }
+        }
+        pos[id] = { left: best * (colWidth + GAP), top: bestTop }
+        colH[best] = colH[best + 1] = bestTop + h
+      } else {
+        let min = 0
+        for (let c = 1; c < cols; c++) if (colH[c] < colH[min]) min = c
+        pos[id] = { left: min * (colWidth + GAP), top: colH[min] }
+        colH[min] += h
+      }
     }
     setLayout({ pos, height: Math.max(0, ...colH) })
-  }, [ids, cols, colWidth, ready])
+  }, [ids, cols, colWidth, ready, span2])
 
   useLayoutEffect(() => {
     const el = containerRef.current
@@ -114,7 +131,7 @@ function Masonry({ cards, cols, ctx }: { cards: CardDef[]; cols: number; ctx: Ca
             data-card-id={c.id}
             ref={getSetter(c.id)}
             style={positioned
-              ? { position: 'absolute', left: p.left, top: p.top, width: colWidth, transition: 'top .25s ease, left .25s ease' }
+              ? { position: 'absolute', left: p.left, top: p.top, width: spanOf(c.id) >= 2 ? colWidth * 2 + GAP : colWidth, transition: 'top .25s ease, left .25s ease' }
               : { marginBottom: GAP }}
           >
             {c.render(ctx)}
@@ -156,7 +173,7 @@ export default function CardGrid({ model, settings, update }: { model: Model; se
           <section key={section.title} style={{ marginBottom: 40 }}>
             <SectionHeader title={section.title} />
             {wide.map((c) => <div key={c.id} style={{ marginBottom: GAP }}>{c.render(ctx)}</div>)}
-            {rest.length > 0 && <Masonry cards={rest} cols={cols} ctx={ctx} />}
+            {rest.length > 0 && <Masonry cards={rest} cols={cols} ctx={ctx} span2={SPAN2} />}
           </section>
         )
       })}

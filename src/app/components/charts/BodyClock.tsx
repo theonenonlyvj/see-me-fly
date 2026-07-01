@@ -113,7 +113,7 @@ export default function BodyClock({ arcs, total, modalHour }: BodyClockProps) {
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       width="100%"
       height="100%"
-      style={{ display: 'block', maxWidth: 340, margin: '0 auto' }}
+      style={{ display: 'block', maxWidth: 560, margin: '0 auto' }}
       role="img"
       aria-label="24-hour body clock: one thin arc per flight from local departure to arrival hour, midnight at top"
     >

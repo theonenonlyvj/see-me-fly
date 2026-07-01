@@ -17,7 +17,7 @@ function HomeAwayView({ model, settings }: CardContext) {
   const longestAway = empty ? null : longestAwayStint(trips)
 
   return (
-    <CardFrame title="Home & away" eyebrow="Presence & absence" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🏡" fullWidth>
+    <CardFrame title="Home & away" eyebrow="Presence & absence" accent={ACCENT} accentGrad={ACCENT_GRAD} accentSoft={ACCENT_SOFT} icon="🏡" poppable>
       {empty ? (
         <p style={{ color: 'var(--ink-2)', fontSize: 13 }}>
           {!hasHome(settings)

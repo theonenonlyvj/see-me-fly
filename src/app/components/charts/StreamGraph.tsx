@@ -227,20 +227,15 @@ export default function StreamGraph({ years, layers, totals, homes }: StreamGrap
         </path>
       ))}
 
-      {/* ── home-move hairlines (era.start) ── */}
+      {/* ── home-move hairlines (era.start) — faint & unlabeled. Text labels pile up
+             unreadably for a well-travelled person with many relocations, so the moves
+             are shown only as subtle "life changed here" ticks. ── */}
       {(homes ?? []).map((hm, i) => {
         const x = xOfDate(hm.date, years)
         if (x == null) return null
-        // stagger label rows so two nearby moves don't collide
-        const labelY = RIVER_TOP - 8 - (i % 2) * 12
         return (
-          <g key={`home${hm.date}-${i}`}>
-            <line x1={x} y1={RIVER_TOP - 4} x2={x} y2={RIVER_BOT} stroke="var(--ink)" strokeWidth={1} strokeDasharray="2 3" strokeOpacity={0.3} />
-            <circle cx={x} cy={RIVER_TOP - 4} r={2.2} fill="var(--ink)" fillOpacity={0.5} />
-            <text x={x + 4} y={labelY + 3} fontSize={9} fontWeight={700} fill="var(--ink)" fillOpacity={0.72} fontFamily="var(--font)">
-              ↳ {hm.label}
-            </text>
-          </g>
+          <line key={`home${hm.date}-${i}`} x1={x} y1={RIVER_TOP - 2} x2={x} y2={RIVER_BOT}
+            stroke="var(--ink)" strokeWidth={0.8} strokeDasharray="2 4" strokeOpacity={0.13} />
         )
       })}
 

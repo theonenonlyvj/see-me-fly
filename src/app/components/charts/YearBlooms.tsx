@@ -21,7 +21,7 @@ function Bloom({ months, globalMax, accent }: { months: number[]; globalMax: num
   const span = R_OUTER - R_INNER
 
   return (
-    <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width="100%" height="100%" style={{ maxHeight: 96, display: 'block' }} aria-hidden>
+    <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width="100%" height="100%" style={{ maxHeight: 150, display: 'block' }} aria-hidden>
       {/* faint outer guide ring at the shared max scale */}
       <circle cx={CX} cy={CY} r={R_OUTER} fill="none" stroke="var(--hair)" strokeWidth={1} />
       {/* hub */}
@@ -90,7 +90,7 @@ export default function YearBlooms({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
           gap: '10px 8px',
         }}
       >

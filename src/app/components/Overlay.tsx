@@ -88,7 +88,7 @@ function Panel({ title, subtitle, onClose, onBack, wide, children }: {
       aria-label={title}
       onClick={(e) => e.stopPropagation()}
       style={{
-        width: wide ? 'min(1060px, 95vw)' : 'min(680px, 94vw)', maxHeight: wide ? '92vh' : '86vh',
+        width: wide ? 'min(1320px, 94vw)' : 'min(680px, 94vw)', maxHeight: wide ? '92vh' : '86vh',
         display: 'flex', flexDirection: 'column',
         background: '#fff', borderRadius: 20, overflow: 'hidden',
         boxShadow: '0 30px 80px -20px rgba(0,0,0,0.45), 0 0 0 1px rgba(0,0,0,0.05)',

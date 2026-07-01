@@ -42,7 +42,7 @@ export const allegianceCard: CardDef = {
         accentGrad={ACCENT_GRAD}
         accentSoft={ACCENT_SOFT}
         icon="🌊"
-        fullWidth
+        poppable
       >
         {perYear.length === 0 ? (
           <p style={{ color: 'var(--ink-2)' }}>No airline history in this view.</p>

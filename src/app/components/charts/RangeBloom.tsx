@@ -124,7 +124,7 @@ export default function RangeBloom({ destinations, farthest, homeLabel }: RangeB
       viewBox={`0 0 ${SIZE} ${SIZE}`}
       width="100%"
       height="100%"
-      style={{ display: 'block', maxWidth: 400, margin: '0 auto' }}
+      style={{ display: 'block', maxWidth: 680, margin: '0 auto' }}
       role="img"
       aria-label="Polar plot of destinations by compass bearing and distance from home"
     >
