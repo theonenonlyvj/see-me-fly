@@ -33,7 +33,6 @@ import { geoExtremesCard } from './GeoExtremesCard'
 import { whenYouFlyCard } from './WhenYouFlyCard'
 import { intensityCard } from './IntensityCard'
 import { yearBloomsCard } from './YearBloomsCard'
-import { mapCard } from './MapCard'
 import { careerArcCard } from './CareerArcCard'
 import { dayOfWeekCard } from './DayOfWeekCard'
 import { howFarFromHomeCard } from './HowFarFromHomeCard'
@@ -56,7 +55,7 @@ import { spiralAloftCard } from './SpiralAloftCard'
 import { bodyClockCard } from './BodyClockCard'
 import { allegianceCard } from './AllegianceCard'
 export const CARDS: CardDef[] = [
-  mapCard, mapV2Card,
+  mapV2Card,
   spiralAloftCard,
   overviewCard, odometerCard, flightPersonalityCard,
   allegianceCard,

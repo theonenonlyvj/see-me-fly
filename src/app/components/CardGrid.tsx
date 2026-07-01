@@ -10,7 +10,7 @@ const GAP = 24
 // The storyline: section title -> ordered card ids. Full-width cards (FULLWIDTH) render
 // stacked above their section's masonry; everything else flows in the columns.
 const SECTIONS: { title: string; ids: string[] }[] = [
-  { title: 'The big picture', ids: ['map', 'mapV2', 'overview', 'odometer', 'personality'] },
+  { title: 'The big picture', ids: ['mapV2', 'overview', 'odometer', 'personality'] },
   { title: 'Your story over time', ids: ['spiralAloft', 'allegiance', 'careerArc', 'airlineEras'] },
   { title: "Where you've been", ids: ['countries', 'airports', 'geoExtremes', 'howFarFromHome', 'rangeBloom'] },
   { title: 'How far you go', ids: ['distance', 'topRouteHero', 'shortest', 'longest'] },
@@ -19,8 +19,8 @@ const SECTIONS: { title: string; ids: string[] }[] = [
   { title: 'When you fly', ids: ['bodyClock', 'whenYouFly', 'whenYouFlyOverlay', 'dayOfWeek', 'redEyes', 'yearBlooms', 'intensity', 'records'] },
 ]
 
-// Cards rendered full-width (stacked above the masonry) rather than in a column: just the maps.
-const FULLWIDTH = new Set(['map', 'mapV2'])
+// Cards rendered full-width (stacked above the masonry) rather than in a column: the map.
+const FULLWIDTH = new Set(['mapV2'])
 
 // Cards that span 2 masonry columns (prominent, but not obnoxiously full-width). On a 1-column
 // layout they're full width; on 2 columns they fill the row; on 3 they take two-thirds.

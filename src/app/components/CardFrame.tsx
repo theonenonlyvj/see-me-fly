@@ -131,7 +131,12 @@ export default function CardFrame({
         )}
       </div>
 
-      {children}
+      {/* When poppable (and no other body interaction is wired), clicking the plot itself opens the
+          pop-out — not just the ⤢ button. The 6 poppable viz cards have no inline click targets, so
+          this is unambiguous. */}
+      {canPop ? (
+        <div onClick={popOut} style={{ cursor: 'zoom-in' }}>{children}</div>
+      ) : children}
       {footer && <div style={{ marginTop: 16 }}>{footer}</div>}
     </section>
   )
