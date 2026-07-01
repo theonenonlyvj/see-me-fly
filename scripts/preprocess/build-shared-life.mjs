@@ -16,7 +16,7 @@ const root = resolve(__dirname, '../..')
 const code = process.argv[2]
 if (!code) { console.error('Usage: node build-shared-life.mjs <CODE> [flights.csv] [homes.csv] [links.csv]'); process.exit(1) }
 
-const FLIGHTS = process.argv[3] || '/Users/vijayram/Cursor/intake_tmp/FlightyExport-2026-06-29.csv'
+const FLIGHTS = process.argv[3] || '/Users/vijayram/Cursor/lifecoach/ops/travel/reference/FlightyExport-2026-06-29.csv'
 const HOMES = process.argv[4] || '/Users/vijayram/Cursor/lifecoach/ops/travel/see-me-fly_homes.csv'
 const LINKS = process.argv[5] || '/Users/vijayram/Cursor/lifecoach/ops/travel/see-me-fly_links.csv'
 
