@@ -1,6 +1,14 @@
 import { describe, it, expect } from 'vitest'
 import { tzDirection, modalDepartureHour } from '../../app/lib/body-clock'
-import type { EnrichedFlight } from '../../engine'
+import type { EnrichedFlight, Airport } from '../../engine'
+
+/** Minimal airport carrying only the tz (the field the exact path reads). */
+function mkAirport(tz: string): Airport {
+  return {
+    iata: 'XXX', localCode: null, ident: 'XXX', name: '', municipality: '',
+    lat: 0, lon: 0, country: 'US', region: 'US-TX', continent: 'NA', tz,
+  }
+}
 
 /**
  * Minimal EnrichedFlight factory — only the fields tzDirection / modalDepartureHour read.
@@ -49,83 +57,85 @@ function mkFlight(o: Partial<EnrichedFlight>): EnrichedFlight {
 const HOUR = 3_600_000
 const T = Date.parse('2020-01-01T12:00:00Z') // arbitrary base instant
 
-describe('tzDirection', () => {
-  it("reads EAST when the wall clock advanced LESS than real time (DFW→LGA loses 1h)", () => {
-    // Depart 08:00 local (CT), true elapsed 3h, arrive 12:00 local (ET).
-    // Local wall clock advanced 4h but true elapsed is 3h → wait, that's west.
-    // EAST = lose time: local advanced LESS than true. DFW(CT)→LGA(ET): leave 8:00CT,
-    // 3h in the air, land 12:00ET. Local hours: 8→12 = 4. Hmm that GAINS an hour.
-    // Correct DFW→LGA (going east loses 1h): leave 8:00CT, fly 3h true, land 12:00ET.
-    // 8:00CT == 9:00ET; +3h true = 12:00ET. Local wall: dep 8, arr 12 → advanced 4.
-    // trueElapsed 3h. 4-3 = +1 → that's a GAIN. So to LOSE time we need arr local < dep+true.
-    // Model an eastbound loss directly: dep 08:00 local, true elapsed 3h, arr LOCAL 10:00
-    // (only advanced 2h on the wall while 3h really passed → lost 1h → EAST).
+describe('tzDirection — exact tz-offset path (both airports carry a tz)', () => {
+  // Physics: fly EAST → cross into later zones → LOSE time; fly WEST → GAIN time.
+  it("reads EAST for a west→east flight (DFW/Central → LGA/Eastern, +1h ahead)", () => {
     const f = mkFlight({
-      depHourLocal: 8,
-      arrHourLocal: 10,
+      from: mkAirport('America/Chicago'),
+      to: mkAirport('America/New_York'),
       depUtcMs: T,
       arrUtcMs: T + 3 * HOUR,
     })
     expect(tzDirection(f)).toBe('east')
   })
 
-  it('reads WEST when the wall clock advanced MORE than real time (LHR→DFW gains 6h)', () => {
-    // Depart 10:00 local, true elapsed 3h, arrive 19:00 local → the wall clock advanced 9h
-    // while only 3h really passed → gained 6h → WEST. (A big westward gain like LHR→DFW.)
+  it("reads WEST for an east→west flight (LHR/London → DFW/Central, gains 6h)", () => {
     const f = mkFlight({
-      depHourLocal: 10,
-      arrHourLocal: 19,
+      from: mkAirport('Europe/London'),
+      to: mkAirport('America/Chicago'),
       depUtcMs: T,
-      arrUtcMs: T + 3 * HOUR,
+      arrUtcMs: T + 9 * HOUR,
     })
     expect(tzDirection(f)).toBe('west')
   })
 
-  it('reads SAME when local elapsed equals true elapsed', () => {
+  it("reads WEST for transcon east→west (JFK/Eastern → LAX/Pacific, gains 3h)", () => {
     const f = mkFlight({
-      depHourLocal: 9,
-      arrHourLocal: 12,
+      from: mkAirport('America/New_York'),
+      to: mkAirport('America/Los_Angeles'),
       depUtcMs: T,
-      arrUtcMs: T + 3 * HOUR,
+      arrUtcMs: T + 6 * HOUR,
     })
+    expect(tzDirection(f)).toBe('west')
+  })
+
+  it("reads SAME for a same-zone hop (DFW → AUS, both Central)", () => {
+    const f = mkFlight({
+      from: mkAirport('America/Chicago'),
+      to: mkAirport('America/Chicago'),
+      depUtcMs: T,
+      arrUtcMs: T + 1 * HOUR,
+    })
+    expect(tzDirection(f)).toBe('same')
+  })
+})
+
+describe('tzDirection — fallback path (no airport tz / no UTC instants)', () => {
+  // (wallAdvanced − trueElapsed): ≥ +90m → east, ≤ −90m → west, else same.
+  it("reads EAST when the wall clock advanced well past real elapsed (lost time)", () => {
+    // dep 8, arr 13 local → wall advanced 5h; duration 180m (3h) → +120m → east
+    const f = mkFlight({ depHourLocal: 8, arrHourLocal: 13, durationMin: 180 })
+    expect(tzDirection(f)).toBe('east')
+  })
+
+  it("reads WEST when the wall clock lagged real elapsed (gained time)", () => {
+    // dep 10, arr 12 local → wall advanced 2h; duration 480m (8h) → −360m → west
+    const f = mkFlight({ depHourLocal: 10, arrHourLocal: 12, durationMin: 480 })
+    expect(tzDirection(f)).toBe('west')
+  })
+
+  it("reads SAME within the ±90m dead-band (whole-hour truncation, no fabricated shift)", () => {
+    // dep 8, arr 12 local → wall advanced 4h; duration 180m (3h) → +60m < 90 → same
+    const f = mkFlight({ depHourLocal: 8, arrHourLocal: 12, durationMin: 180 })
     expect(tzDirection(f)).toBe('same')
   })
 
   it('handles a wall-clock crossing midnight (dep 23 → arr 02, +3h true) as SAME', () => {
-    const f = mkFlight({
-      depHourLocal: 23,
-      arrHourLocal: 2,
-      depUtcMs: T,
-      arrUtcMs: T + 3 * HOUR,
-    })
-    // local elapsed = ((2-23)%24+24)%24 = 3h, true 3h → same
+    const f = mkFlight({ depHourLocal: 23, arrHourLocal: 2, depUtcMs: T, arrUtcMs: T + 3 * HOUR })
     expect(tzDirection(f)).toBe('same')
   })
 
-  it("falls back to durationMin for true elapsed when UTC instants are missing but local hours exist", () => {
-    // dep 8, arr 12 → local advanced 4h; duration 180min (3h) → gained 1h → WEST
-    const f = mkFlight({
-      depHourLocal: 8,
-      arrHourLocal: 12,
-      depUtcMs: null,
-      arrUtcMs: null,
-      durationMin: 180,
-    })
-    expect(tzDirection(f)).toBe('west')
+  it("falls back to durationMin for true elapsed when UTC instants are missing", () => {
+    const f = mkFlight({ depHourLocal: 8, arrHourLocal: 14, depUtcMs: null, arrUtcMs: null, durationMin: 180 })
+    expect(tzDirection(f)).toBe('east') // +360 − 180 = +180 ≥ 90 → east
   })
 
   it("returns 'same' when there is no way to compute true elapsed (no UTC, no duration)", () => {
-    const f = mkFlight({
-      depHourLocal: 8,
-      arrHourLocal: 12,
-      depUtcMs: null,
-      arrUtcMs: null,
-      durationMin: null,
-    })
+    const f = mkFlight({ depHourLocal: 8, arrHourLocal: 12, depUtcMs: null, arrUtcMs: null, durationMin: null })
     expect(tzDirection(f)).toBe('same')
   })
 
-  it("returns 'same' when local hours are missing (unplaceable but must not crash)", () => {
+  it("returns 'same' when local hours are missing and no airport tz (unplaceable, must not crash)", () => {
     const f = mkFlight({ depHourLocal: null, arrHourLocal: null, depUtcMs: T, arrUtcMs: T + 3 * HOUR })
     expect(tzDirection(f)).toBe('same')
   })

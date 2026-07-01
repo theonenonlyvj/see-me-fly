@@ -118,7 +118,9 @@ export default function HomeAwayRibbon({ rows, longestHome, longestAway }: HomeA
             {/* away blocks */}
             {r.spans.map((sp, si) => {
               const x0 = xForDoy(sp.startDoy)
-              const x1 = xForDoy(sp.endDoy + 1) // +1 so a single away day still has width
+              // +1 so a single away day still has width; clamp so a leap-year Dec-31
+              // (doy 366 → xForDoy(367)) doesn't overshoot the right gridline.
+              const x1 = Math.min(PAD_L + plotW, xForDoy(sp.endDoy + 1))
               const w = Math.max(1.6, x1 - x0)
               return (
                 <g key={si}>
