@@ -1160,3 +1160,223 @@ export function tripSummary(trips: Trip[]): {
     nightsByYear: [...byYear.entries()].map(([year, nights]) => ({ year, nights })).sort((a, b) => a.year - b.year),
   }
 }
+
+// ── Home & Away ribbon (dataviz card 6): per-year presence-vs-absence rows ────
+
+/**
+ * A trip's farthest reach relative to the era-correct home, for the ribbon color:
+ *  - `domestic`     — the trip never left the home's continent (lime).
+ *  - `transpacific` — it reached Asia (AS) or Oceania (OC) (magenta).
+ *  - `transatlantic`— any other intercontinental reach (EU / AF / SA, or a home
+ *                     that is itself in AS/OC reaching NA) (indigo).
+ * "Transatlantic/transpacific" are the traveler's framing (home is North America);
+ * we generalize honestly: AS/OC is the Pacific tier, every other off-continent reach
+ * is the "other intercontinental" tier that shares the indigo swatch.
+ */
+export type RibbonTier = 'domestic' | 'transatlantic' | 'transpacific'
+
+/** One contiguous away-block on a single year row (a trip clipped to that calendar year). */
+export interface RibbonSpan {
+  startDoy: number   // 1..366 — first away day-of-year on this row
+  endDoy: number     // 1..366 — last away day-of-year on this row (inclusive)
+  tier: RibbonTier
+  estimated: boolean // the SOURCE trip had an inferred boundary
+}
+
+/** One year row of the ribbon. `spans` are the away-blocks; the rest of the row is home. */
+export interface RibbonYear {
+  year: number
+  awayDays: number   // distinct away days in THIS year row
+  totalDays: number  // 365 or 366 (that calendar year's length)
+  spans: RibbonSpan[]
+}
+
+const MS_DAY = 86_400_000
+const dayMs = (date: string) => Date.parse(`${date.slice(0, 10)}T00:00:00Z`)
+const isLeap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0
+const yearLen = (y: number) => (isLeap(y) ? 366 : 365)
+/** 'YYYY-MM-DD' for a UTC-midnight ms instant. */
+const dateOfMs = (ms: number) => new Date(ms).toISOString().slice(0, 10)
+// Cumulative days before each month (non-leap); mirrors app/lib/polar without an engine→app import.
+const DAYS_BEFORE_MONTH = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+/** Day-of-year (1..366) from a 'YYYY-MM-DD' string (no Date/tz math). */
+const doyOf = (date: string): number => {
+  const y = Number(date.slice(0, 4))
+  const mo = Number(date.slice(5, 7))
+  const day = Number(date.slice(8, 10))
+  let doy = DAYS_BEFORE_MONTH[mo - 1] + day
+  if (mo > 2 && isLeap(y)) doy += 1
+  return doy
+}
+
+/** Home continent for a trip's departure date (era-correct); falls back to the flights' own endpoints. */
+function homeContinentOf(trip: Trip, settings: Settings): Continent {
+  const home = homeAt(trip.departDate, settings)
+  const viaHome = home ? lookupAirport(home.primary)?.continent : null
+  if (viaHome) return viaHome
+  // Fallbacks: the outbound leg's origin, else the first resolvable endpoint, else NA.
+  const first = trip.flights[0]
+  return first?.from?.continent ?? first?.to?.continent ?? 'NA'
+}
+
+/** The tier for a whole trip: farthest continent reached vs. the home continent. */
+export function tripTier(trip: Trip, settings: Settings): RibbonTier {
+  const homeC = homeContinentOf(trip, settings)
+  const reached = new Set<Continent>()
+  for (const f of trip.flights) {
+    if (f.to?.continent) reached.add(f.to.continent)
+    if (f.from?.continent) reached.add(f.from.continent)
+  }
+  // Only continents OTHER than home count as "reach".
+  const offHome = [...reached].filter((c) => c !== homeC)
+  if (offHome.length === 0) return 'domestic'
+  if (offHome.some((c) => c === 'AS' || c === 'OC')) return 'transpacific'
+  return 'transatlantic'
+}
+
+/**
+ * Turn reconstructed trips into per-year ribbon rows. A trip occupies the calendar days from its
+ * departure through the day BEFORE its return (i.e. its `nights` away-days; a 0-night trip still
+ * shows a single depart-day tick so it isn't invisible). A trip that crosses New Year is SPLIT into
+ * one span per calendar year it touches. Rows cover every year from the earliest to the latest trip
+ * departure/return, inclusive (so a gap year renders as an all-home row). `awayDays` per row counts
+ * DISTINCT away days (overlapping trips don't double-count).
+ */
+export function homeAwayRibbon(trips: Trip[], settings: Settings): RibbonYear[] {
+  if (trips.length === 0) return []
+
+  // Per-year away-day sets (dedup overlaps) + spans; keyed by calendar year.
+  const rows = new Map<number, { away: Set<number>; spans: RibbonSpan[] }>()
+  const ensure = (y: number) => {
+    let r = rows.get(y)
+    if (!r) { r = { away: new Set(), spans: [] }; rows.set(y, r) }
+    return r
+  }
+
+  let minYear = Infinity
+  let maxYear = -Infinity
+
+  for (const trip of trips) {
+    const tier = tripTier(trip, settings)
+    const estimated = trip.estimated != null
+    const startMs = dayMs(trip.departDate)
+    const returnMs = dayMs(trip.returnDate)
+    // Away days = [depart, return) — the nights slept away. A same-day (0-night) trip still
+    // occupies its single departure day so it stays visible.
+    const lastMs = returnMs > startMs ? returnMs - MS_DAY : startMs
+
+    // Walk each calendar day of the away span, bucketing into its year row and building spans.
+    let cursor = startMs
+    let spanYear = -1
+    let spanStart = 0
+    let spanPrev = 0
+    const flushSpan = () => {
+      if (spanYear === -1) return
+      ensure(spanYear).spans.push({ startDoy: spanStart, endDoy: spanPrev, tier, estimated })
+      spanYear = -1
+    }
+    while (cursor <= lastMs) {
+      const d = dateOfMs(cursor)
+      const y = Number(d.slice(0, 4))
+      const doy = doyOf(d)
+      minYear = Math.min(minYear, y)
+      maxYear = Math.max(maxYear, y)
+      ensure(y).away.add(doy)
+      if (y !== spanYear) { flushSpan(); spanYear = y; spanStart = doy }
+      spanPrev = doy
+      cursor += MS_DAY
+    }
+    flushSpan()
+
+    // Ensure every year the trip's calendar range touches (even fully-home tail years) exists,
+    // and widen the overall row range to cover home-only years between trips.
+    minYear = Math.min(minYear, trip.year)
+    maxYear = Math.max(maxYear, Number(trip.returnDate.slice(0, 4)))
+  }
+
+  const out: RibbonYear[] = []
+  for (let y = minYear; y <= maxYear; y++) {
+    const r = rows.get(y)
+    out.push({
+      year: y,
+      awayDays: r ? r.away.size : 0,
+      totalDays: yearLen(y),
+      spans: r ? r.spans.sort((a, b) => a.startDoy - b.startDoy) : [],
+    })
+  }
+  return out
+}
+
+export interface HomeAwayStretch { days: number; startDate: string; endDate: string }
+
+/**
+ * The single longest unbroken HOME stretch across the whole timeline — the longest run of calendar
+ * days not covered by ANY trip's away-span, between the first trip's departure and the last trip's
+ * return. Ties break to the EARLIEST stretch. Returns null with no trips.
+ */
+export function longestHomeStretch(trips: Trip[]): HomeAwayStretch | null {
+  if (trips.length === 0) return null
+  // Merge all away intervals [departMs, returnMs) (return day is a home-arrival day).
+  const intervals = trips
+    .map((t) => {
+      const a = dayMs(t.departDate)
+      const b = dayMs(t.returnDate)
+      return { a, b: b > a ? b : a + MS_DAY } // 0-night trip blocks its single day
+    })
+    .sort((x, y) => x.a - y.a)
+  const spanStart = intervals[0].a
+  const spanEnd = intervals.reduce((m, iv) => Math.max(m, iv.b), intervals[0].b)
+
+  // Merge overlapping away intervals, then the gaps between them (and before/after within the
+  // overall span) are home stretches. The window is [spanStart, spanEnd]; a home stretch before
+  // the first away block or after the last (within the span) is 0 by construction here.
+  const merged: { a: number; b: number }[] = []
+  for (const iv of intervals) {
+    const last = merged[merged.length - 1]
+    if (last && iv.a <= last.b) last.b = Math.max(last.b, iv.b)
+    else merged.push({ a: iv.a, b: iv.b })
+  }
+
+  let best: HomeAwayStretch | null = null
+  const consider = (fromMs: number, toMs: number) => {
+    // Home days run [fromMs, toMs) — the day the traveler got home up to (not incl.) next departure.
+    const days = Math.round((toMs - fromMs) / MS_DAY)
+    if (days <= 0) return
+    const cand: HomeAwayStretch = { days, startDate: dateOfMs(fromMs), endDate: dateOfMs(toMs - MS_DAY) }
+    if (!best || cand.days > best.days) best = cand
+  }
+  for (let i = 0; i < merged.length - 1; i++) consider(merged[i].b, merged[i + 1].a)
+  // (No home stretch before the first trip or after the last within [spanStart, spanEnd].)
+  void spanStart; void spanEnd
+  return best
+}
+
+/**
+ * The single longest continuous AWAY stint — the longest run of away-days after merging overlapping
+ * trips (back-to-back trips with no home night between them join into one stint). Ties break to the
+ * EARLIEST. Returns null with no trips. `days` counts nights away (the away-span length).
+ */
+export function longestAwayStint(trips: Trip[]): HomeAwayStretch | null {
+  if (trips.length === 0) return null
+  const intervals = trips
+    .map((t) => {
+      const a = dayMs(t.departDate)
+      const b = dayMs(t.returnDate)
+      return { a, b: b > a ? b : a + MS_DAY }
+    })
+    .sort((x, y) => x.a - y.a)
+  const merged: { a: number; b: number }[] = []
+  for (const iv of intervals) {
+    const last = merged[merged.length - 1]
+    if (last && iv.a <= last.b) last.b = Math.max(last.b, iv.b)
+    else merged.push({ a: iv.a, b: iv.b })
+  }
+  let best: HomeAwayStretch | null = null
+  for (const iv of merged) {
+    const days = Math.round((iv.b - iv.a) / MS_DAY)
+    // Away run is [a, b): last away day is b - 1 day (the return day is home).
+    const cand: HomeAwayStretch = { days, startDate: dateOfMs(iv.a), endDate: dateOfMs(iv.b - MS_DAY) }
+    if (!best || cand.days > best.days) best = cand
+  }
+  return best
+}
