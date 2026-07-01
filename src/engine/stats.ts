@@ -786,6 +786,44 @@ export function airlineByYear(flights: EnrichedFlight[], topN = 2, mergeDefunct 
   return { years, series }
 }
 
+/**
+ * Per-year airline breakdown for the Allegiance streamgraph: one row per year present in the data
+ * (ascending), each carrying the year `total` (sum of KNOWN-carrier flights) and a `counts` list of
+ * every carrier flown that year with its display `name`, `code`, and count `n` (sorted desc by n,
+ * name as tiebreak). `mergeDefunct` folds an acquired carrier into its survivor exactly like
+ * `byAirline` (via `effectiveAirline`); a carrier that merely ceased stays itself. "Unknown airline"
+ * flights are dropped (they don't count toward any carrier's band or the year total). A year with no
+ * resolvable carriers is omitted (its flights were all unknown). Distinct name from `airlineByYear`
+ * (which returns the top-N + Other stacked shape used by the StackedColumns cards) so both coexist.
+ */
+export function airlineByYearDetailed(
+  flights: EnrichedFlight[],
+  mergeDefunct: boolean,
+): { year: number; total: number; counts: { code: string; name: string; n: number }[] }[] {
+  // year → (carrier name → { code, n }); the effectiveAirline NAME is the grouping key so a merged
+  // survivor accumulates across its old codes, mirroring byAirline.
+  const perYear = new Map<number, Map<string, { code: string; n: number }>>()
+  for (const f of flights) {
+    if (!Number.isFinite(f.year)) continue
+    const { code, name } = effectiveAirline(f, mergeDefunct)
+    if (!name || name === 'Unknown airline') continue
+    let carriers = perYear.get(f.year)
+    if (!carriers) { carriers = new Map(); perYear.set(f.year, carriers) }
+    const cur = carriers.get(name)
+    if (cur) cur.n += 1
+    else carriers.set(name, { code, n: 1 })
+  }
+  return [...perYear.entries()]
+    .map(([year, carriers]) => {
+      const counts = [...carriers.entries()]
+        .map(([name, v]) => ({ code: v.code, name, n: v.n }))
+        .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
+      const total = counts.reduce((s, c) => s + c.n, 0)
+      return { year, total, counts }
+    })
+    .sort((a, b) => a.year - b.year)
+}
+
 // ── Identity / behavioral cards (batch 2) ───────────────────────────────────
 
 /** Departure time-of-day profile. depHourLocal is 0-23 local (no tz shift). */

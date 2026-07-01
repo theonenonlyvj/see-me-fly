@@ -52,10 +52,12 @@ import { alliancesCard } from './AlliancesCard'
 import { tripsExplorerCard } from './TripsExplorerCard'
 import { spiralAloftCard } from './SpiralAloftCard'
 import { bodyClockCard } from './BodyClockCard'
+import { allegianceCard } from './AllegianceCard'
 export const CARDS: CardDef[] = [
   mapCard, mapV2Card,
   spiralAloftCard,
   overviewCard, odometerCard, flightPersonalityCard,
+  allegianceCard,
   careerArcCard, airlineErasCard,
   airportsCard, routesCard, topRouteHeroCard, layoversCard, airlinesCard, alliancesCard, ghostAirlinesCard, distanceCard,
   countriesCard, domesticStateCard, domesticCountryCard, domesticContinentCard, intercontinentalCard, geoExtremesCard, howFarFromHomeCard,
